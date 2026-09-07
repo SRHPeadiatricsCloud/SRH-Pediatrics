@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 447 447" role="img" aria-label="Sri Ramakrishna Hospital logo">
+  <rect width="447" height="447" fill="white"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Purple top arm -->
+    <path d="M167 168 V70 C167 40 191 17 224 17 C257 17 281 40 281 70 C281 79 288 86 296 86" stroke="#74399A" stroke-width="32"/>
+    <!-- Orange right arm -->
+    <path d="M265 157 H364 C403 157 430 184 430 223 C430 262 403 289 364 289" stroke="#F7682F" stroke-width="32"/>
+    <!-- Blue bottom arm -->
+    <path d="M280 278 V377 C280 410 256 430 224 430 C192 430 168 410 168 377" stroke="#0798D6" stroke-width="32"/>
+    <!-- Magenta left arm -->
+    <path d="M181 290 H84 C45 290 18 263 18 224 C18 185 45 158 84 158" stroke="#EC238F" stroke-width="32"/>
+  </g>
+</svg>
