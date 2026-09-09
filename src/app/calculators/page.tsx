@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronRight, ExternalLink, Search, Stethoscope } from "lucide-react";
 import { Calculator as CalculatorIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
 import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
@@ -16,13 +16,20 @@ const SEV_STYLE: Record<string, string> = {
   crit: "border-rose-400/50 bg-rose-500/15 text-rose-200",
 };
 
-function CalcCard({ calc }: { calc: CalcDef }) {
-  const [open, setOpen] = useState(false);
+function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: boolean }) {
+  const [open, setOpen] = useState(forceOpen);
   const [values, setValues] = useState<Record<string, number>>({});
   const [result, setResult] = useState<null | ReturnType<CalcDef["compute"]>>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!forceOpen) return;
+    setOpen(true);
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [forceOpen]);
 
   return (
-    <div className="card overflow-hidden">
+    <div ref={ref} className="card overflow-hidden">
       <button
         type="button"
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-white/[0.03]"
@@ -89,16 +96,25 @@ function CalcCard({ calc }: { calc: CalcDef }) {
 }
 
 export default function CalculatorsPage() {
+  const [focusCalc, setFocusCalc] = useState("");
+  const focusedCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const calc = new URLSearchParams(window.location.search).get("calc")?.trim() || "";
+    setFocusCalc(calc);
+  }, []);
   const filtered = useMemo(() => {
+    if (focusedCalc) return [focusedCalc];
     const needle = q.trim().toLowerCase();
     return CALCULATORS.filter((c) => {
       if (cat !== "all" && c.category !== cat) return false;
       if (!needle) return true;
       return `${c.name} ${c.citation} ${c.category}`.toLowerCase().includes(needle);
     });
-  }, [q, cat]);
+  }, [q, cat, focusedCalc]);
 
   const grouped = useMemo(() => {
     const map: Record<string, CalcDef[]> = {};
@@ -123,21 +139,32 @@ export default function CalculatorsPage() {
           </div>
           <div className="relative">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input className="inp !w-64 !py-1.5 !pl-8 text-xs" placeholder="Search calculator by name…"
-              value={q} onChange={(e) => setQ(e.target.value)} />
+            <input
+              className="inp !w-64 !py-1.5 !pl-8 text-xs"
+              placeholder="Search calculator by name…"
+              value={focusedCalc ? focusedCalc.name : q}
+              onChange={(e) => setQ(e.target.value)}
+              disabled={!!focusedCalc}
+            />
           </div>
         </div>
 
         <div className="card mb-4 flex flex-wrap items-center gap-1.5 p-3">
-          <button className={`chip ${cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => setCat("all")}>
+          <button className={`chip ${cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => setCat("all")} disabled={!!focusedCalc}>
             All categories
           </button>
           {CATEGORIES.map((c) => (
-            <button key={c.key} className={`chip ${cat === c.key ? "chip-on" : "chip-off"}`} onClick={() => setCat(c.key)}>
+            <button key={c.key} className={`chip ${cat === c.key ? "chip-on" : "chip-off"}`} onClick={() => setCat(c.key)} disabled={!!focusedCalc}>
               {c.label}
             </button>
           ))}
         </div>
+
+        {focusedCalc && (
+          <div className="card mb-4 border-cyan-400/30 bg-cyan-400/5 p-3 text-[11px] text-cyan-100">
+            Direct calculator link loaded: <b>{focusedCalc.name}</b>
+          </div>
+        )}
 
         {grouped.length === 0 && <p className="card p-8 text-center text-sm text-slate-400">No calculator matches “{q}”.</p>}
 
@@ -149,7 +176,7 @@ export default function CalculatorsPage() {
                 <span className="text-[10px] font-semibold text-slate-500">({group.items.length})</span>
               </h2>
               <div className="space-y-2">
-                {group.items.map((c) => <CalcCard key={c.id} calc={c} />)}
+                {group.items.map((c) => <CalcCard key={c.id} calc={c} forceOpen={c.id === focusCalc} />)}
               </div>
             </section>
           ))}
