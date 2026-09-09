@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronRight, ExternalLink, Search, Stethoscope } from "lucide-react";
 import { Calculator as CalculatorIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
 import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
 import { CALCULATORS, CATEGORIES } from "@/lib/calculators";

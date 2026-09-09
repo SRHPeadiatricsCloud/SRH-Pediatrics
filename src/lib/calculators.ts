@@ -287,6 +287,20 @@ export const CALCULATORS: Calculator[] = [
 
   /* ================= Critical Care Severity & Mortality ================= */
   {
+    id: "abg-vbg-auto-interpreter",
+    name: "ABG / VBG Auto Interpreter",
+    category: "critical",
+    citation:
+      "Standard acid-base interpretation using arterial / venous blood gas patterns, Winter's formula, expected respiratory compensation rules, albumin-corrected anion gap, and PaO₂/FiO₂ oxygenation grading for ABG samples.",
+    fields: [],
+    compute: () => ({
+      value: "Live auto-interpretation enabled below",
+      severity: "info",
+      note: "Enter pH, pCO₂ and HCO₃⁻ to classify primary acid-base disorder, compensation, anion gap and oxygenation.",
+    }),
+  },
+
+  {
     id: "prism3", name: "PRISM III", category: "critical",
     citation: "Pollack MM et al. Crit Care Med 1996;24:743–52 (PICU, first 12 & 24 h)",
     fields: [
