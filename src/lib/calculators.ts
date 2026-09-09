@@ -58,6 +58,19 @@ function scale(
 export const CALCULATORS: Calculator[] = [
 
   /* ================= Neonatal / NICU ================= */
+  {
+    id: "phototherapy-nomograms",
+    name: "Hospital Phototherapy Nomograms (MRD/090 & MRD/091)",
+    category: "neonatal",
+    citation:
+      "Sri Ramakrishna Hospital neonatal jaundice nomograms — MRD/090 for birth weight under 1250 g and MRD/091 for infants under 35 weeks gestation.",
+    fields: [],
+    compute: () => ({
+      value: "Open the interactive charts below",
+      severity: "info",
+      note: "Auto-selects the hospital phototherapy line from age, birth weight, TSB and blood groups.",
+    }),
+  },
   scale("apgar", "Apgar Score", "neonatal",
     "Apgar V, Curr Res Anesth Analg 1953; ACOG/AAP Committee Opinion 2015",
     [

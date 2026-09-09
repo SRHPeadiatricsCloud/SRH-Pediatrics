@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, ExternalLink, Search, Stethoscope } from "lu
 import { Calculator as CalculatorIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TopBar } from "@/components/ui";
+import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
 import { CALCULATORS, CATEGORIES } from "@/lib/calculators";
 import type { Calculator as CalcDef } from "@/lib/calc-types";
 
@@ -35,44 +36,50 @@ function CalcCard({ calc }: { calc: CalcDef }) {
       {open && (
         <div className="border-t border-white/10 px-4 pb-4 pt-3">
           <p className="mb-3 text-[10px] text-slate-400">📖 {calc.citation}</p>
-          {calc.external && (
-            <a href={calc.external.url} target="_blank" rel="noopener noreferrer"
-              className="mb-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">
-              <ExternalLink size={11} /> {calc.external.label}
-            </a>
-          )}
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {calc.fields.map((field) => (
-              <label key={field.key} className="rounded-lg border border-white/10 bg-slate-900/40 p-2">
-                <span className="lbl mb-1 block">{field.label}</span>
-                {field.type === "select" ? (
-                  <select className="inp !py-1 text-xs" value={values[field.key] ?? ""}
-                    onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}>
-                    <option value="">— select —</option>
-                    {field.options.map((o) => (
-                      <option key={o.value} value={o.value}>({o.value}) {o.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <>
-                    <input className="inp !py-1 text-center text-sm font-bold" inputMode="decimal"
-                      value={values[field.key] ?? ""} placeholder={field.placeholder ?? "—"}
-                      onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) || 0 }))} />
-                    {field.unit && <span className="block text-[9px] text-slate-500">{field.unit}</span>}
-                  </>
-                )}
-              </label>
-            ))}
-          </div>
-          <button className="btn-primary mt-3 !py-1.5 text-xs" onClick={() => setResult(calc.compute(values))}>
-            Calculate
-          </button>
-          {result && (
-            <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[result.severity]}`}>
-              <div className="text-base font-black tabular-nums">{result.value}</div>
-              <p className="mt-1 text-[11px] leading-snug">{result.interpretation ?? result.note ?? ""}</p>
-              {result.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {result.outOfRange}</p>}
-            </div>
+          {calc.id === "phototherapy-nomograms" ? (
+            <PhototherapyNomogramCalculator />
+          ) : (
+            <>
+              {calc.external && (
+                <a href={calc.external.url} target="_blank" rel="noopener noreferrer"
+                  className="mb-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">
+                  <ExternalLink size={11} /> {calc.external.label}
+                </a>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {calc.fields.map((field) => (
+                  <label key={field.key} className="rounded-lg border border-white/10 bg-slate-900/40 p-2">
+                    <span className="lbl mb-1 block">{field.label}</span>
+                    {field.type === "select" ? (
+                      <select className="inp !py-1 text-xs" value={values[field.key] ?? ""}
+                        onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}>
+                        <option value="">— select —</option>
+                        {field.options.map((o) => (
+                          <option key={o.value} value={o.value}>({o.value}) {o.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <>
+                        <input className="inp !py-1 text-center text-sm font-bold" inputMode="decimal"
+                          value={values[field.key] ?? ""} placeholder={field.placeholder ?? "—"}
+                          onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) || 0 }))} />
+                        {field.unit && <span className="block text-[9px] text-slate-500">{field.unit}</span>}
+                      </>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <button className="btn-primary mt-3 !py-1.5 text-xs" onClick={() => setResult(calc.compute(values))}>
+                Calculate
+              </button>
+              {result && (
+                <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[result.severity]}`}>
+                  <div className="text-base font-black tabular-nums">{result.value}</div>
+                  <p className="mt-1 text-[11px] leading-snug">{result.interpretation ?? result.note ?? ""}</p>
+                  {result.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {result.outOfRange}</p>}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
