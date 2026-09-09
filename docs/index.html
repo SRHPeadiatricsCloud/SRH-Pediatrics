@@ -91,15 +91,35 @@
     .chartcard { padding: 18px; }
     .chartwrap { position: relative; overflow: hidden; border: 1px solid rgba(56,189,248,.12); border-radius: 16px; background: rgba(0,0,0,.18); }
     .chartscroll { overflow-x: auto; }
-    .graph-note {
-      position: absolute; z-index: 10; top: 12px; max-width: 42%;
-      border: 1px solid rgba(56,189,248,.18); border-radius: 14px; background: rgba(2,6,23,.76);
-      padding: 10px 12px; font-size: 10px; line-height: 1.45; color: #dbeafe; backdrop-filter: blur(6px);
-      pointer-events: none;
+    .chart-note-strip {
+      margin-top: 12px;
+      border: 1px solid rgba(56,189,248,.15);
+      border-radius: 14px;
+      background: rgba(34,211,238,.05);
+      padding: 12px 14px;
+      box-shadow: inset 0 0 20px rgba(34,211,238,.03);
     }
-    .graph-note.left { left: 12px; }
-    .graph-note.right { right: 12px; border-color: rgba(255,255,255,.10); color: #cbd5e1; }
-    .graph-note .ttl { font-weight: 900; text-transform: uppercase; letter-spacing: .18em; color: #67e8f9; margin-bottom: 6px; }
+    .chart-note-strip .ttl {
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: #67e8f9;
+    }
+    .chart-note-strip .lines {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .chart-note-strip .lines span::before {
+      content: "• ";
+      color: #67e8f9;
+    }
+    .legend-wrap { display:grid; gap:12px; align-items:start; grid-template-columns:minmax(0,1fr) auto; }
     .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .legend .item { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,.04); min-width: 220px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 12px currentColor; }
@@ -111,7 +131,7 @@
     .violet { border-color: rgba(167,139,250,.3); background: rgba(167,139,250,.1); color: #ddd6fe; }
     .green { border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.1); color: #bbf7d0; }
     @media (max-width: 900px) {
-      .controls, .summary, .metrics { grid-template-columns: 1fr; }
+      .controls, .summary, .metrics, .legend-wrap { grid-template-columns: 1fr; }
       h1 { font-size: 24px; }
       .wrap { padding: 16px; }
     }
@@ -126,7 +146,7 @@
       <p>
         <b style="color:#fff">MRD/090, MRD/091, &gt;35-week Phototherapy & Exchange</b> in one bedside calculator.
         The pathway auto-selects from gestation, birth weight, ABO/Rh status, and additional neurotoxicity risk factors,
-        with the Bhutani chart notes shown directly on the graph and the chart displayed in both <b style="color:#fff">mg/dL</b> and <b style="color:#fff">µmol/L</b>.
+        with the Bhutani chart notes shown below the graph in a clean footer strip and the chart displayed in both <b style="color:#fff">mg/dL</b> and <b style="color:#fff">µmol/L</b>.
       </p>
     </section>
 
@@ -159,8 +179,11 @@
       <div class="chartwrap">
         <div class="chartscroll"><svg id="chart" viewBox="0 0 860 420" style="min-width:780px;width:100%;display:block"></svg></div>
       </div>
-      <div id="chartNotes" class="legend" style="margin-top:12px"></div>
-      <div id="legend" class="legend"></div>
+      <div id="chartNotes"></div>
+      <div class="legend-wrap">
+        <div id="legend" class="legend" style="margin-top:0"></div>
+        <div id="selectedLine"></div>
+      </div>
       <div class="footer">
         These curves were fine-tuned from the shared source images for bedside plotting. If a result sits exactly on a treatment boundary, confirm against the original chart before acting.
       </div>
@@ -320,8 +343,8 @@
         const curve = termPt.curves.find(c => c.key === curveKey);
         const exchangeCurve = termEt.curves.find(c => c.key === curveKey);
         const why = gest >= 38
-          ? (risk ? 'Auto-selected the ≥35-week medium-risk pathway because gestation is ≥38 weeks but risk factors are present.' : 'Auto-selected the ≥35-week lower-risk pathway because gestation is ≥38 weeks and no additional risk factors are marked.')
-          : (risk ? 'Auto-selected the ≥35-week higher-risk pathway because gestation is 35–37 6/7 weeks and risk factors are present.' : 'Auto-selected the ≥35-week medium-risk pathway because gestation is 35–37 6/7 weeks and no extra risk factors are marked.');
+          ? (risk ? 'Auto-selected the >35-week medium-risk pathway because gestation is ≥38 weeks but risk factors are present.' : 'Auto-selected the >35-week lower-risk pathway because gestation is ≥38 weeks and no additional risk factors are marked.')
+          : (risk ? 'Auto-selected the >35-week higher-risk pathway because gestation is 35–37 6/7 weeks and risk factors are present.' : 'Auto-selected the >35-week medium-risk pathway because gestation is 35–37 6/7 weeks and no extra risk factors are marked.');
         return { nomogram:termPt, curve, exchangeNomogram:termEt, exchangeCurve, why };
       }
       return { nomogram:null, curve:null, exchangeNomogram:null, exchangeCurve:null, why:'Enter gestation and birth weight to auto-select the bilirubin nomogram.' };
@@ -409,12 +432,17 @@
       if (hasRh) riskItems.push('Possible Rh incompatibility');
       if (clinicalRisk) riskItems.push('Additional bilirubin neurotoxicity risk factors marked present');
       el('risks').innerHTML = `<div class="eyebrow" style="color:#f59e0b">Risk flags and selection logic</div>${riskItems.length ? riskItems.map(x=>`<div class="risk-item">${x}</div>`).join('') : '<p>No ABO or Rh incompatibility flag and no extra clinical risk factor selected.</p>'}<p style="margin-top:12px">${selected.why}</p><p>MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.</p>`;
-      el('chartNotes').innerHTML = graphNotes.map(x => `<div class="item"><div style="font-weight:900;color:#fff;margin-bottom:6px">${chart.graphNotes ? 'Source chart note' : 'Risk line guide'}</div><div style="color:var(--muted)">• ${x}</div></div>`).join('');
+      el('chartNotes').innerHTML = `<div class="chart-note-strip"><div class="ttl">${chart.graphNotes ? 'Source chart notes' : 'Risk line guide'}</div><div class="lines">${graphNotes.map(x => `<span>${x}</span>`).join('')}</div></div>`;
 
       el('tabs').innerHTML = NOMOGRAMS.map(n => `<button class="tab ${n.key===chart.key?'active':''}" onclick="window.activeKey='${n.key}';render()">${n.title}</button>`).join('');
       el('chartTitle').innerHTML = `<div class="eyebrow">Hologram chart</div><h2 style="margin:6px 0 4px">${chart.title}</h2><p style="margin:0 0 8px">${chart.subtitle}</p><p style="margin:0 0 8px">${chart.eligibility}</p><p style="margin:0 0 14px">${chart.caution || ''}</p>`;
       drawChart(chart, activeCurveKey, ageHours, tsbUmol);
       el('legend').innerHTML = chart.curves.map(c => `<div class="item ${CURVE_CLASS[c.key] || ''}"><div style="font-weight:800;color:#fff"><span class="dot" style="background:${c.color};color:${c.color}"></span>${c.symbol} ${c.label}</div><div style="margin-top:6px;color:var(--muted)">${c.note || ''}</div></div>`).join('');
+      const selectedLegendCurve = chart.curves.find(c => c.key === activeCurveKey);
+      const selectedLegendValue = selectedLegendCurve ? curveAt(selectedLegendCurve, ageHours) : null;
+      el('selectedLine').innerHTML = selectedLegendValue != null
+        ? `<div class="${CURVE_CLASS[activeCurveKey] || ''}" style="border-width:1px;border-style:solid;border-radius:12px;padding:10px 12px;font-size:11px;white-space:nowrap">Selected line at ${ageHours} h: <b>${selectedLegendValue} µmol/L</b> <span style="opacity:.9">· ${micromolToMgDl(selectedLegendValue)} mg/dL</span></div>`
+        : '';
     }
 
     function drawChart(chart, activeCurveKey, ageHours, tsbUmol) {
@@ -497,3 +525,4 @@
   </script>
 </body>
 </html>
+ml>

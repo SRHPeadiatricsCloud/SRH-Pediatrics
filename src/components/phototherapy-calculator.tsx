@@ -163,7 +163,7 @@ export function PhototherapyNomogramCalculator() {
           </p>
           <p className="mt-1 leading-relaxed text-slate-400">
             Auto-selects the correct pathway by gestation, weight, ABO or Rh status, and added neurotoxicity risk factors.
-            For the term / near-term pathway, the Bhutani chart notes are shown directly on the graph. Charts now show <b className="text-slate-200">both mg/dL and µmol/L</b> with color-coded hologram styling.
+            For the term / near-term pathway, the Bhutani chart notes are shown below the graph in a clean footer strip. Charts now show <b className="text-slate-200">both mg/dL and µmol/L</b> with color-coded hologram styling.
           </p>
         </div>
       </div>
@@ -574,33 +574,34 @@ function NomogramChart({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_auto]">
-        <div className="space-y-3">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] text-slate-300">
-            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/90">
-              {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
-            </div>
-            <div className="mt-2 grid gap-1.5 md:grid-cols-2">
-              {graphNotes.map((item) => (
-                <div key={item} className="rounded-lg border border-white/10 bg-slate-950/30 px-2.5 py-2 leading-relaxed text-slate-300">
-                  • {item}
-                </div>
-              ))}
-            </div>
+      <div className="mt-3 space-y-3">
+        <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/5 px-3 py-3 text-[11px] text-slate-300 shadow-[inset_0_0_20px_rgba(34,211,238,0.03)]">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">
+            {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
           </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 leading-relaxed text-slate-300">
+            {graphNotes.map((item) => (
+              <span key={item} className="inline-block">
+                <span className="mr-1 text-cyan-300">•</span>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
 
+        <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-start">
           <div className="flex flex-wrap gap-2">
             {chart.curves.map((curve) => (
               <LegendChip key={curve.key} curve={curve} active={curve.key === currentCurveKey} />
             ))}
           </div>
+          {selectedCurve && selectedThreshold != null && (
+            <div className={`rounded-xl border px-3 py-2 text-[11px] ${CURVE_ACCENT[selectedCurve.key] ?? "border-cyan-400/25 bg-cyan-400/5 text-cyan-200"}`}>
+              Selected line at {ageHours} h: <b>{selectedThreshold} µmol/L</b>
+              <span className="opacity-90"> · {micromolToMgDl(selectedThreshold)} mg/dL</span>
+            </div>
+          )}
         </div>
-        {selectedCurve && selectedThreshold != null && (
-          <div className={`rounded-xl border px-3 py-2 text-[11px] ${CURVE_ACCENT[selectedCurve.key] ?? "border-cyan-400/25 bg-cyan-400/5 text-cyan-200"}`}>
-            Selected line at {ageHours} h: <b>{selectedThreshold} µmol/L</b>
-            <span className="opacity-90"> · {micromolToMgDl(selectedThreshold)} mg/dL</span>
-          </div>
-        )}
       </div>
     </div>
   );
