@@ -96,10 +96,13 @@ export function BloodGasInterpreter() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-3">
+      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200">
             <Activity size={12} /> Auto interpreter
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold text-slate-300">
+            Roomier input mode
           </span>
           <div className="ml-auto flex gap-1.5">
             {(["ABG", "VBG"] as BloodGasSample[]).map((type) => {
@@ -120,20 +123,23 @@ export function BloodGasInterpreter() {
           </div>
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{SAMPLE_HELPERS[sampleType]}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-400">
+          Tap any field below and enter values directly. Larger entry boxes are used here to make bedside typing easier.
+        </p>
       </div>
 
       {FIELD_GROUPS.map((group) => (
-        <section key={group.title} className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+        <section key={group.title} className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
           <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-300">
             {group.icon}
             {group.title}
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {group.fields.filter((field) => !(field.abgOnly && sampleType !== "ABG")).map((field) => (
-              <label key={String(field.key)} className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
-                <span className="lbl mb-1 block">{field.label}</span>
+              <label key={String(field.key)} className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
+                <span className="lbl">{field.label}</span>
                 <input
-                  className="inp !py-1 text-center text-sm font-bold"
+                  className="inp !min-h-[52px] text-left text-base font-bold tabular-nums"
                   type="number"
                   inputMode="decimal"
                   placeholder={field.placeholder ?? "—"}
@@ -143,7 +149,10 @@ export function BloodGasInterpreter() {
                   value={String(raw[field.key])}
                   onChange={(e) => setRaw((prev) => ({ ...prev, [field.key]: e.target.value }))}
                 />
-                {field.unit && <span className="mt-1 block text-[9px] text-slate-500">{field.unit}</span>}
+                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                  <span>{field.unit || "value"}</span>
+                  {field.placeholder && <span>e.g. {field.placeholder}</span>}
+                </div>
               </label>
             ))}
           </div>

@@ -56,10 +56,10 @@
       border-color: rgba(56,189,248,.12);
       box-shadow: 0 0 24px rgba(56,189,248,.04);
     }
-    .field label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+    .field label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
     .field input {
-      width: 100%; border-radius: 12px; border: 1px solid rgba(56,189,248,.12); background: rgba(2,6,23,.72);
-      color: var(--text); padding: 12px; font-size: 15px; outline: none;
+      width: 100%; min-height: 52px; border-radius: 12px; border: 1px solid rgba(56,189,248,.12); background: rgba(2,6,23,.72);
+      color: var(--text); padding: 14px; font-size: 16px; line-height: 1.35; outline: none;
     }
     .field small { display: block; margin-top: 6px; color: var(--muted); }
     .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom: 14px; }
@@ -123,6 +123,9 @@
       </p>
       <p>
         This mirrors the logic added inside the webapp calculator while remaining publicly previewable as a static page.
+      </p>
+      <p>
+        Larger entry boxes are enabled here as well so there is clearer room to type values on mobile and desktop.
       </p>
     </section>
 

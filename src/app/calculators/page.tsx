@@ -56,11 +56,14 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
               )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {calc.fields.map((field) => (
-                  <label key={field.key} className="rounded-lg border border-white/10 bg-slate-900/40 p-2">
-                    <span className="lbl mb-1 block">{field.label}</span>
+                  <label key={field.key} className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+                    <span className="lbl">{field.label}</span>
                     {field.type === "select" ? (
-                      <select className="inp !py-1 text-xs" value={values[field.key] ?? ""}
-                        onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}>
+                      <select
+                        className="inp text-sm"
+                        value={values[field.key] ?? ""}
+                        onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
+                      >
                         <option value="">— select —</option>
                         {field.options.map((o) => (
                           <option key={o.value} value={o.value}>({o.value}) {o.label}</option>
@@ -68,10 +71,14 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                       </select>
                     ) : (
                       <>
-                        <input className="inp !py-1 text-center text-sm font-bold" inputMode="decimal"
-                          value={values[field.key] ?? ""} placeholder={field.placeholder ?? "—"}
-                          onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) || 0 }))} />
-                        {field.unit && <span className="block text-[9px] text-slate-500">{field.unit}</span>}
+                        <input
+                          className="inp text-center text-base font-bold"
+                          inputMode="decimal"
+                          value={values[field.key] ?? ""}
+                          placeholder={field.placeholder ?? "—"}
+                          onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) || 0 }))}
+                        />
+                        {field.unit && <span className="mt-1 block text-[10px] text-slate-500">{field.unit}</span>}
                       </>
                     )}
                   </label>

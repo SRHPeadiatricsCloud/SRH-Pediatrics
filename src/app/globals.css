@@ -246,11 +246,13 @@ html.light .btn-primary {
    ============================================================ */
 .inp {
   width: 100%;
+  min-height: 44px;
   border-radius: var(--r-ctl);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--card-solid) 88%, transparent);
-  padding: 9px 12px;
-  font-size: 13px;
+  padding: 11px 14px;
+  font-size: 14px;
+  line-height: 1.35;
   color: var(--text);
   outline: none;
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
@@ -262,9 +264,17 @@ html.light .btn-primary {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+textarea.inp {
+  min-height: 96px;
+  resize: vertical;
+}
+select.inp {
+  padding-right: 36px;
+}
 
 .lbl {
   display: block;
+  margin-bottom: 6px;
   font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
@@ -276,6 +286,16 @@ input,
 textarea,
 select {
   color: var(--text);
+}
+textarea,
+select,
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="password"] {
+  line-height: 1.35;
 }
 input::placeholder,
 textarea::placeholder {
