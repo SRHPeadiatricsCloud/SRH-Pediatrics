@@ -1,16 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
-import { IBM_Plex_Sans, Sora } from "next/font/google";
+import type { CSSProperties, ReactNode } from "react";
 import "./globals.css";
 import { LockBanner, SaveToast } from "@/components/ui";
-
-const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap" });
-const bodyFont = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body",
-  display: "swap",
-});
 import { APP_VERSION, BACKUP_SCHEMA_VERSION } from "@/lib/backup-schema";
 import { PwaEngine } from "@/components/pwa";
 import { BackupEngine, UndoBar } from "@/components/backup-ui";
@@ -44,13 +35,18 @@ export const viewport: Viewport = {
 
 const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}}catch(e){}})();`;
 
+const fontVars: CSSProperties = {
+  ["--font-display" as string]: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  ["--font-body" as string]: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body className={`${displayFont.variable} ${bodyFont.variable} text-slate-100 antialiased`}>
+      <body style={fontVars} className="text-slate-100 antialiased">
         <LockBanner />
         {children}
         <footer className="no-print border-t border-white/5 py-5 text-center">

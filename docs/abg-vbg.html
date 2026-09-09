@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SRH ABG / VBG Auto Interpreter</title>
+  <style>
+    :root {
+      --bg: #07101c;
+      --card: #101b2b;
+      --card2: #132238;
+      --text: #e7f1fb;
+      --muted: #98abc1;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --rose: #fb7185;
+      --green: #4ade80;
+      --line: rgba(255,255,255,.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:
+        radial-gradient(1100px 600px at 0% -10%, rgba(56,189,248,.18), transparent 60%),
+        radial-gradient(1000px 540px at 100% 0%, rgba(167,139,250,.12), transparent 55%),
+        var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1220px; margin: 0 auto; padding: 24px; }
+    .hero, .card {
+      background: linear-gradient(180deg, rgba(19,34,56,.96), rgba(16,27,43,.96));
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 40px -30px rgba(0,0,0,.9), 0 0 60px rgba(56,189,248,.05);
+    }
+    .hero {
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(34,211,238,.14), transparent 36%),
+        radial-gradient(circle at top right, rgba(167,139,250,.10), transparent 30%),
+        linear-gradient(180deg, rgba(19,34,56,.96), rgba(16,27,43,.96));
+    }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); font-weight: 800; }
+    h1 { margin: 8px 0 10px; font-size: 30px; line-height: 1.05; }
+    h2 { margin: 0; }
+    p { color: var(--muted); line-height: 1.55; }
+    .grid { display: grid; gap: 12px; }
+    .controls { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 16px; }
+    .field {
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(2,6,23,.88));
+      border-color: rgba(56,189,248,.12);
+      box-shadow: 0 0 24px rgba(56,189,248,.04);
+    }
+    .field label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+    .field input {
+      width: 100%; min-height: 52px; border-radius: 12px; border: 1px solid rgba(56,189,248,.12); background: rgba(2,6,23,.72);
+      color: var(--text); padding: 14px; font-size: 16px; line-height: 1.35; outline: none;
+    }
+    .field small { display: block; margin-top: 6px; color: var(--muted); }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom: 14px; }
+    .toggle-group { display:flex; gap:8px; margin-left:auto; }
+    .toggle {
+      border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; cursor:pointer;
+      background: rgba(255,255,255,.04); color: var(--text); font-weight: 800; font-size: 12px;
+    }
+    .toggle.active { background: linear-gradient(135deg, #22d3ee, #3b82f6); color: #00131f; border-color: transparent; }
+    .status { padding: 18px; margin-bottom: 16px; }
+    .pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+    .metric { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.04); }
+    .metric .k { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+    .metric .v { font-weight: 900; margin-top: 6px; font-size: 18px; color: #fff; }
+    .section-title { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); font-weight: 800; margin-bottom: 10px; }
+    .warn { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.1); color: #fde68a; }
+    .crit { border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.12); color: #fecdd3; }
+    .info { border-color: rgba(56,189,248,.35); background: rgba(56,189,248,.1); color: #bae6fd; }
+    .good { border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.10); color: #bbf7d0; }
+    .neutral { border-color: var(--line); background: rgba(255,255,255,.04); color: var(--text); }
+    .cols { display:grid; grid-template-columns: 1.2fr .8fr; gap:12px; margin-bottom:16px; }
+    .list-card { padding: 16px; }
+    .list { display:grid; gap:8px; }
+    .item {
+      border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03); border-radius:12px; padding:10px 12px;
+      font-size: 13px; line-height: 1.5;
+    }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button.ghost {
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .footer { margin-top: 18px; font-size: 12px; color: var(--muted); }
+    a { color: var(--cyan); }
+    .hidden { display:none; }
+    @media (max-width: 900px) {
+      .controls, .metrics, .cols { grid-template-columns: 1fr; }
+      h1 { font-size: 24px; }
+      .wrap { padding: 16px; }
+      .toolbar { align-items:flex-start; }
+      .toggle-group { margin-left:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Sri Ramakrishna Hospital · Department of Pediatrics</div>
+      <h1>ABG / VBG Auto Interpreter</h1>
+      <p>
+        Public standalone preview of the new <b style="color:#fff">blood gas auto interpreter</b> added to the SRH Pediatrics webapp.
+        Enter pH, pCO₂ and HCO₃⁻ to get standard acid-base terminology, compensation assessment, anion gap support,
+        lactate flagging, and <b style="color:#fff">PaO₂ / FiO₂</b> oxygenation grading for ABG samples.
+      </p>
+      <p>
+        This mirrors the logic added inside the webapp calculator while remaining publicly previewable as a static page.
+      </p>
+      <p>
+        Larger entry boxes are enabled here as well so there is clearer room to type values on mobile and desktop.
+      </p>
+    </section>
+
+    <section class="card status" id="summary"></section>
+
+    <div class="toolbar card" style="padding:14px 16px; margin-bottom: 16px;">
+      <div>
+        <div class="section-title" style="margin-bottom:4px">Sample type</div>
+        <p id="sampleHelp" style="margin:0"></p>
+      </div>
+      <div class="toggle-group">
+        <button id="sampleABG" class="toggle active" type="button">ABG</button>
+        <button id="sampleVBG" class="toggle" type="button">VBG</button>
+      </div>
+    </div>
+
+    <section class="grid controls" id="controls"></section>
+
+    <section class="card list-card" style="margin-bottom:16px;">
+      <div class="section-title">Derived metrics</div>
+      <div id="metrics" class="metrics"></div>
+      <div class="actions">
+        <button class="ghost" type="button" id="fillDemo">Load demo example</button>
+        <button class="ghost" type="button" id="clearAll">Clear all values</button>
+      </div>
+    </section>
+
+    <section class="cols">
+      <div class="card list-card">
+        <div class="section-title">Derived findings</div>
+        <div id="findings" class="list"></div>
+      </div>
+      <div class="card list-card">
+        <div class="section-title">Important notes</div>
+        <div id="cautions" class="list"></div>
+      </div>
+    </section>
+
+    <div class="footer">
+      Standard acid-base guidance only. If results sit near a boundary or do not fit the clinical picture, verify with the treating team,
+      repeat sampling if needed, and correlate with ventilation, perfusion, electrolyte, and lactate trends.
+    </div>
+  </div>
+
+  <script>
+    const SAMPLE_HELPERS = {
+      ABG: 'Use ABG when you want full acid-base interpretation plus oxygenation grading from PaO₂ / FiO₂.',
+      VBG: 'Use VBG for acid-base interpretation when venous values are available; oxygenation is not graded from venous pO₂.'
+    };
+
+    const FIELD_GROUPS = [
+      {
+        title: 'Core blood gas',
+        fields: [
+          { key: 'ph', label: 'pH', placeholder: '7.36', step: '0.01', min: '6.8', max: '7.8', unit: '' },
+          { key: 'pco2', label: 'pCO₂', placeholder: '40', step: '0.1', min: '5', max: '150', unit: 'mmHg' },
+          { key: 'hco3', label: 'HCO₃⁻', placeholder: '24', step: '0.1', min: '1', max: '60', unit: 'mmol/L' },
+          { key: 'baseExcess', label: 'Base excess', placeholder: '0', step: '0.1', min: '-40', max: '40', unit: 'mmol/L' }
+        ]
+      },
+      {
+        title: 'Electrolytes and metabolic context',
+        fields: [
+          { key: 'sodium', label: 'Na⁺', placeholder: '140', step: '0.1', min: '80', max: '200', unit: 'mmol/L' },
+          { key: 'chloride', label: 'Cl⁻', placeholder: '104', step: '0.1', min: '50', max: '170', unit: 'mmol/L' },
+          { key: 'albumin', label: 'Albumin', placeholder: '4.0', step: '0.1', min: '0.5', max: '7', unit: 'g/dL' },
+          { key: 'lactate', label: 'Lactate', placeholder: '1.2', step: '0.1', min: '0', max: '30', unit: 'mmol/L' }
+        ]
+      },
+      {
+        title: 'Oxygenation (ABG only)',
+        fields: [
+          { key: 'po2', label: 'PaO₂', placeholder: '85', step: '0.1', min: '0', max: '500', unit: 'mmHg', abgOnly: true },
+          { key: 'fio2', label: 'FiO₂', placeholder: '21', step: '1', min: '21', max: '100', unit: '%' , abgOnly: true }
+        ]
+      }
+    ];
+
+    const state = {
+      sampleType: 'ABG',
+      ph: '',
+      pco2: '',
+      hco3: '',
+      baseExcess: '',
+      sodium: '',
+      chloride: '',
+      albumin: '',
+      lactate: '',
+      po2: '',
+      fio2: ''
+    };
+
+    const el = (id) => document.getElementById(id);
+    const round = (value, digits = 1) => {
+      const factor = 10 ** digits;
+      return Math.round(value * factor) / factor;
+    };
+    const fmt = (value, digits = 1) => value == null || Number.isNaN(value) ? '—' : `${round(value, digits)}`;
+    const within = (value, target, tolerance) => Math.abs(value - target) <= tolerance;
+    const num = (value) => value === '' || value == null ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
+
+    function effectiveValues(input) {
+      const sampleNote = input.sampleType === 'VBG'
+        ? 'VBG interpreted with a standard venous-to-arterial approximation for pH (+0.03) and pCO₂ (−5 mmHg). Oxygenation is not graded from venous pO₂.'
+        : undefined;
+      return {
+        effectivePh: input.sampleType === 'VBG' && input.ph != null ? input.ph + 0.03 : input.ph,
+        effectivePco2: input.sampleType === 'VBG' && input.pco2 != null ? Math.max(0, input.pco2 - 5) : input.pco2,
+        sampleNote
+      };
+    }
+
+    function classifySeverity(input, headline, pfRatio) {
+      if (input.ph != null && (input.ph < 7.2 || input.ph > 7.6)) return 'crit';
+      if (headline.includes('Mixed metabolic acidosis and respiratory acidosis')) return 'crit';
+      if (input.lactate != null && input.lactate >= 4) return 'crit';
+      if (pfRatio != null && pfRatio < 200) return 'crit';
+      if (input.ph != null && (input.ph < 7.3 || input.ph > 7.5)) return 'warn';
+      if (headline !== 'Acid-base status within reference range') return 'warn';
+      if (input.lactate != null && input.lactate > 2) return 'warn';
+      return 'good';
+    }
+
+    function analyzeRespiratoryAcidosis(pco2, hco3) {
+      const delta = pco2 - 40;
+      const acuteExpected = 24 + delta / 10;
+      const chronicExpected = 24 + 3.5 * (delta / 10);
+      if (hco3 < acuteExpected - 2) return {
+        primary: 'Respiratory acidosis with concomitant metabolic acidosis',
+        compensation: `HCO₃⁻ ${fmt(hco3)} is lower than expected for acute respiratory acidosis (expected ≈ ${fmt(acuteExpected)}).`
+      };
+      if (hco3 > chronicExpected + 2) return {
+        primary: 'Respiratory acidosis with concomitant metabolic alkalosis',
+        compensation: `HCO₃⁻ ${fmt(hco3)} is higher than expected even for chronic respiratory acidosis (chronic expected ≈ ${fmt(chronicExpected)}).`
+      };
+      if (within(hco3, acuteExpected, 2) && !within(hco3, chronicExpected, 2.5)) return {
+        primary: 'Acute respiratory acidosis',
+        compensation: `Appropriate acute metabolic compensation: expected HCO₃⁻ ≈ ${fmt(acuteExpected)} mmol/L per +10 mmHg rise in pCO₂.`
+      };
+      if (within(hco3, chronicExpected, 2.5) && !within(hco3, acuteExpected, 2)) return {
+        primary: 'Chronic respiratory acidosis',
+        compensation: `Appropriate chronic renal compensation: expected HCO₃⁻ ≈ ${fmt(chronicExpected)} mmol/L per +10 mmHg rise in pCO₂.`
+      };
+      return {
+        primary: 'Respiratory acidosis with partial / evolving metabolic compensation',
+        compensation: `Observed HCO₃⁻ ${fmt(hco3)} lies between acute (${fmt(acuteExpected)}) and chronic (${fmt(chronicExpected)}) compensation ranges.`
+      };
+    }
+
+    function analyzeRespiratoryAlkalosis(pco2, hco3) {
+      const delta = 40 - pco2;
+      const acuteExpected = 24 - 2 * (delta / 10);
+      const chronicExpected = 24 - 5 * (delta / 10);
+      if (hco3 > acuteExpected + 2) return {
+        primary: 'Respiratory alkalosis with concomitant metabolic alkalosis',
+        compensation: `HCO₃⁻ ${fmt(hco3)} is higher than expected for respiratory alkalosis (acute expected ≈ ${fmt(acuteExpected)}).`
+      };
+      if (hco3 < chronicExpected - 2) return {
+        primary: 'Respiratory alkalosis with concomitant metabolic acidosis',
+        compensation: `HCO₃⁻ ${fmt(hco3)} is lower than expected even for chronic respiratory alkalosis (chronic expected ≈ ${fmt(chronicExpected)}).`
+      };
+      if (within(hco3, acuteExpected, 2) && !within(hco3, chronicExpected, 2)) return {
+        primary: 'Acute respiratory alkalosis',
+        compensation: `Appropriate acute metabolic compensation: expected HCO₃⁻ ≈ ${fmt(acuteExpected)} mmol/L per 10 mmHg fall in pCO₂.`
+      };
+      if (within(hco3, chronicExpected, 2) && !within(hco3, acuteExpected, 2)) return {
+        primary: 'Chronic respiratory alkalosis',
+        compensation: `Appropriate chronic renal compensation: expected HCO₃⁻ ≈ ${fmt(chronicExpected)} mmol/L per 10 mmHg fall in pCO₂.`
+      };
+      return {
+        primary: 'Respiratory alkalosis with partial / evolving metabolic compensation',
+        compensation: `Observed HCO₃⁻ ${fmt(hco3)} lies between acute (${fmt(acuteExpected)}) and chronic (${fmt(chronicExpected)}) compensation ranges.`
+      };
+    }
+
+    function analyzeMetabolicAcidosis(pco2, hco3) {
+      const expected = 1.5 * hco3 + 8;
+      if (pco2 > expected + 2) return {
+        primary: 'Metabolic acidosis with superimposed respiratory acidosis',
+        compensation: `Winter's formula expected pCO₂ ≈ ${fmt(expected)} ±2 mmHg, but observed effective pCO₂ is ${fmt(pco2)}.`
+      };
+      if (pco2 < expected - 2) return {
+        primary: 'Metabolic acidosis with superimposed respiratory alkalosis',
+        compensation: `Winter's formula expected pCO₂ ≈ ${fmt(expected)} ±2 mmHg, but observed effective pCO₂ is ${fmt(pco2)}.`
+      };
+      return {
+        primary: 'Metabolic acidosis',
+        compensation: `Appropriate respiratory compensation by Winter's formula: expected pCO₂ ≈ ${fmt(expected)} ±2 mmHg.`
+      };
+    }
+
+    function analyzeMetabolicAlkalosis(pco2, hco3) {
+      const expected = 40 + 0.7 * (hco3 - 24);
+      if (pco2 > expected + 5) return {
+        primary: 'Metabolic alkalosis with superimposed respiratory acidosis',
+        compensation: `Expected compensatory pCO₂ ≈ ${fmt(expected)} ±5 mmHg, but observed effective pCO₂ is ${fmt(pco2)}.`
+      };
+      if (pco2 < expected - 5) return {
+        primary: 'Metabolic alkalosis with superimposed respiratory alkalosis',
+        compensation: `Expected compensatory pCO₂ ≈ ${fmt(expected)} ±5 mmHg, but observed effective pCO₂ is ${fmt(pco2)}.`
+      };
+      return {
+        primary: 'Metabolic alkalosis',
+        compensation: `Appropriate respiratory compensation: expected pCO₂ ≈ ${fmt(expected)} ±5 mmHg.`
+      };
+    }
+
+    function gapAnalysis(input) {
+      const metrics = [];
+      const additionalFindings = [];
+      if (input.sodium == null || input.chloride == null || input.hco3 == null) return { metrics, additionalFindings };
+      const ag = input.sodium - input.chloride - input.hco3;
+      const correctedAg = input.albumin == null ? null : ag + 2.5 * (4 - input.albumin);
+      metrics.push({
+        label: 'Anion gap',
+        value: correctedAg == null ? `${fmt(ag)} mmol/L` : `${fmt(ag)} mmol/L (corrected ${fmt(correctedAg)})`,
+        tone: correctedAg != null ? (correctedAg > 16 ? 'warn' : correctedAg > 12 ? 'info' : 'good') : (ag > 12 ? 'warn' : 'good')
+      });
+      if (input.hco3 < 22) {
+        const effectiveAg = correctedAg ?? ag;
+        if (effectiveAg > 12) {
+          const summary = `High anion gap metabolic acidosis pattern (corrected AG ${fmt(effectiveAg)} mmol/L).`;
+          const deltaDenominator = 24 - input.hco3;
+          if (deltaDenominator > 0) {
+            const deltaRatio = (effectiveAg - 12) / deltaDenominator;
+            metrics.push({ label: 'Delta ratio', value: `${fmt(deltaRatio, 2)}`, tone: deltaRatio < 0.8 || deltaRatio > 2 ? 'warn' : 'good' });
+            if (deltaRatio < 0.4) additionalFindings.push('Very low delta ratio suggests prominent normal anion gap acidosis in addition to any elevated-gap process.');
+            else if (deltaRatio < 0.8) additionalFindings.push('Delta ratio 0.4–0.8 suggests combined high anion gap and normal anion gap metabolic acidosis.');
+            else if (deltaRatio <= 2) additionalFindings.push('Delta ratio 0.8–2.0 is most consistent with a predominant high anion gap metabolic acidosis.');
+            else additionalFindings.push('Delta ratio > 2 suggests concomitant metabolic alkalosis or pre-existing chronic respiratory acidosis.');
+          }
+          return { summary, metrics, additionalFindings };
+        }
+        return { summary: 'Normal anion gap (hyperchloremic) metabolic acidosis pattern.', metrics, additionalFindings };
+      }
+      if ((correctedAg ?? ag) > 12) return {
+        summary: `Elevated anion gap is present (effective AG ${fmt(correctedAg ?? ag)} mmol/L) even without overt low HCO₃⁻.`,
+        metrics,
+        additionalFindings
+      };
+      return { metrics, additionalFindings };
+    }
+
+    function oxygenationAnalysis(input) {
+      const metrics = [];
+      if (input.sampleType !== 'ABG') return { metrics, pfRatio: null };
+      if (input.po2 != null && input.fio2 != null && input.fio2 > 0) {
+        const pfRatio = input.po2 / (input.fio2 / 100);
+        let summary = 'Oxygenation preserved.';
+        let tone = 'good';
+        if (pfRatio < 100) { summary = `Severe oxygenation impairment (P/F ratio ${fmt(pfRatio)}).`; tone = 'crit'; }
+        else if (pfRatio < 200) { summary = `Moderate oxygenation impairment (P/F ratio ${fmt(pfRatio)}).`; tone = 'crit'; }
+        else if (pfRatio < 300) { summary = `Mild oxygenation impairment (P/F ratio ${fmt(pfRatio)}).`; tone = 'warn'; }
+        metrics.push({ label: 'P/F ratio', value: `${fmt(pfRatio)}`, tone });
+        return { summary, metrics, pfRatio };
+      }
+      if (input.po2 != null) {
+        let summary = 'PaO₂ within a typical room-air arterial range.';
+        let tone = 'good';
+        if (input.po2 < 60) { summary = `Marked hypoxemia (PaO₂ ${fmt(input.po2)} mmHg).`; tone = 'crit'; }
+        else if (input.po2 < 80) { summary = `Mild hypoxemia (PaO₂ ${fmt(input.po2)} mmHg).`; tone = 'warn'; }
+        metrics.push({ label: 'PaO₂', value: `${fmt(input.po2)} mmHg`, tone });
+        return { summary, metrics, pfRatio: null };
+      }
+      return { metrics, pfRatio: null };
+    }
+
+    function analyzeBloodGas(input) {
+      const { effectivePh, effectivePco2, sampleNote } = effectiveValues(input);
+      const metrics = [];
+      const additionalFindings = [];
+      const cautions = [];
+      if (effectivePh == null || effectivePco2 == null || input.hco3 == null) {
+        return {
+          ready: false,
+          severity: 'info',
+          headline: 'Enter pH, pCO₂ and HCO₃⁻ to start the auto-interpretation',
+          acidBaseState: 'Core blood-gas values are incomplete.',
+          primary: 'Awaiting essential inputs',
+          compensation: 'Add pH, pCO₂ and HCO₃⁻ for a full acid-base interpretation.',
+          sampleNote,
+          additionalFindings,
+          cautions,
+          metrics
+        };
+      }
+
+      const acidemia = effectivePh < 7.35;
+      const alkalemia = effectivePh > 7.45;
+      const lowHco3 = input.hco3 < 22;
+      const highHco3 = input.hco3 > 26;
+      const highPco2 = effectivePco2 > 45;
+      const lowPco2 = effectivePco2 < 35;
+      let acidBaseState = 'Near-normal pH.';
+      if (acidemia) acidBaseState = `Acidemia (effective pH ${fmt(effectivePh, 2)}).`;
+      if (alkalemia) acidBaseState = `Alkalemia (effective pH ${fmt(effectivePh, 2)}).`;
+
+      let primary = 'Acid-base status within reference range';
+      let compensation = 'No primary acid-base disorder identified from the entered values.';
+
+      if (acidemia) {
+        if (lowHco3 && highPco2) {
+          primary = 'Mixed metabolic acidosis and respiratory acidosis';
+          compensation = 'pH is low with both low HCO₃⁻ and elevated effective pCO₂, so compensation alone does not explain the pattern.';
+        } else if (lowHco3) {
+          const analysis = analyzeMetabolicAcidosis(effectivePco2, input.hco3);
+          primary = analysis.primary;
+          compensation = analysis.compensation;
+        } else if (highPco2) {
+          const analysis = analyzeRespiratoryAcidosis(effectivePco2, input.hco3);
+          primary = analysis.primary;
+          compensation = analysis.compensation;
+        } else {
+          primary = 'Acidemia with atypical / indeterminate pattern';
+          compensation = 'The pH is low but the entered pCO₂ and HCO₃⁻ do not fit a standard single-process disorder.';
+        }
+      } else if (alkalemia) {
+        if (highHco3 && lowPco2) {
+          primary = 'Mixed metabolic alkalosis and respiratory alkalosis';
+          compensation = 'pH is high with both elevated HCO₃⁻ and low effective pCO₂, which is not explained by simple compensation.';
+        } else if (highHco3) {
+          const analysis = analyzeMetabolicAlkalosis(effectivePco2, input.hco3);
+          primary = analysis.primary;
+          compensation = analysis.compensation;
+        } else if (lowPco2) {
+          const analysis = analyzeRespiratoryAlkalosis(effectivePco2, input.hco3);
+          primary = analysis.primary;
+          compensation = analysis.compensation;
+        } else {
+          primary = 'Alkalemia with atypical / indeterminate pattern';
+          compensation = 'The pH is high but the entered pCO₂ and HCO₃⁻ do not fit a standard single-process disorder.';
+        }
+      } else {
+        if (lowHco3 && highPco2) {
+          primary = 'Mixed metabolic acidosis and respiratory acidosis with near-normal pH';
+          compensation = 'Opposing acidifying processes can normalize pH transiently; this is not a simple compensated disorder.';
+        } else if (highHco3 && lowPco2) {
+          primary = 'Mixed metabolic alkalosis and respiratory alkalosis with near-normal pH';
+          compensation = 'Opposing alkalinizing processes can normalize pH transiently; this is not a simple compensated disorder.';
+        } else if (lowHco3 && lowPco2) {
+          const analysis = analyzeMetabolicAcidosis(effectivePco2, input.hco3);
+          primary = analysis.primary.includes('superimposed') ? analysis.primary : 'Compensated metabolic acidosis';
+          compensation = analysis.compensation;
+        } else if (highHco3 && highPco2) {
+          const metabolic = analyzeMetabolicAlkalosis(effectivePco2, input.hco3);
+          const respiratory = analyzeRespiratoryAcidosis(effectivePco2, input.hco3);
+          if (respiratory.primary === 'Chronic respiratory acidosis') {
+            primary = 'Compensated chronic respiratory acidosis';
+            compensation = respiratory.compensation;
+          } else if (metabolic.primary === 'Metabolic alkalosis') {
+            primary = 'Compensated metabolic alkalosis';
+            compensation = metabolic.compensation;
+          } else {
+            primary = 'Mixed metabolic alkalosis and respiratory acidosis';
+            compensation = `${metabolic.compensation} ${respiratory.compensation}`;
+          }
+        } else if (highPco2) {
+          const analysis = analyzeRespiratoryAcidosis(effectivePco2, input.hco3);
+          primary = analysis.primary.startsWith('Acute') || analysis.primary.startsWith('Chronic') ? `Compensated ${analysis.primary.toLowerCase()}` : analysis.primary;
+          compensation = analysis.compensation;
+        } else if (lowPco2) {
+          const analysis = analyzeRespiratoryAlkalosis(effectivePco2, input.hco3);
+          primary = analysis.primary.startsWith('Acute') || analysis.primary.startsWith('Chronic') ? `Compensated ${analysis.primary.toLowerCase()}` : analysis.primary;
+          compensation = analysis.compensation;
+        } else if (input.baseExcess != null && input.baseExcess <= -3) {
+          primary = 'Possible compensated metabolic acidosis';
+          compensation = `Base excess ${fmt(input.baseExcess)} supports a metabolic acid load despite near-normal pH.`;
+        } else if (input.baseExcess != null && input.baseExcess >= 3) {
+          primary = 'Possible compensated metabolic alkalosis';
+          compensation = `Base excess ${fmt(input.baseExcess)} supports metabolic alkalosis despite near-normal pH.`;
+        }
+      }
+
+      metrics.push({ label: 'Sample', value: input.sampleType, tone: 'neutral' });
+      metrics.push({ label: 'pH', value: fmt(input.ph, 2), tone: input.ph == null ? 'neutral' : input.ph < 7.2 || input.ph > 7.6 ? 'crit' : input.ph < 7.35 || input.ph > 7.45 ? 'warn' : 'good' });
+      metrics.push({ label: input.sampleType === 'VBG' ? 'Estimated arterial pCO₂' : 'pCO₂', value: `${fmt(effectivePco2)} mmHg`, tone: highPco2 || lowPco2 ? 'warn' : 'good' });
+      metrics.push({ label: 'HCO₃⁻', value: `${fmt(input.hco3)} mmol/L`, tone: lowHco3 || highHco3 ? 'warn' : 'good' });
+      if (input.baseExcess != null) metrics.push({ label: 'Base excess', value: `${fmt(input.baseExcess)} mmol/L`, tone: input.baseExcess <= -5 || input.baseExcess >= 5 ? 'warn' : 'good' });
+
+      const gap = gapAnalysis(input);
+      const oxygenation = oxygenationAnalysis(input);
+      metrics.push(...gap.metrics, ...oxygenation.metrics);
+
+      if (input.lactate != null) {
+        metrics.push({ label: 'Lactate', value: `${fmt(input.lactate)} mmol/L`, tone: input.lactate >= 4 ? 'crit' : input.lactate > 2 ? 'warn' : 'good' });
+        if (input.lactate >= 4) additionalFindings.push('Marked hyperlactatemia is present.');
+        else if (input.lactate > 2) additionalFindings.push('Lactate is elevated above the usual reference range.');
+      }
+      additionalFindings.push(...gap.additionalFindings);
+
+      if (input.sampleType === 'VBG' && input.po2 != null) cautions.push('Venous pO₂ is not used to grade oxygenation severity; rely on SpO₂ or ABG PaO₂ for oxygenation assessment.');
+      if (input.fio2 != null && (input.fio2 < 21 || input.fio2 > 100)) cautions.push('FiO₂ is usually entered as a percentage between 21 and 100.');
+      if (input.albumin != null && input.albumin <= 0) cautions.push('Albumin should be entered in g/dL when using corrected anion gap.');
+
+      const severity = classifySeverity(input, primary, oxygenation.pfRatio);
+      return { ready: true, severity, headline: primary, acidBaseState, primary, compensation, gapSummary: gap.summary, oxygenationSummary: oxygenation.summary, sampleNote, additionalFindings, cautions, metrics };
+    }
+
+    function renderControls() {
+      const html = FIELD_GROUPS.map(group => `
+        <div class="card field" style="grid-column:${group.fields.length >= 3 ? 'span 4' : 'span 2'};">
+          <div class="section-title">${group.title}</div>
+          <div class="grid" style="grid-template-columns: repeat(${Math.min(group.fields.filter(f => !(f.abgOnly && state.sampleType !== 'ABG')).length, 4)}, minmax(0,1fr)); gap:12px;">
+            ${group.fields
+              .filter(field => !(field.abgOnly && state.sampleType !== 'ABG'))
+              .map(field => `
+                <label>
+                  ${field.label}
+                  <input id="${field.key}" type="number" placeholder="${field.placeholder}" step="${field.step}" min="${field.min}" max="${field.max}" value="${state[field.key]}">
+                  ${field.unit ? `<small>${field.unit}</small>` : ''}
+                </label>
+              `).join('')}
+          </div>
+        </div>
+      `).join('');
+      el('controls').innerHTML = html;
+      FIELD_GROUPS.flatMap(group => group.fields)
+        .filter(field => !(field.abgOnly && state.sampleType !== 'ABG'))
+        .forEach(field => {
+          el(field.key).addEventListener('input', (event) => {
+            state[field.key] = event.target.value;
+            render();
+          });
+        });
+    }
+
+    function render() {
+      const values = {
+        sampleType: state.sampleType,
+        ph: num(state.ph),
+        pco2: num(state.pco2),
+        hco3: num(state.hco3),
+        baseExcess: num(state.baseExcess),
+        sodium: num(state.sodium),
+        chloride: num(state.chloride),
+        albumin: num(state.albumin),
+        lactate: num(state.lactate),
+        po2: state.sampleType === 'ABG' ? num(state.po2) : null,
+        fio2: state.sampleType === 'ABG' ? num(state.fio2) : null
+      };
+      const analysis = analyzeBloodGas(values);
+
+      el('sampleHelp').textContent = SAMPLE_HELPERS[state.sampleType];
+      el('sampleABG').classList.toggle('active', state.sampleType === 'ABG');
+      el('sampleVBG').classList.toggle('active', state.sampleType === 'VBG');
+
+      const severityClass = analysis.severity;
+      el('summary').className = `card status ${severityClass}`;
+      el('summary').innerHTML = `
+        <div class="pill">${state.sampleType} auto interpretation</div>
+        <h2 style="margin:10px 0 10px">${analysis.headline}</h2>
+        <p style="color:inherit; margin:0 0 8px">${analysis.acidBaseState}</p>
+        <p style="color:inherit; margin:0 0 8px">${analysis.compensation}</p>
+        ${analysis.gapSummary ? `<p style="color:inherit; margin:0 0 8px">${analysis.gapSummary}</p>` : ''}
+        ${analysis.oxygenationSummary ? `<p style="color:inherit; margin:0 0 8px">${analysis.oxygenationSummary}</p>` : ''}
+        ${analysis.sampleNote ? `<p style="color:inherit; margin:0">${analysis.sampleNote}</p>` : ''}
+      `;
+
+      el('metrics').innerHTML = analysis.metrics.length
+        ? analysis.metrics.map(metric => `
+            <div class="metric ${metric.tone}">
+              <div class="k">${metric.label}</div>
+              <div class="v">${metric.value}</div>
+            </div>
+          `).join('')
+        : `<div class="metric neutral"><div class="k">Awaiting input</div><div class="v">Enter pH, pCO₂ and HCO₃⁻</div></div>`;
+
+      const findings = analysis.additionalFindings.length
+        ? analysis.additionalFindings
+        : ['No additional derived findings yet.'];
+      el('findings').innerHTML = findings.map(item => `<div class="item">${item}</div>`).join('');
+
+      const cautions = analysis.cautions.length
+        ? analysis.cautions
+        : ['Use this as decision support only and correlate with the full clinical picture.'];
+      el('cautions').innerHTML = cautions.map(item => `<div class="item">${item}</div>`).join('');
+    }
+
+    function resetValues() {
+      state.ph = '';
+      state.pco2 = '';
+      state.hco3 = '';
+      state.baseExcess = '';
+      state.sodium = '';
+      state.chloride = '';
+      state.albumin = '';
+      state.lactate = '';
+      state.po2 = '';
+      state.fio2 = '';
+    }
+
+    el('sampleABG').addEventListener('click', () => {
+      state.sampleType = 'ABG';
+      renderControls();
+      render();
+    });
+    el('sampleVBG').addEventListener('click', () => {
+      state.sampleType = 'VBG';
+      renderControls();
+      render();
+    });
+    el('clearAll').addEventListener('click', () => {
+      resetValues();
+      renderControls();
+      render();
+    });
+    el('fillDemo').addEventListener('click', () => {
+      state.sampleType = 'ABG';
+      state.ph = '7.21';
+      state.pco2 = '28';
+      state.hco3 = '11';
+      state.baseExcess = '-15';
+      state.sodium = '138';
+      state.chloride = '100';
+      state.albumin = '3.2';
+      state.lactate = '4.8';
+      state.po2 = '82';
+      state.fio2 = '40';
+      renderControls();
+      render();
+    });
+
+    renderControls();
+    render();
+  </script>
+</body>
+</html>

@@ -58,6 +58,19 @@ function scale(
 export const CALCULATORS: Calculator[] = [
 
   /* ================= Neonatal / NICU ================= */
+  {
+    id: "phototherapy-nomograms",
+    name: "SRH Bilirubin Nomograms (MRD/090, MRD/091, ≥35 wk PT & ET)",
+    category: "neonatal",
+    citation:
+      "Sri Ramakrishna Hospital bilirubin charts — MRD/090 for birth weight under 1250 g, MRD/091 for infants under 35 weeks gestation, plus ≥35-week phototherapy and exchange-transfusion cut-off charts recreated from the supplied images.",
+    fields: [],
+    compute: () => ({
+      value: "Open the interactive charts below",
+      severity: "info",
+      note: "Auto-selects the relevant bilirubin line from age, gestation, birth weight, TSB and risk flags, while showing both mg/dL and µmol/L.",
+    }),
+  },
   scale("apgar", "Apgar Score", "neonatal",
     "Apgar V, Curr Res Anesth Analg 1953; ACOG/AAP Committee Opinion 2015",
     [
@@ -273,6 +286,20 @@ export const CALCULATORS: Calculator[] = [
     }),
 
   /* ================= Critical Care Severity & Mortality ================= */
+  {
+    id: "abg-vbg-auto-interpreter",
+    name: "ABG / VBG Auto Interpreter",
+    category: "critical",
+    citation:
+      "Standard acid-base interpretation using arterial / venous blood gas patterns, Winter's formula, expected respiratory compensation rules, albumin-corrected anion gap, and PaO₂/FiO₂ oxygenation grading for ABG samples.",
+    fields: [],
+    compute: () => ({
+      value: "Live auto-interpretation enabled below",
+      severity: "info",
+      note: "Enter pH, pCO₂ and HCO₃⁻ to classify primary acid-base disorder, compensation, anion gap and oxygenation.",
+    }),
+  },
+
   {
     id: "prism3", name: "PRISM III", category: "critical",
     citation: "Pollack MM et al. Crit Care Med 1996;24:743–52 (PICU, first 12 & 24 h)",

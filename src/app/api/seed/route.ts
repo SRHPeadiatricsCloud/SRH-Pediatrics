@@ -8,7 +8,12 @@ export const dynamic = "force-dynamic";
 const H = 3600000;
 
 export async function POST() {
-  await db.execute(sql`TRUNCATE TABLE handovers, tasks, events, vitals, problems, babies RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE handovers RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE tasks RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE events RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE vitals RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE problems RESTART IDENTITY`);
+  await db.execute(sql`TRUNCATE TABLE babies RESTART IDENTITY`);
 
   const seedBabies = [
     {

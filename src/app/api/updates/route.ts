@@ -98,6 +98,104 @@ const decode = (s: string) =>
     .replace(/&apos;/g, "'");
 
 type Parsed = { title: string; url: string; summary: string; publishedAt: Date | null };
+type ApiRow = {
+  id: number;
+  title: string;
+  source: string;
+  url: string;
+  summary: string;
+  tags: string;
+  publishedAt: string | null;
+  fetchedAt: string;
+  pinnedBy: string;
+};
+
+const FALLBACK_UPDATES: ApiRow[] = [
+  {
+    id: -1,
+    title: "Pediatrics — current issue (Volume 158, Issue 3 · September 2026)",
+    source: "Pediatrics (AAP)",
+    url: "https://publications.aap.org/pediatrics/issue?autologincheck=redirected",
+    summary:
+      "Fallback curated item for preview mode. The current issue page surfaces September 2026 Pediatrics content, including commentaries, research, reviews, and policy content when live RSS fetch is unavailable.",
+    tags: "AAP,journal,fallback",
+    publishedAt: "2026-09-01T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -2,
+    title: "Medicaid ACOs Do Not Consistently Improve Asthma Outcomes for Children of Color",
+    source: "Pediatrics Blog",
+    url: "https://publications.aap.org/pediatrics",
+    summary:
+      "Listed on the Pediatrics site as a September 9, 2026 blog update and kept here as a preview fallback so the Recent Updates section is populated even when external feed requests fail.",
+    tags: "AAP,asthma,equity,fallback",
+    publishedAt: "2026-09-09T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -3,
+    title: "WHO moves to expand access to lifesaving sickle cell treatment and care for children",
+    source: "WHO Child Health",
+    url: "https://www.who.int/health-topics/child-health",
+    summary:
+      "The WHO child health topic page currently highlights a departmental update on expanding access to sickle cell treatment and care for children, alongside other pediatric updates and child-health guidance.",
+    tags: "WHO,child health,sickle cell,fallback",
+    publishedAt: "2026-09-01T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -4,
+    title: "WHO South-East Asia Region recognizes major public health achievements across Member States",
+    source: "WHO South-East Asia",
+    url: "https://www.who.int/southeastasia/news/detail/08-09-2026-who-south-east-asia-region-recognizes-major-public-health-achievements-across-member-states",
+    summary:
+      "Regional update highlighting maternal, newborn, child-health, and immunization milestones across South-East Asia. Included as a trusted fallback item for deployments or previews with restricted outbound feed access.",
+    tags: "WHO,South-East Asia,newborn,public health,fallback",
+    publishedAt: "2026-09-08T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -5,
+    title: "The Lancet Child & Adolescent Health — September 2026 current issue",
+    source: "Lancet Child & Adolescent Health",
+    url: "https://www.thelancet.com/journals/lanchi/issue/current",
+    summary:
+      "Fallback current-issue link for preview mode. The September 2026 issue includes comment, trial, cohort, and growth-related pediatric content when automated feed refresh is unavailable.",
+    tags: "Lancet,journal,current issue,fallback",
+    publishedAt: "2026-09-01T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -6,
+    title: "CONSORT-C: a shared responsibility for truth and quality",
+    source: "Lancet Child & Adolescent Health",
+    url: "https://www.thelancet.com/journals/lanchi/article/PIIS2352-4642(26)00041-6/fulltext",
+    summary:
+      "Editorial content in The Lancet Child & Adolescent Health describing the CONSORT-C and SPIRIT-C reporting extensions for pediatric clinical trials and protocols.",
+    tags: "Lancet,research integrity,clinical trials,fallback",
+    publishedAt: "2026-02-24T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+  {
+    id: -7,
+    title: "Pediatrics in Review — current issue (Volume 47, Issue 9 · September 2026)",
+    source: "Pediatrics in Review",
+    url: "https://publications.aap.org/pediatricsinreview",
+    summary:
+      "Fallback issue-level preview item for education-focused pediatric review content when the live Recent Updates feeds are unavailable in the current environment.",
+    tags: "AAP,education,review,fallback",
+    publishedAt: "2026-09-01T00:00:00.000Z",
+    fetchedAt: new Date("2026-09-09T00:00:00.000Z").toISOString(),
+    pinnedBy: "",
+  },
+];
 
 function parseRss(xml: string): Parsed[] {
   const out: Parsed[] = [];
@@ -201,10 +299,15 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const refresh = url.searchParams.get("refresh") === "1";
   let refreshedCount = 0;
+  let mode: "live" | "cached" | "fallback" = "cached";
+  let message = "Showing cached Recent Updates.";
+
   try {
     // Auto-refresh when the newest row is older than 4 hours, or when ?refresh=1
     if (refresh) {
       refreshedCount = await refreshFromWeb();
+      mode = refreshedCount > 0 ? "live" : "cached";
+      message = refreshedCount > 0 ? `Fetched ${refreshedCount} new update${refreshedCount === 1 ? "" : "s"} from web feeds.` : "No new items were added from the live feeds.";
     } else {
       const [newest] = await db
         .select({ fetchedAt: recentUpdates.fetchedAt })
@@ -212,13 +315,40 @@ export async function GET(req: Request) {
         .orderBy(desc(recentUpdates.fetchedAt))
         .limit(1);
       const stale = !newest || Date.now() - new Date(newest.fetchedAt).getTime() > 4 * 60 * 60 * 1000;
-      if (stale) refreshedCount = await refreshFromWeb();
+      if (stale) {
+        refreshedCount = await refreshFromWeb();
+        mode = refreshedCount > 0 ? "live" : "cached";
+        message = refreshedCount > 0 ? `Fetched ${refreshedCount} new update${refreshedCount === 1 ? "" : "s"} from web feeds.` : "Live feed refresh did not add any new items.";
+      }
     }
   } catch {
-    /* keep serving cached data if the internet is unreachable */
+    mode = "cached";
+    message = "Live feed refresh is unavailable right now; showing cached items if present.";
   }
-  const rows = await db.select().from(recentUpdates).orderBy(desc(recentUpdates.publishedAt), desc(recentUpdates.fetchedAt)).limit(150);
-  return NextResponse.json({ rows, refreshedCount, sources: FEEDS.map((f) => f.name) });
+
+  const dbRows = await db.select().from(recentUpdates).orderBy(desc(recentUpdates.publishedAt), desc(recentUpdates.fetchedAt)).limit(150);
+  const rows: ApiRow[] = dbRows.length
+    ? dbRows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        source: row.source,
+        url: row.url,
+        summary: row.summary,
+        tags: row.tags,
+        publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+        fetchedAt: row.fetchedAt.toISOString(),
+        pinnedBy: row.pinnedBy,
+      }))
+    : FALLBACK_UPDATES;
+
+  if (!dbRows.length) {
+    mode = "fallback";
+    message = "Live feeds are unavailable in this environment, so a built-in fallback update list is being shown for a cleaner preview.";
+  } else if (mode === "cached") {
+    message = `Showing ${dbRows.length} cached update${dbRows.length === 1 ? "" : "s"}.`;
+  }
+
+  return NextResponse.json({ rows, refreshedCount, sources: Array.from(new Set(rows.map((r) => r.source).filter(Boolean))), mode, message });
 }
 
 export async function POST(req: Request) {

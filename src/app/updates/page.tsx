@@ -26,9 +26,17 @@ type Row = {
   pinnedBy: string;
 };
 
+type UpdatesPayload = {
+  rows: Row[];
+  refreshedCount: number;
+  sources: string[];
+  mode?: "live" | "cached" | "fallback";
+  message?: string;
+};
+
 export default function UpdatesPage() {
   const locked = useLocked();
-  const { data, reload } = usePoll<{ rows: Row[]; refreshedCount: number; sources: string[] }>(
+  const { data, reload } = usePoll<UpdatesPayload>(
     "/api/updates",
     5 * 60 * 1000,
   );
@@ -45,6 +53,13 @@ export default function UpdatesPage() {
     for (const r of rows) if (r.source) set.add(r.source);
     return ["all", ...Array.from(set).sort()];
   }, [rows]);
+
+  const sourceSummary = useMemo(() => {
+    const list = (data?.sources ?? []).filter(Boolean);
+    if (!list.length) return "No sources loaded yet";
+    if (list.length <= 5) return list.join(" · ");
+    return `${list.slice(0, 5).join(" · ")} · +${list.length - 5} more`;
+  }, [data?.sources]);
 
   const shown = rows.filter((r) => {
     if (filter !== "all" && r.source !== filter) return false;
@@ -90,11 +105,23 @@ export default function UpdatesPage() {
               <Newspaper size={20} />
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-black tracking-tight text-white">Recent Updates in Pediatrics</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight text-white">Recent Updates in Pediatrics</h1>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    data?.mode === "fallback"
+                      ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                      : data?.mode === "live"
+                        ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                        : "border-slate-500/40 bg-slate-500/10 text-slate-300"
+                  }`}
+                >
+                  {data?.mode === "fallback" ? "Preview fallback" : data?.mode === "live" ? "Live feed" : "Cached feed"}
+                </span>
+              </div>
               <p className="text-[11px] text-slate-400">
-                Auto-refreshed headlines &amp; journal alerts from{" "}
-                {(data?.sources ?? ["AAP", "Lancet", "BMJ", "WHO", "Medscape"]).join(" · ")}. Curated feeds; add your
-                own using the button.
+                Auto-refreshed headlines &amp; journal alerts from {sourceSummary}. Curated feeds; add your own using the
+                button.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -121,6 +148,20 @@ export default function UpdatesPage() {
               )}
             </div>
           </div>
+
+          {data?.message && (
+            <div
+              className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${
+                data.mode === "fallback"
+                  ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
+                  : data.mode === "live"
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                    : "border-white/10 bg-white/[0.03] text-slate-300"
+              }`}
+            >
+              {data.message}
+            </div>
+          )}
 
           {sources.length > 1 && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-3">
