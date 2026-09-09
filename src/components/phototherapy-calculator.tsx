@@ -270,8 +270,6 @@ export function PhototherapyNomogramCalculator() {
         ageHours={ageHours}
         tsbUmol={tsbUmol}
         gestWeeks={gestWeeks}
-        riskFlags={riskFlags}
-        selectionSummary={selection.rationale}
       />
     </div>
   );
@@ -383,16 +381,12 @@ function NomogramChart({
   ageHours,
   tsbUmol,
   gestWeeks,
-  riskFlags,
-  selectionSummary,
 }: {
   chart: PhototherapyNomogram;
   currentCurveKey: string | null;
   ageHours: number;
   tsbUmol: number;
   gestWeeks: number;
-  riskFlags: string[];
-  selectionSummary: string;
 }) {
   const width = 860;
   const height = 420;
@@ -422,7 +416,6 @@ function NomogramChart({
   const xTicks = Array.from({ length: Math.floor(chart.maxHours / 24) + 1 }, (_, i) => i * 24);
   const xMinorTicks = Array.from({ length: Math.floor(chart.maxHours / 12) + 1 }, (_, i) => i * 12).filter((tick) => !xTicks.includes(tick));
   const termChart = chart.key.startsWith("term-");
-  const activeRiskItems = riskFlags.length > 0 ? riskFlags : ["No ABO / Rh incompatibility or extra neurotoxicity risk flag selected"];
   const pathwayGuide = termChart
     ? [
         "Lower risk: ≥38 weeks and well",
@@ -450,25 +443,6 @@ function NomogramChart({
       </div>
 
       <div className="relative mt-4 overflow-hidden rounded-xl border border-cyan-400/10 bg-slate-950/70">
-        <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[48%] rounded-xl border border-cyan-400/20 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-200 backdrop-blur-sm">
-          <div className="font-black uppercase tracking-[0.18em] text-cyan-200">Graph risk profile</div>
-          <div className="mt-1 leading-relaxed text-slate-300">{selectionSummary}</div>
-          <div className="mt-2 space-y-1 text-slate-400">
-            {activeRiskItems.map((item) => (
-              <div key={item}>• {item}</div>
-            ))}
-          </div>
-        </div>
-        <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[42%] rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-sm">
-          <div className="font-black uppercase tracking-[0.18em] text-white/90">
-            {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
-          </div>
-          <div className="mt-1 space-y-1 leading-relaxed">
-            {graphNotes.map((item) => (
-              <div key={item}>• {item}</div>
-            ))}
-          </div>
-        </div>
         <div className="overflow-x-auto">
           <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[780px] w-full">
           <defs>
@@ -600,11 +574,26 @@ function NomogramChart({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto]">
-        <div className="flex flex-wrap gap-2">
-          {chart.curves.map((curve) => (
-            <LegendChip key={curve.key} curve={curve} active={curve.key === currentCurveKey} />
-          ))}
+      <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_auto]">
+        <div className="space-y-3">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] text-slate-300">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/90">
+              {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
+            </div>
+            <div className="mt-2 grid gap-1.5 md:grid-cols-2">
+              {graphNotes.map((item) => (
+                <div key={item} className="rounded-lg border border-white/10 bg-slate-950/30 px-2.5 py-2 leading-relaxed text-slate-300">
+                  • {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {chart.curves.map((curve) => (
+              <LegendChip key={curve.key} curve={curve} active={curve.key === currentCurveKey} />
+            ))}
+          </div>
         </div>
         {selectedCurve && selectedThreshold != null && (
           <div className={`rounded-xl border px-3 py-2 text-[11px] ${CURVE_ACCENT[selectedCurve.key] ?? "border-cyan-400/25 bg-cyan-400/5 text-cyan-200"}`}>
