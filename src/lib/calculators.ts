@@ -60,15 +60,15 @@ export const CALCULATORS: Calculator[] = [
   /* ================= Neonatal / NICU ================= */
   {
     id: "phototherapy-nomograms",
-    name: "Hospital Bilirubin Nomograms (Phototherapy & Exchange)",
+    name: "SRH Bilirubin Nomograms (MRD/090, MRD/091, ≥35 wk PT & ET)",
     category: "neonatal",
     citation:
-      "Sri Ramakrishna Hospital / unit bilirubin charts — MRD/090 for birth weight under 1250 g, MRD/091 for infants under 35 weeks gestation, plus supplied ≥35-week phototherapy and exchange-transfusion cut-off charts.",
+      "Sri Ramakrishna Hospital bilirubin charts — MRD/090 for birth weight under 1250 g, MRD/091 for infants under 35 weeks gestation, plus ≥35-week phototherapy and exchange-transfusion cut-off charts recreated from the supplied images.",
     fields: [],
     compute: () => ({
       value: "Open the interactive charts below",
       severity: "info",
-      note: "Auto-selects the relevant bilirubin line from age, gestation, birth weight, TSB and risk flags.",
+      note: "Auto-selects the relevant bilirubin line from age, gestation, birth weight, TSB and risk flags, while showing both mg/dL and µmol/L.",
     }),
   },
   scale("apgar", "Apgar Score", "neonatal",

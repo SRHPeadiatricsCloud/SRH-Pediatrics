@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SRH Pediatrics · Hospital Bilirubin Nomograms</title>
+  <title>SRH Bilirubin Nomograms · MRD/090, MRD/091, ≥35 wk PT & ET</title>
   <style>
     :root {
       --bg: #07101c;
@@ -29,30 +29,49 @@
         var(--bg);
       color: var(--text);
     }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .wrap { max-width: 1220px; margin: 0 auto; padding: 24px; }
     .hero, .card {
-      background: linear-gradient(180deg, var(--card2), var(--card));
+      background: linear-gradient(180deg, rgba(19,34,56,.96), rgba(16,27,43,.96));
       border: 1px solid var(--line);
       border-radius: 20px;
-      box-shadow: 0 18px 40px -30px rgba(0,0,0,.9);
+      box-shadow: 0 18px 40px -30px rgba(0,0,0,.9), 0 0 60px rgba(56,189,248,.05);
     }
-    .hero { padding: 24px; margin-bottom: 16px; }
+    .hero {
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(34,211,238,.14), transparent 36%),
+        radial-gradient(circle at top right, rgba(167,139,250,.10), transparent 30%),
+        linear-gradient(180deg, rgba(19,34,56,.96), rgba(16,27,43,.96));
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(transparent, rgba(255,255,255,.02), transparent);
+      pointer-events: none;
+    }
     .eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); font-weight: 800; }
     h1 { margin: 8px 0 10px; font-size: 30px; line-height: 1.05; }
     p { color: var(--muted); line-height: 1.5; }
     .grid { display: grid; gap: 12px; }
     .controls { grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom: 16px; }
-    .field { padding: 14px; }
+    .field {
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(2,6,23,.88));
+      border-color: rgba(56,189,248,.12);
+      box-shadow: 0 0 24px rgba(56,189,248,.04);
+    }
     .field label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
     .field input, .field select {
-      width: 100%; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.04);
+      width: 100%; border-radius: 12px; border: 1px solid rgba(56,189,248,.12); background: rgba(2,6,23,.72);
       color: var(--text); padding: 12px; font-size: 15px; outline: none;
     }
     .field small { display: block; margin-top: 6px; color: var(--muted); }
-    .toggle {
-      display: flex; gap: 10px; align-items: flex-start;
-    }
-    .toggle input { width: 18px; height: 18px; margin-top: 2px; }
+    .toggle { display: flex; gap: 10px; align-items: flex-start; }
+    .toggle input { width: 18px; height: 18px; margin-top: 4px; }
     .summary { grid-template-columns: 1.4fr .8fr; margin-bottom: 16px; }
     .status { padding: 18px; }
     .status h2 { margin: 6px 0 12px; font-size: 22px; }
@@ -61,20 +80,26 @@
     .metric { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.04); }
     .metric .k { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
     .metric .v { font-weight: 900; margin-top: 6px; }
-    .warn { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.1); color: #fde68a; }
-    .crit { border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.12); color: #fecdd3; }
-    .info { border-color: rgba(56,189,248,.35); background: rgba(56,189,248,.1); color: #bae6fd; }
+    .warn { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.1); color: #fde68a; box-shadow: 0 0 40px rgba(245,158,11,.12); }
+    .crit { border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.12); color: #fecdd3; box-shadow: 0 0 40px rgba(251,113,133,.14); }
+    .info { border-color: rgba(56,189,248,.35); background: rgba(56,189,248,.1); color: #bae6fd; box-shadow: 0 0 40px rgba(56,189,248,.12); }
     .riskbox { padding: 18px; }
     .risk-item { border: 1px solid rgba(245,158,11,.3); background: rgba(245,158,11,.1); color: #fde68a; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
     .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
     .tab { cursor: pointer; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); font-weight: 700; }
-    .tab.active { background: linear-gradient(135deg, #22d3ee, #3b82f6); color: #00131f; border-color: transparent; }
+    .tab.active { background: linear-gradient(135deg, #22d3ee, #3b82f6); color: #00131f; border-color: transparent; box-shadow: 0 0 24px rgba(34,211,238,.16); }
     .chartcard { padding: 18px; }
-    .chartwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.15); }
+    .chartwrap { overflow-x: auto; border: 1px solid rgba(56,189,248,.12); border-radius: 16px; background: rgba(0,0,0,.18); }
     .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .legend .item { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,.04); min-width: 220px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 12px currentColor; }
     .footer { margin-top: 18px; font-size: 12px; color: var(--muted); }
+    .curve-tag { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 6px 10px; font-size: 10px; font-weight: 800; border: 1px solid var(--line); }
+    .cyan { border-color: rgba(103,232,249,.3); background: rgba(34,211,238,.1); color: #a5f3fc; }
+    .amber { border-color: rgba(251,191,36,.3); background: rgba(251,191,36,.1); color: #fde68a; }
+    .rose { border-color: rgba(251,113,133,.3); background: rgba(251,113,133,.1); color: #fecdd3; }
+    .violet { border-color: rgba(167,139,250,.3); background: rgba(167,139,250,.1); color: #ddd6fe; }
+    .green { border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.1); color: #bbf7d0; }
     @media (max-width: 900px) {
       .controls, .summary, .metrics { grid-template-columns: 1fr; }
       h1 { font-size: 24px; }
@@ -87,11 +112,11 @@
   <div class="wrap">
     <section class="hero">
       <div class="eyebrow">Sri Ramakrishna Hospital · Department of Pediatrics</div>
-      <h1>Hospital Bilirubin Nomograms</h1>
+      <h1>SRH Bilirubin Nomograms</h1>
       <p>
-        Public bedside calculator for four bilirubin decision charts now integrated in the SRH Pediatrics webapp:
-        <b style="color:#fff">MRD/090</b> for birth weight under 1250 g, <b style="color:#fff">MRD/091</b> for infants under 35 weeks gestation,
-        plus shared <b style="color:#fff">≥35 week phototherapy</b> and <b style="color:#fff">≥35 week exchange-transfusion</b> cut-off charts.
+        <b style="color:#fff">MRD/090, MRD/091, ≥35-week Phototherapy & Exchange</b> in one bedside calculator.
+        The pathway auto-selects from gestation, birth weight, ABO/Rh status, and additional neurotoxicity risk factors,
+        with the chart displayed in both <b style="color:#fff">mg/dL</b> and <b style="color:#fff">µmol/L</b>.
       </p>
     </section>
 
@@ -107,7 +132,7 @@
           <input id="clinicalRisk" type="checkbox" />
           <div>
             <label for="clinicalRisk">Additional bilirubin neurotoxicity risk factors</label>
-            <small>Examples from the supplied ≥35 week charts: isoimmune haemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, low albumin.</small>
+            <small>Examples: isoimmune haemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, low albumin.</small>
           </div>
         </div>
       </div>
@@ -121,10 +146,10 @@
     <div id="tabs" class="tabs"></div>
     <section class="card chartcard">
       <div id="chartTitle"></div>
-      <div class="chartwrap"><svg id="chart" viewBox="0 0 760 360" style="min-width:700px;width:100%;display:block"></svg></div>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 860 420" style="min-width:780px;width:100%;display:block"></svg></div>
       <div id="legend" class="legend"></div>
       <div class="footer">
-        This public page is a lightweight deployment of the bilirubin nomogram feature. It recreates the shared source charts for bedside plotting; if a value sits right on a decision boundary, cross-check the original chart before acting.
+        These curves were fine-tuned from the shared source images for bedside plotting. If a result sits exactly on a treatment boundary, confirm against the original chart before acting.
       </div>
     </section>
   </div>
@@ -133,70 +158,82 @@
     const BLOOD_GROUPS = ["Unknown", "O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
     const mgToUmol = (mg) => Math.round(mg * 17.1);
     const mgSeries = (pts) => pts.map(([hour, mg]) => ({ hour, tsb: mgToUmol(mg) }));
+    const CURVE_CLASS = {
+      'term-lower-risk': 'cyan',
+      'term-medium-risk': 'amber',
+      'term-higher-risk': 'rose',
+      'bw-1000-1249': 'cyan',
+      'bw-750-999': 'violet',
+      'bw-500-749': 'green',
+      'ga-gt-2500': 'cyan',
+      'ga-2000-2499': 'violet',
+      'ga-1500-1999': 'amber',
+      'ga-1250-1499': 'green',
+    };
     const NOMOGRAMS = [
       {
         key: "mrd-090",
         shortTitle: "MRD/090",
-        title: "MRD/090 · Birth weight < 1250 grams",
-        subtitle: "Hospital birth-weight nomogram for very low birth weight neonates",
+        title: "SRH MRD/090 · Birth weight under 1250 g",
+        subtitle: "SRH local birth-weight nomogram for very-low-birth-weight neonates",
         maxHours: 120,
         maxTsb: 280,
         yTickStep: 50,
-        eligibility: "Use when birth weight is below 1250 grams.",
+        eligibility: "Use first when birth weight is below 1250 grams.",
         caution: "Between printed points the app interpolates linearly for bedside plotting.",
         curves: [
-          { key: "bw-1000-1249", label: "Birth weight 1000–1249 g", symbol: "^", color: "#38bdf8", exchange: 250, note: "Plateau 158 µmol/L after 72 h.", points: [{hour:12,tsb:65},{hour:24,tsb:100},{hour:48,tsb:150},{hour:72,tsb:158},{hour:96,tsb:158},{hour:120,tsb:158}] },
-          { key: "bw-750-999", label: "Birth weight 750–999 g", symbol: "*", color: "#a78bfa", exchange: 225, note: "Plateau 140 µmol/L after 72 h.", points: [{hour:12,tsb:58},{hour:24,tsb:90},{hour:48,tsb:130},{hour:72,tsb:140},{hour:96,tsb:140},{hour:120,tsb:140}] },
-          { key: "bw-500-749", label: "Birth weight 500–749 g", symbol: "#", color: "#4ade80", exchange: 200, note: "Plateau 118 µmol/L after 72 h.", points: [{hour:12,tsb:48},{hour:24,tsb:74},{hour:48,tsb:110},{hour:72,tsb:118},{hour:96,tsb:118},{hour:120,tsb:118}] }
+          { key: "bw-1000-1249", label: "Birth weight 1000–1249 g", symbol: "^", color: "#38bdf8", exchange: 250, note: "Plateaus near 158 µmol/L after 72 h.", points: [{hour:12,tsb:65},{hour:24,tsb:100},{hour:48,tsb:150},{hour:72,tsb:158},{hour:96,tsb:158},{hour:120,tsb:158}] },
+          { key: "bw-750-999", label: "Birth weight 750–999 g", symbol: "*", color: "#a78bfa", exchange: 225, note: "Plateaus near 140 µmol/L after 72 h.", points: [{hour:12,tsb:58},{hour:24,tsb:90},{hour:48,tsb:130},{hour:72,tsb:140},{hour:96,tsb:140},{hour:120,tsb:140}] },
+          { key: "bw-500-749", label: "Birth weight 500–749 g", symbol: "#", color: "#4ade80", exchange: 200, note: "Plateaus near 118 µmol/L after 72 h.", points: [{hour:12,tsb:48},{hour:24,tsb:74},{hour:48,tsb:110},{hour:72,tsb:118},{hour:96,tsb:118},{hour:120,tsb:118}] }
         ]
       },
       {
         key: "mrd-091",
         shortTitle: "MRD/091",
-        title: "MRD/091 · Infant < 35 weeks gestation",
-        subtitle: "Hospital gestation-based nomogram for preterm infants under 35 weeks",
+        title: "SRH MRD/091 · Preterm infant under 35 weeks",
+        subtitle: "SRH local gestation-based nomogram for preterm infants under 35 weeks",
         maxHours: 120,
         maxTsb: 360,
         yTickStep: 50,
         eligibility: "Use when gestation is below 35 weeks and birth weight is 1250 grams or above.",
-        caution: "Curves are plotted from the shared hospital threshold family; intermediate hours are interpolated for bedside use.",
+        caution: "Curves are plotted from the local chart family; intermediate hours are interpolated for bedside use.",
         curves: [
-          { key: "ga-gt-2500", label: "BW > 2500 g and < 35 weeks", symbol: "~", color: "#e5e7eb", note: "Rises to 293 µmol/L by 96–120 h.", points: [{hour:24,tsb:150},{hour:48,tsb:200},{hour:72,tsb:250},{hour:96,tsb:290},{hour:120,tsb:293}] },
-          { key: "ga-2000-2499", label: "BW 2000–2499 g and < 35 weeks", symbol: "^", color: "#a78bfa", note: "Plateau 252 µmol/L.", points: [{hour:24,tsb:130},{hour:48,tsb:180},{hour:72,tsb:225},{hour:96,tsb:250},{hour:120,tsb:252}] },
-          { key: "ga-1500-1999", label: "BW 1500–1999 g and < 35 weeks", symbol: "*", color: "#fb923c", exchange: 300, note: "Plateau 202 µmol/L · exchange ≥ 300 µmol/L.", points: [{hour:24,tsb:110},{hour:48,tsb:150},{hour:72,tsb:180},{hour:96,tsb:200},{hour:120,tsb:202}] },
-          { key: "ga-1250-1499", label: "BW 1250–1499 g and < 35 weeks", symbol: "#", color: "#4ade80", note: "Conservative lower preterm threshold pending final exact hospital points.", points: [{hour:24,tsb:100},{hour:48,tsb:135},{hour:72,tsb:165},{hour:96,tsb:176},{hour:120,tsb:176}] }
+          { key: "ga-gt-2500", label: "BW > 2500 g and < 35 weeks", symbol: "~", color: "#67e8f9", note: "Rises to about 293 µmol/L by 96–120 h.", points: [{hour:24,tsb:150},{hour:48,tsb:200},{hour:72,tsb:250},{hour:96,tsb:290},{hour:120,tsb:293}] },
+          { key: "ga-2000-2499", label: "BW 2000–2499 g and < 35 weeks", symbol: "^", color: "#a78bfa", note: "Plateaus near 252 µmol/L.", points: [{hour:24,tsb:130},{hour:48,tsb:180},{hour:72,tsb:225},{hour:96,tsb:250},{hour:120,tsb:252}] },
+          { key: "ga-1500-1999", label: "BW 1500–1999 g and < 35 weeks", symbol: "*", color: "#f59e0b", exchange: 300, note: "Plateaus near 202 µmol/L · exchange line stored at 300 µmol/L.", points: [{hour:24,tsb:110},{hour:48,tsb:150},{hour:72,tsb:180},{hour:96,tsb:200},{hour:120,tsb:202}] },
+          { key: "ga-1250-1499", label: "BW 1250–1499 g and < 35 weeks", symbol: "#", color: "#4ade80", note: "Lower preterm threshold curve retained for the local chart family.", points: [{hour:24,tsb:100},{hour:48,tsb:135},{hour:72,tsb:165},{hour:96,tsb:176},{hour:120,tsb:176}] }
         ]
       },
       {
         key: "term-phototherapy",
         shortTitle: "≥35 wk PT",
-        title: "≥35 weeks · Phototherapy cut-off chart",
-        subtitle: "Shared term / near-term bilirubin phototherapy threshold chart",
+        title: "≥35 weeks · Phototherapy cut-off",
+        subtitle: "Term / near-term phototherapy threshold chart fine-tuned from the shared image",
         maxHours: 168,
         maxTsb: 428,
         yTickStep: 85,
-        eligibility: "Use when gestation is 35 weeks or above. Risk-tier selection follows the supplied chart.",
-        caution: "Recreated from the supplied image. If a value is near a decision boundary, confirm against the original chart.",
+        eligibility: "Auto-selected when gestation is 35 weeks or above. Risk tier is chosen from gestation plus haemolysis / neurotoxicity flags.",
+        caution: "Recreated from the shared ≥35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
         curves: [
-          { key: "term-lower-risk", label: "Lower risk (≥ 38 weeks and well)", symbol: "•", color: "#e5e7eb", note: "Plateaus around 20.8 mg/dL (≈356 µmol/L) after day 5.", points: mgSeries([[0,6.5],[24,12],[48,15.5],[72,17.5],[96,19.8],[120,20.8],[144,20.8],[168,20.8]]) },
-          { key: "term-medium-risk", label: "Medium risk (≥ 38 weeks + risk factors, or 35–37 6/7 weeks and well)", symbol: "– –", color: "#fbbf24", note: "Plateaus around 18 mg/dL (≈308 µmol/L).", points: mgSeries([[0,5],[24,10.5],[48,13.5],[72,15.5],[96,17.2],[120,18],[144,18],[168,18]]) },
-          { key: "term-higher-risk", label: "Higher risk (35–37 6/7 weeks + risk factors)", symbol: "—", color: "#4ade80", note: "Plateaus around 15 mg/dL (≈257 µmol/L).", points: mgSeries([[0,4],[24,8],[48,11.2],[72,13.4],[96,14.6],[120,15],[144,15],[168,15]]) }
+          { key: "term-lower-risk", label: "Lower risk · ≥38 weeks and well", symbol: "•••", color: "#67e8f9", dashArray: "1 10", note: "Fine-tuned from the shared phototherapy chart · plateaus near 20.8 mg/dL (≈356 µmol/L).", points: mgSeries([[0,6.5],[12,8.6],[24,11.8],[36,13.8],[48,15.5],[60,16.8],[72,17.8],[84,18.9],[96,19.8],[108,20.3],[120,20.8],[144,20.8],[168,20.8]]) },
+          { key: "term-medium-risk", label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well", symbol: "– –", color: "#fbbf24", dashArray: "14 10", note: "Fine-tuned from the shared phototherapy chart · plateaus near 18 mg/dL (≈308 µmol/L).", points: mgSeries([[0,5],[12,7.1],[24,10],[36,11.8],[48,13.5],[60,14.6],[72,15.6],[84,16.6],[96,17.3],[108,17.8],[120,18],[144,18],[168,18]]) },
+          { key: "term-higher-risk", label: "Higher risk · 35–37 6/7 weeks + risk factors", symbol: "—", color: "#fb7185", note: "Fine-tuned from the shared phototherapy chart · plateaus near 15 mg/dL (≈257 µmol/L).", points: mgSeries([[0,3.8],[12,5.6],[24,8],[36,9.8],[48,11.4],[60,12.6],[72,13.5],[84,14.2],[96,14.8],[108,15],[120,15],[144,15],[168,15]]) }
         ]
       },
       {
         key: "term-exchange",
         shortTitle: "≥35 wk ET",
-        title: "≥35 weeks · Exchange transfusion cut-off chart",
-        subtitle: "Shared term / near-term bilirubin exchange transfusion threshold chart",
+        title: "≥35 weeks · Exchange transfusion cut-off",
+        subtitle: "Term / near-term exchange-transfusion chart fine-tuned from the shared image",
         maxHours: 168,
         maxTsb: 513,
         yTickStep: 85,
-        eligibility: "Use alongside the ≥35-week chart when judging exchange-transfusion escalation.",
-        caution: "The first 24 hours are dashed in the supplied image because the source notes uncertainty. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or TSB is ≥85 µmol/L above the selected line.",
+        eligibility: "Used alongside the ≥35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
+        caution: "The source marks the first 24 hours as uncertain with dashed early segments. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.",
         curves: [
-          { key: "term-lower-risk", label: "Lower risk (≥ 38 weeks and well)", symbol: "•", color: "#e5e7eb", note: "Plateaus around 25 mg/dL (≈428 µmol/L).", points: mgSeries([[0,14],[24,19],[48,22],[72,24],[96,25],[120,25],[144,25],[168,25]]) },
-          { key: "term-medium-risk", label: "Medium risk (≥ 38 weeks + risk factors, or 35–37 6/7 weeks and well)", symbol: "– –", color: "#fbbf24", note: "Plateaus around 22.5 mg/dL (≈385 µmol/L).", points: mgSeries([[0,12],[24,16.5],[48,19],[72,21],[96,22.5],[120,22.5],[144,22.5],[168,22.5]]) },
-          { key: "term-higher-risk", label: "Higher risk (35–37 6/7 weeks + risk factors)", symbol: "—", color: "#4ade80", note: "Plateaus around 19 mg/dL (≈325 µmol/L).", points: mgSeries([[0,12],[24,15],[48,17],[72,18.5],[96,19],[120,19],[144,19],[168,19]]) }
+          { key: "term-lower-risk", label: "Lower risk · ≥38 weeks and well", symbol: "•••", color: "#67e8f9", dashArray: "1 10", note: "Fine-tuned from the shared exchange chart · plateaus near 25 mg/dL (≈428 µmol/L).", points: mgSeries([[0,16],[12,17.4],[24,19],[36,20.8],[48,22],[60,23.2],[72,24],[84,24.4],[96,25],[120,25],[144,25],[168,25]]) },
+          { key: "term-medium-risk", label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well", symbol: "– –", color: "#fbbf24", dashArray: "14 10", note: "Fine-tuned from the shared exchange chart · plateaus near 22.5 mg/dL (≈385 µmol/L).", points: mgSeries([[0,14],[12,15.2],[24,16.5],[36,18],[48,19],[60,20],[72,21.2],[84,21.9],[96,22.5],[120,22.5],[144,22.5],[168,22.5]]) },
+          { key: "term-higher-risk", label: "Higher risk · 35–37 6/7 weeks + risk factors", symbol: "—", color: "#fb7185", note: "Fine-tuned from the shared exchange chart · plateaus near 19 mg/dL (≈325 µmol/L).", points: mgSeries([[0,12],[12,13.5],[24,15],[36,16],[48,17],[60,17.8],[72,18.5],[84,18.8],[96,19],[120,19],[144,19],[168,19]]) }
         ]
       }
     ];
@@ -235,26 +272,33 @@
       const t = (h - a.hour) / (b.hour - a.hour);
       return Math.round((a.tsb + (b.tsb - a.tsb) * t) * 10) / 10;
     }
+    function formatHourTick(hour) {
+      if (hour === 0) return 'Birth';
+      if (hour === 120) return '5 d';
+      if (hour === 144) return '6 d';
+      if (hour === 168) return '7 d';
+      return `${hour} h`;
+    }
     function choose(weight, gest, risk) {
       const n090 = NOMOGRAMS[0], n091 = NOMOGRAMS[1], termPt = NOMOGRAMS[2], termEt = NOMOGRAMS[3];
       if (weight > 0 && weight < 1250) {
-        if (weight >= 1000) return { nomogram:n090, curve:n090.curves[0], exchangeNomogram:null, exchangeCurve:null, why:'Birth weight under 1250 g → MRD/090 1000–1249 g band.' };
-        if (weight >= 750) return { nomogram:n090, curve:n090.curves[1], exchangeNomogram:null, exchangeCurve:null, why:'Birth weight under 1250 g → MRD/090 750–999 g band.' };
-        return { nomogram:n090, curve:n090.curves[2], exchangeNomogram:null, exchangeCurve:null, why:'Birth weight under 1250 g → MRD/090 500–749 g band.' };
+        if (weight >= 1000) return { nomogram:n090, curve:n090.curves[0], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/090 because birth weight is under 1250 g. 1000–1249 g band is active.' };
+        if (weight >= 750) return { nomogram:n090, curve:n090.curves[1], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/090 because birth weight is under 1250 g. 750–999 g band is active.' };
+        return { nomogram:n090, curve:n090.curves[2], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/090 because birth weight is under 1250 g. 500–749 g band is active.' };
       }
       if (gest > 0 && gest < 35 && weight >= 1250) {
-        if (weight > 2500) return { nomogram:n091, curve:n091.curves[0], exchangeNomogram:null, exchangeCurve:null, why:'Gestation under 35 weeks → MRD/091 >2500 g band.' };
-        if (weight >= 2000) return { nomogram:n091, curve:n091.curves[1], exchangeNomogram:null, exchangeCurve:null, why:'Gestation under 35 weeks → MRD/091 2000–2499 g band.' };
-        if (weight >= 1500) return { nomogram:n091, curve:n091.curves[2], exchangeNomogram:null, exchangeCurve:null, why:'Gestation under 35 weeks → MRD/091 1500–1999 g band.' };
-        return { nomogram:n091, curve:n091.curves[3], exchangeNomogram:null, exchangeCurve:null, why:'Gestation under 35 weeks → MRD/091 1250–1499 g band.' };
+        if (weight > 2500) return { nomogram:n091, curve:n091.curves[0], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/091 because gestation is under 35 weeks. >2500 g band is active.' };
+        if (weight >= 2000) return { nomogram:n091, curve:n091.curves[1], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/091 because gestation is under 35 weeks. 2000–2499 g band is active.' };
+        if (weight >= 1500) return { nomogram:n091, curve:n091.curves[2], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/091 because gestation is under 35 weeks. 1500–1999 g band is active.' };
+        return { nomogram:n091, curve:n091.curves[3], exchangeNomogram:null, exchangeCurve:null, why:'Auto-selected SRH MRD/091 because gestation is under 35 weeks. 1250–1499 g band is active.' };
       }
       if (gest >= 35) {
         const curveKey = gest >= 38 ? (risk ? 'term-medium-risk' : 'term-lower-risk') : (risk ? 'term-higher-risk' : 'term-medium-risk');
         const curve = termPt.curves.find(c => c.key === curveKey);
         const exchangeCurve = termEt.curves.find(c => c.key === curveKey);
         const why = gest >= 38
-          ? (risk ? 'Gestation ≥38 weeks with risk factors → medium-risk ≥35 week line.' : 'Gestation ≥38 weeks and well → lower-risk ≥35 week line.')
-          : (risk ? 'Gestation 35–37 6/7 weeks with risk factors → higher-risk ≥35 week line.' : 'Gestation 35–37 6/7 weeks and well → medium-risk ≥35 week line.');
+          ? (risk ? 'Auto-selected the ≥35-week medium-risk pathway because gestation is ≥38 weeks but risk factors are present.' : 'Auto-selected the ≥35-week lower-risk pathway because gestation is ≥38 weeks and no additional risk factors are marked.')
+          : (risk ? 'Auto-selected the ≥35-week higher-risk pathway because gestation is 35–37 6/7 weeks and risk factors are present.' : 'Auto-selected the ≥35-week medium-risk pathway because gestation is 35–37 6/7 weeks and no extra risk factors are marked.');
         return { nomogram:termPt, curve, exchangeNomogram:termEt, exchangeCurve, why };
       }
       return { nomogram:null, curve:null, exchangeNomogram:null, exchangeCurve:null, why:'Enter gestation and birth weight to auto-select the bilirubin nomogram.' };
@@ -294,30 +338,31 @@
         note = `TSB is at least 5 mg/dL (85 µmol/L) above the selected exchange line for ${selected.curve.label}. Escalate immediately for intensive phototherapy and exchange-transfusion pathway.${exchangeSuffix}`;
       } else if (exchangeThreshold != null && tsbUmol >= exchangeThreshold) {
         severity = 'crit';
-        headline = 'At / above exchange line';
+        headline = 'At or above exchange line';
         note = `TSB is at or above the stored exchange threshold for ${selected.curve.label}. Start intensive phototherapy, prepare exchange transfusion and escalate immediately.${exchangeSuffix}`;
       } else if (tsbUmol >= threshold) {
         severity = combinedRisk ? 'crit' : 'warn';
         headline = combinedRisk ? 'Above phototherapy line with risk factors' : 'Above phototherapy line';
         note = combinedRisk
           ? `TSB is above the selected phototherapy threshold and haemolysis / neurotoxicity risk is present. Treat promptly and trend bilirubin closely.${exchangeSuffix}`
-          : `TSB is above the plotted phototherapy threshold for ${selected.curve.label}. Start / continue phototherapy and repeat bilirubin as per unit protocol.${exchangeSuffix}`;
+          : `TSB is above the plotted phototherapy threshold for ${selected.curve.label}. Start or continue phototherapy and repeat bilirubin as per unit protocol.${exchangeSuffix}`;
       } else if ((threshold != null && tsbUmol >= threshold - 30) || combinedRisk) {
         severity = 'warn';
         headline = combinedRisk ? 'Below line but risk factors present' : 'Approaching phototherapy line';
         note = combinedRisk
           ? `Risk factors suggest closer bilirubin surveillance even though the TSB is below the plotted treatment line. Send haemolysis work-up or broader evaluation if clinically indicated.${exchangeSuffix}`
-          : `TSB is within 30 µmol/L of the selected phototherapy line. Recheck soon and ensure feeds, hydration and follow-up are clear.${exchangeSuffix}`;
+          : `TSB is within 30 µmol/L of the selected phototherapy line. Recheck soon and ensure feeds, hydration, and follow-up are clear.${exchangeSuffix}`;
       }
 
+      const curveClass = CURVE_CLASS[selected.curve?.key || ''] || '';
       el('status').className = `card status ${severity}`;
       el('status').innerHTML = `
-        <div class="pill">${selected.nomogram ? `${selected.nomogram.shortTitle} · ${selected.curve.label}` : 'Reference only'}</div>
+        <div class="pill ${curveClass}">${selected.nomogram ? `${selected.nomogram.shortTitle} · ${selected.curve.label}` : 'Reference only'}</div>
         <h2>${headline}</h2>
         <div class="metrics">
-          <div class="metric"><div class="k">Chosen chart</div><div class="v">${selected.nomogram ? selected.nomogram.title : 'Enter gestation / weight'}</div></div>
+          <div class="metric"><div class="k">Chosen chart</div><div class="v">${selected.nomogram ? selected.nomogram.title : 'Enter gestation and weight'}</div></div>
           <div class="metric"><div class="k">Phototherapy line</div><div class="v">${threshold == null ? '—' : threshold + ' µmol/L'}</div><small>${threshold == null ? selected.why : micromolToMgDl(threshold) + ' mg/dL'}</small></div>
-          <div class="metric"><div class="k">Exchange line</div><div class="v">${exchangeThreshold == null ? '—' : exchangeThreshold + ' µmol/L'}</div><small>${exchangeThreshold == null ? 'No exchange line stored for the selected path' : micromolToMgDl(exchangeThreshold) + ' mg/dL'}</small></div>
+          <div class="metric"><div class="k">Exchange line</div><div class="v">${exchangeThreshold == null ? '—' : exchangeThreshold + ' µmol/L'}</div><small>${exchangeThreshold == null ? 'No exchange line stored for this path' : micromolToMgDl(exchangeThreshold) + ' mg/dL'}</small></div>
           <div class="metric"><div class="k">Δ from phototherapy</div><div class="v">${delta == null ? '—' : (delta > 0 ? '+' : '') + delta + ' µmol/L'}</div><small>${exchangeDelta == null ? '' : 'Δ from exchange ' + (exchangeDelta > 0 ? '+' : '') + exchangeDelta + ' µmol/L'}</small></div>
         </div>
         <p style="margin-top:12px;color:inherit">${note}</p>
@@ -327,17 +372,17 @@
       if (hasAbo) riskItems.push('Possible ABO incompatibility');
       if (hasRh) riskItems.push('Possible Rh incompatibility');
       if (clinicalRisk) riskItems.push('Additional bilirubin neurotoxicity risk factors marked present');
-      el('risks').innerHTML = `<div class="eyebrow" style="color:#f59e0b">Risk flags & line selection</div>${riskItems.length ? riskItems.map(x=>`<div class="risk-item">${x}</div>`).join('') : '<p>No ABO / Rh incompatibility flag or extra risk factor selected.</p>'}<p style="margin-top:12px">${selected.why}</p><p>MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for babies under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the shared term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.</p>`;
+      el('risks').innerHTML = `<div class="eyebrow" style="color:#f59e0b">Risk flags and selection logic</div>${riskItems.length ? riskItems.map(x=>`<div class="risk-item">${x}</div>`).join('') : '<p>No ABO or Rh incompatibility flag and no extra clinical risk factor selected.</p>'}<p style="margin-top:12px">${selected.why}</p><p>MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.</p>`;
 
       el('tabs').innerHTML = NOMOGRAMS.map(n => `<button class="tab ${n.key===chart.key?'active':''}" onclick="window.activeKey='${n.key}';render()">${n.title}</button>`).join('');
-      el('chartTitle').innerHTML = `<div class="eyebrow">Interactive chart</div><h2 style="margin:6px 0 4px">${chart.title}</h2><p style="margin:0 0 14px">${chart.subtitle} · ${chart.eligibility}</p><p style="margin:0 0 14px">${chart.caution || ''}</p>`;
+      el('chartTitle').innerHTML = `<div class="eyebrow">Hologram chart</div><h2 style="margin:6px 0 4px">${chart.title}</h2><p style="margin:0 0 8px">${chart.subtitle}</p><p style="margin:0 0 8px">${chart.eligibility}</p><p style="margin:0 0 14px">${chart.caution || ''}</p>`;
       drawChart(chart, activeCurveKey, ageHours, tsbUmol);
-      el('legend').innerHTML = chart.curves.map(c => `<div class="item"><div style="font-weight:800;color:#fff"><span class="dot" style="background:${c.color}"></span>${c.symbol} ${c.label}</div><div style="margin-top:6px;color:var(--muted)">${c.note || ''}</div></div>`).join('');
+      el('legend').innerHTML = chart.curves.map(c => `<div class="item ${CURVE_CLASS[c.key] || ''}"><div style="font-weight:800;color:#fff"><span class="dot" style="background:${c.color};color:${c.color}"></span>${c.symbol} ${c.label}</div><div style="margin-top:6px;color:var(--muted)">${c.note || ''}</div></div>`).join('');
     }
 
     function drawChart(chart, activeCurveKey, ageHours, tsbUmol) {
       const svg = el('chart');
-      const width = 760, height = 360, pad = {top:18,right:18,bottom:38,left:56};
+      const width = 860, height = 420, pad = {top:26,right:68,bottom:44,left:68};
       const innerW = width - pad.left - pad.right, innerH = height - pad.top - pad.bottom;
       const x = h => pad.left + Math.max(0, Math.min(chart.maxHours, h)) / chart.maxHours * innerW;
       const y = t => pad.top + innerH - Math.max(0, Math.min(chart.maxTsb, t)) / chart.maxTsb * innerH;
@@ -345,39 +390,72 @@
       const yTicks = [];
       for (let tick = 0; tick <= chart.maxTsb; tick += yStep) yTicks.push(tick);
       if (yTicks[yTicks.length - 1] !== chart.maxTsb) yTicks.push(chart.maxTsb);
+      const xTicks = [];
+      for (let tick = 0; tick <= chart.maxHours; tick += 24) xTicks.push(tick);
+      const xMinorTicks = [];
+      for (let tick = 0; tick <= chart.maxHours; tick += 12) if (!xTicks.includes(tick)) xMinorTicks.push(tick);
+      const minorYStep = Math.max(10, Math.round(yStep / 2));
+      const yMinorTicks = [];
+      for (let tick = 0; tick <= chart.maxTsb; tick += minorYStep) if (!yTicks.includes(tick)) yMinorTicks.push(tick);
 
-      let html = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"/>`;
-      for (let tick=0; tick<=chart.maxHours; tick+=24) {
-        html += `<line x1="${x(tick)}" y1="${pad.top}" x2="${x(tick)}" y2="${height-pad.bottom}" stroke="rgba(148,163,184,.15)" />`;
-        html += `<text x="${x(tick)}" y="${height-12}" text-anchor="middle" font-size="11" fill="#94a3b8">${tick}</text>`;
-      }
+      let html = `
+        <defs>
+          <linearGradient id="bg-${chart.key}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="rgba(34,211,238,0.10)" />
+            <stop offset="45%" stop-color="rgba(59,130,246,0.06)" />
+            <stop offset="100%" stop-color="rgba(167,139,250,0.08)" />
+          </linearGradient>
+          <filter id="glow-${chart.key}" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <rect x="0" y="0" width="${width}" height="${height}" fill="#020617"/>
+        <rect x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}" fill="url(#bg-${chart.key})"/>
+      `;
+
+      xMinorTicks.forEach((tick) => {
+        html += `<line x1="${x(tick)}" y1="${pad.top}" x2="${x(tick)}" y2="${height-pad.bottom}" stroke="rgba(56,189,248,0.08)" />`;
+      });
+      yMinorTicks.forEach((tick) => {
+        html += `<line x1="${pad.left}" y1="${y(tick)}" x2="${width-pad.right}" y2="${y(tick)}" stroke="rgba(56,189,248,0.06)" />`;
+      });
+      xTicks.forEach((tick) => {
+        html += `<line x1="${x(tick)}" y1="${pad.top}" x2="${x(tick)}" y2="${height-pad.bottom}" stroke="rgba(103,232,249,0.16)" />`;
+        html += `<text x="${x(tick)}" y="${height-14}" text-anchor="middle" font-size="11" fill="#94a3b8">${formatHourTick(tick)}</text>`;
+      });
       yTicks.forEach((tick) => {
-        html += `<line x1="${pad.left}" y1="${y(tick)}" x2="${width-pad.right}" y2="${y(tick)}" stroke="rgba(148,163,184,.12)" />`;
-        html += `<text x="${pad.left-10}" y="${y(tick)+4}" text-anchor="end" font-size="11" fill="#94a3b8">${tick}</text>`;
+        html += `<line x1="${pad.left}" y1="${y(tick)}" x2="${width-pad.right}" y2="${y(tick)}" stroke="rgba(103,232,249,0.12)" />`;
+        html += `<text x="${pad.left-10}" y="${y(tick)+4}" text-anchor="end" font-size="11" fill="#cbd5e1">${micromolToMgDl(tick).toFixed(1)}</text>`;
+        html += `<text x="${width-pad.right+10}" y="${y(tick)+4}" text-anchor="start" font-size="11" fill="#94a3b8">${tick}</text>`;
       });
       html += `<line x1="${pad.left}" y1="${height-pad.bottom}" x2="${width-pad.right}" y2="${height-pad.bottom}" stroke="rgba(226,232,240,.35)" />`;
       html += `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height-pad.bottom}" stroke="rgba(226,232,240,.35)" />`;
+      html += `<line x1="${width-pad.right}" y1="${pad.top}" x2="${width-pad.right}" y2="${height-pad.bottom}" stroke="rgba(226,232,240,.20)" />`;
+
       chart.curves.forEach(curve => {
         const active = curve.key === activeCurveKey;
-        html += `<polyline fill="none" stroke="${curve.color}" stroke-width="${active ? 4 : 2.5}" stroke-opacity="${active ? 1 : .75}" points="${curve.points.map(p => `${x(p.hour)},${y(p.tsb)}`).join(' ')}" />`;
-        curve.points.forEach(p => html += `<circle cx="${x(p.hour)}" cy="${y(p.tsb)}" r="${active ? 4 : 3}" fill="${curve.color}" />`);
+        html += `<polyline fill="none" stroke="${curve.color}" stroke-width="${active ? 4.5 : 3}" stroke-opacity="${active ? 1 : .82}" stroke-dasharray="${curve.dashArray || ''}" stroke-linecap="round" filter="url(#glow-${chart.key})" points="${curve.points.map(p => `${x(p.hour)},${y(p.tsb)}`).join(' ')}" />`;
+        curve.points.forEach(p => html += `<circle cx="${x(p.hour)}" cy="${y(p.tsb)}" r="${active ? 4.2 : 3.2}" fill="${curve.color}" opacity="${active ? 1 : .75}" filter="url(#glow-${chart.key})" />`);
         if (curve.exchange != null && active) {
-          html += `<line x1="${pad.left}" x2="${width-pad.right}" y1="${y(curve.exchange)}" y2="${y(curve.exchange)}" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="7 6" />`;
-          html += `<text x="${width-pad.right-4}" y="${y(curve.exchange)-6}" text-anchor="end" font-size="11" fill="#fda4af">Exchange ${curve.exchange} µmol/L</text>`;
+          html += `<line x1="${pad.left}" x2="${width-pad.right}" y1="${y(curve.exchange)}" y2="${y(curve.exchange)}" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="7 6" />`;
+          html += `<text x="${width-pad.right-4}" y="${y(curve.exchange)-6}" text-anchor="end" font-size="11" fill="#fda4af">Exchange ${curve.exchange} µmol/L · ${micromolToMgDl(curve.exchange)} mg/dL</text>`;
         }
       });
+
       html += `<line x1="${x(ageHours)}" y1="${pad.top}" x2="${x(ageHours)}" y2="${height-pad.bottom}" stroke="rgba(255,255,255,.25)" stroke-dasharray="4 4" />`;
       html += `<line x1="${pad.left}" y1="${y(tsbUmol)}" x2="${width-pad.right}" y2="${y(tsbUmol)}" stroke="rgba(255,255,255,.2)" stroke-dasharray="4 4" />`;
-      html += `<circle cx="${x(ageHours)}" cy="${y(tsbUmol)}" r="6" fill="#fff" stroke="#0f172a" stroke-width="3" />`;
-      html += `<text x="${x(ageHours)+10}" y="${Math.max(pad.top+14, y(tsbUmol)-12)}" font-size="11" fill="#e2e8f0">Current point · ${ageHours} h / ${tsbUmol} µmol/L</text>`;
+      html += `<circle cx="${x(ageHours)}" cy="${y(tsbUmol)}" r="8" fill="rgba(34,211,238,0.22)" filter="url(#glow-${chart.key})" />`;
+      html += `<circle cx="${x(ageHours)}" cy="${y(tsbUmol)}" r="5.5" fill="#f8fafc" stroke="#0f172a" stroke-width="2.5" />`;
+      html += `<text x="${x(ageHours)+12}" y="${Math.max(pad.top+16, y(tsbUmol)-14)}" font-size="11" fill="#e2e8f0">Current point · ${ageHours} h · ${tsbUmol} µmol/L · ${micromolToMgDl(tsbUmol)} mg/dL</text>`;
       html += `<text x="${width/2}" y="${height-4}" text-anchor="middle" font-size="12" fill="#cbd5e1">Age in hours</text>`;
-      html += `<text x="18" y="${height/2}" text-anchor="middle" font-size="12" fill="#cbd5e1" transform="rotate(-90 18 ${height/2})">Total serum bilirubin (µmol/L)</text>`;
+      html += `<text x="18" y="${height/2}" text-anchor="middle" font-size="12" fill="#e2e8f0" transform="rotate(-90 18 ${height/2})">Total serum bilirubin (mg/dL)</text>`;
+      html += `<text x="${width-14}" y="${height/2}" text-anchor="middle" font-size="12" fill="#94a3b8" transform="rotate(90 ${width-14} ${height/2})">Total serum bilirubin (µmol/L)</text>`;
       svg.innerHTML = html;
     }
 
-    ['ageHours','gestWeeks','weightGrams','tsbUmol','motherGroup','babyGroup','clinicalRisk'].forEach(id => {
-      el(id).addEventListener(id === 'clinicalRisk' ? 'change' : 'input', render);
-    });
+    ['ageHours','gestWeeks','weightGrams','tsbUmol','motherGroup','babyGroup'].forEach(id => el(id).addEventListener('input', render));
+    el('clinicalRisk').addEventListener('change', render);
     render();
   </script>
 </body>

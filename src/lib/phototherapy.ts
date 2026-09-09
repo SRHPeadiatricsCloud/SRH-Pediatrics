@@ -10,6 +10,7 @@ export type PhototherapyCurve = {
   points: PhototherapyPoint[];
   exchange?: number;
   note?: string;
+  dashArray?: string;
 };
 
 export type PhototherapyNomogram = {
@@ -49,11 +50,12 @@ function mgDlSeries(points: Array<[number, number]>): PhototherapyPoint[] {
 
 const MRD090: PhototherapyNomogram = {
   key: "mrd-090",
-  title: "MRD/090 · Birth weight < 1250 grams",
+  title: "SRH MRD/090 · Birth weight under 1250 g",
   shortTitle: "MRD/090",
-  subtitle: "Hospital birth-weight nomogram for very low birth weight neonates",
+  subtitle: "SRH local birth-weight nomogram for very-low-birth-weight neonates",
   maxHours: 120,
   maxTsb: 280,
+  yTickStep: 50,
   curves: [
     {
       key: "bw-1000-1249",
@@ -69,7 +71,7 @@ const MRD090: PhototherapyNomogram = {
         { hour: 120, tsb: 158 },
       ],
       exchange: 250,
-      note: "Plateau 158 µmol/L after 72 h.",
+      note: "Plateaus near 158 µmol/L after 72 h.",
     },
     {
       key: "bw-750-999",
@@ -85,7 +87,7 @@ const MRD090: PhototherapyNomogram = {
         { hour: 120, tsb: 140 },
       ],
       exchange: 225,
-      note: "Plateau 140 µmol/L after 72 h.",
+      note: "Plateaus near 140 µmol/L after 72 h.",
     },
     {
       key: "bw-500-749",
@@ -101,26 +103,27 @@ const MRD090: PhototherapyNomogram = {
         { hour: 120, tsb: 118 },
       ],
       exchange: 200,
-      note: "Plateau 118 µmol/L after 72 h.",
+      note: "Plateaus near 118 µmol/L after 72 h.",
     },
   ],
-  eligibility: "Use when birth weight is below 1250 grams.",
+  eligibility: "Use first when birth weight is below 1250 grams.",
   caution: "Between printed points the app interpolates linearly for bedside plotting.",
 };
 
 const MRD091: PhototherapyNomogram = {
   key: "mrd-091",
-  title: "MRD/091 · Infant < 35 weeks gestation",
+  title: "SRH MRD/091 · Preterm infant under 35 weeks",
   shortTitle: "MRD/091",
-  subtitle: "Hospital gestation-based nomogram for preterm infants under 35 weeks",
+  subtitle: "SRH local gestation-based nomogram for preterm infants under 35 weeks",
   maxHours: 120,
   maxTsb: 360,
+  yTickStep: 50,
   curves: [
     {
       key: "ga-gt-2500",
       label: "BW > 2500 g and < 35 weeks",
       symbol: "~",
-      color: "#e5e7eb",
+      color: "#67e8f9",
       points: [
         { hour: 24, tsb: 150 },
         { hour: 48, tsb: 200 },
@@ -128,7 +131,7 @@ const MRD091: PhototherapyNomogram = {
         { hour: 96, tsb: 290 },
         { hour: 120, tsb: 293 },
       ],
-      note: "Rises to 293 µmol/L by 96–120 h.",
+      note: "Rises to about 293 µmol/L by 96–120 h.",
     },
     {
       key: "ga-2000-2499",
@@ -142,13 +145,13 @@ const MRD091: PhototherapyNomogram = {
         { hour: 96, tsb: 250 },
         { hour: 120, tsb: 252 },
       ],
-      note: "Plateau 252 µmol/L.",
+      note: "Plateaus near 252 µmol/L.",
     },
     {
       key: "ga-1500-1999",
       label: "BW 1500–1999 g and < 35 weeks",
       symbol: "*",
-      color: "#fb923c",
+      color: "#f59e0b",
       points: [
         { hour: 24, tsb: 110 },
         { hour: 48, tsb: 150 },
@@ -157,7 +160,7 @@ const MRD091: PhototherapyNomogram = {
         { hour: 120, tsb: 202 },
       ],
       exchange: 300,
-      note: "Plateau 202 µmol/L · exchange ≥ 300 µmol/L.",
+      note: "Plateaus near 202 µmol/L · exchange line stored at 300 µmol/L.",
     },
     {
       key: "ga-1250-1499",
@@ -171,146 +174,173 @@ const MRD091: PhototherapyNomogram = {
         { hour: 96, tsb: 176 },
         { hour: 120, tsb: 176 },
       ],
-      note: "Lower preterm threshold curve plotted conservatively for the hospital chart family.",
+      note: "Lower preterm threshold curve retained for the local chart family.",
     },
   ],
   eligibility: "Use when gestation is below 35 weeks and birth weight is 1250 grams or above.",
-  caution:
-    "Curves are plotted from the hospital threshold family shared in the brief; intermediate hours are interpolated for bedside use.",
+  caution: "Curves are plotted from the local chart family; intermediate hours are interpolated for bedside use.",
 };
 
 const TERM_PHOTOTHERAPY: PhototherapyNomogram = {
   key: "term-phototherapy",
-  title: "≥35 weeks · Phototherapy cut-off chart",
+  title: "≥35 weeks · Phototherapy cut-off",
   shortTitle: "≥35 wk PT",
-  subtitle: "Shared term / near-term bilirubin phototherapy threshold chart",
+  subtitle: "Term / near-term phototherapy threshold chart fine-tuned from the shared image",
   maxHours: 168,
   maxTsb: 428,
   yTickStep: 85,
   curves: [
     {
       key: "term-lower-risk",
-      label: "Lower risk (≥ 38 weeks and well)",
-      symbol: "•",
-      color: "#e5e7eb",
+      label: "Lower risk · ≥38 weeks and well",
+      symbol: "•••",
+      color: "#67e8f9",
+      dashArray: "1 10",
       points: mgDlSeries([
         [0, 6.5],
-        [24, 12],
+        [12, 8.6],
+        [24, 11.8],
+        [36, 13.8],
         [48, 15.5],
-        [72, 17.5],
+        [60, 16.8],
+        [72, 17.8],
+        [84, 18.9],
         [96, 19.8],
+        [108, 20.3],
         [120, 20.8],
         [144, 20.8],
         [168, 20.8],
       ]),
-      note: "Plateaus around 20.8 mg/dL (≈356 µmol/L) after day 5.",
+      note: "Fine-tuned from the shared phototherapy chart · plateaus near 20.8 mg/dL (≈356 µmol/L).",
     },
     {
       key: "term-medium-risk",
-      label: "Medium risk (≥ 38 weeks + risk factors, or 35–37 6/7 weeks and well)",
+      label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well",
       symbol: "– –",
       color: "#fbbf24",
+      dashArray: "14 10",
       points: mgDlSeries([
         [0, 5],
-        [24, 10.5],
+        [12, 7.1],
+        [24, 10],
+        [36, 11.8],
         [48, 13.5],
-        [72, 15.5],
-        [96, 17.2],
+        [60, 14.6],
+        [72, 15.6],
+        [84, 16.6],
+        [96, 17.3],
+        [108, 17.8],
         [120, 18],
         [144, 18],
         [168, 18],
       ]),
-      note: "Plateaus around 18 mg/dL (≈308 µmol/L).",
+      note: "Fine-tuned from the shared phototherapy chart · plateaus near 18 mg/dL (≈308 µmol/L).",
     },
     {
       key: "term-higher-risk",
-      label: "Higher risk (35–37 6/7 weeks + risk factors)",
+      label: "Higher risk · 35–37 6/7 weeks + risk factors",
       symbol: "—",
-      color: "#4ade80",
+      color: "#fb7185",
       points: mgDlSeries([
-        [0, 4],
+        [0, 3.8],
+        [12, 5.6],
         [24, 8],
-        [48, 11.2],
-        [72, 13.4],
-        [96, 14.6],
+        [36, 9.8],
+        [48, 11.4],
+        [60, 12.6],
+        [72, 13.5],
+        [84, 14.2],
+        [96, 14.8],
+        [108, 15],
         [120, 15],
         [144, 15],
         [168, 15],
       ]),
-      note: "Plateaus around 15 mg/dL (≈257 µmol/L).",
+      note: "Fine-tuned from the shared phototherapy chart · plateaus near 15 mg/dL (≈257 µmol/L).",
     },
   ],
-  eligibility:
-    "Use when gestation is 35 weeks or above. Risk-tier selection follows the supplied chart: lower, medium or higher risk.",
-  caution:
-    "Recreated from the shared ≥35-week phototherapy image. Confirm against the original chart when the value sits close to a treatment boundary.",
+  eligibility: "Auto-selected when gestation is 35 weeks or above. Risk tier is chosen from gestation plus haemolysis / neurotoxicity flags.",
+  caution: "Recreated from the shared ≥35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
 };
 
 const TERM_EXCHANGE: PhototherapyNomogram = {
   key: "term-exchange",
-  title: "≥35 weeks · Exchange transfusion cut-off chart",
+  title: "≥35 weeks · Exchange transfusion cut-off",
   shortTitle: "≥35 wk ET",
-  subtitle: "Shared term / near-term bilirubin exchange transfusion threshold chart",
+  subtitle: "Term / near-term exchange-transfusion chart fine-tuned from the shared image",
   maxHours: 168,
   maxTsb: 513,
   yTickStep: 85,
   curves: [
     {
       key: "term-lower-risk",
-      label: "Lower risk (≥ 38 weeks and well)",
-      symbol: "•",
-      color: "#e5e7eb",
+      label: "Lower risk · ≥38 weeks and well",
+      symbol: "•••",
+      color: "#67e8f9",
+      dashArray: "1 10",
       points: mgDlSeries([
-        [0, 14],
+        [0, 16],
+        [12, 17.4],
         [24, 19],
+        [36, 20.8],
         [48, 22],
+        [60, 23.2],
         [72, 24],
+        [84, 24.4],
         [96, 25],
         [120, 25],
         [144, 25],
         [168, 25],
       ]),
-      note: "Plateaus around 25 mg/dL (≈428 µmol/L).",
+      note: "Fine-tuned from the shared exchange chart · plateaus near 25 mg/dL (≈428 µmol/L).",
     },
     {
       key: "term-medium-risk",
-      label: "Medium risk (≥ 38 weeks + risk factors, or 35–37 6/7 weeks and well)",
+      label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well",
       symbol: "– –",
       color: "#fbbf24",
+      dashArray: "14 10",
       points: mgDlSeries([
-        [0, 12],
+        [0, 14],
+        [12, 15.2],
         [24, 16.5],
+        [36, 18],
         [48, 19],
-        [72, 21],
+        [60, 20],
+        [72, 21.2],
+        [84, 21.9],
         [96, 22.5],
         [120, 22.5],
         [144, 22.5],
         [168, 22.5],
       ]),
-      note: "Plateaus around 22.5 mg/dL (≈385 µmol/L).",
+      note: "Fine-tuned from the shared exchange chart · plateaus near 22.5 mg/dL (≈385 µmol/L).",
     },
     {
       key: "term-higher-risk",
-      label: "Higher risk (35–37 6/7 weeks + risk factors)",
+      label: "Higher risk · 35–37 6/7 weeks + risk factors",
       symbol: "—",
-      color: "#4ade80",
+      color: "#fb7185",
       points: mgDlSeries([
         [0, 12],
+        [12, 13.5],
         [24, 15],
+        [36, 16],
         [48, 17],
+        [60, 17.8],
         [72, 18.5],
+        [84, 18.8],
         [96, 19],
         [120, 19],
         [144, 19],
         [168, 19],
       ]),
-      note: "Plateaus around 19 mg/dL (≈325 µmol/L).",
+      note: "Fine-tuned from the shared exchange chart · plateaus near 19 mg/dL (≈325 µmol/L).",
     },
   ],
-  eligibility:
-    "Use alongside the ≥35-week chart when assessing exchange-transfusion escalation for term / near-term infants.",
+  eligibility: "Used alongside the ≥35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
   caution:
-    "The first 24 hours are dashed in the shared image because the source notes uncertainty. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or if TSB is ≥85 µmol/L (5 mg/dL) above the selected line.",
+    "The shared source marks the first 24 hours as uncertain with dashed early segments. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.",
 };
 
 export const PHOTOTHERAPY_NOMOGRAMS: PhototherapyNomogram[] = [MRD090, MRD091, TERM_PHOTOTHERAPY, TERM_EXCHANGE];
@@ -344,7 +374,7 @@ export function nominalPhototherapyChoice(
       return {
         nomogram: MRD090,
         curve: MRD090.curves[0] ?? null,
-        rationale: "Birth weight under 1250 g → MRD/090. 1000–1249 g band selected.",
+        rationale: "Auto-selected SRH MRD/090 because birth weight is under 1250 g. 1000–1249 g band is active.",
         exchangeNomogram: null,
         exchangeCurve: null,
       };
@@ -353,7 +383,7 @@ export function nominalPhototherapyChoice(
       return {
         nomogram: MRD090,
         curve: MRD090.curves[1] ?? null,
-        rationale: "Birth weight under 1250 g → MRD/090. 750–999 g band selected.",
+        rationale: "Auto-selected SRH MRD/090 because birth weight is under 1250 g. 750–999 g band is active.",
         exchangeNomogram: null,
         exchangeCurve: null,
       };
@@ -361,7 +391,7 @@ export function nominalPhototherapyChoice(
     return {
       nomogram: MRD090,
       curve: MRD090.curves[2] ?? null,
-      rationale: "Birth weight under 1250 g → MRD/090. 500–749 g band selected.",
+      rationale: "Auto-selected SRH MRD/090 because birth weight is under 1250 g. 500–749 g band is active.",
       exchangeNomogram: null,
       exchangeCurve: null,
     };
@@ -372,7 +402,7 @@ export function nominalPhototherapyChoice(
       return {
         nomogram: MRD091,
         curve: MRD091.curves[0] ?? null,
-        rationale: "Gestation under 35 weeks → MRD/091. >2500 g band selected.",
+        rationale: "Auto-selected SRH MRD/091 because gestation is under 35 weeks. >2500 g band is active.",
         exchangeNomogram: null,
         exchangeCurve: null,
       };
@@ -381,7 +411,7 @@ export function nominalPhototherapyChoice(
       return {
         nomogram: MRD091,
         curve: MRD091.curves[1] ?? null,
-        rationale: "Gestation under 35 weeks → MRD/091. 2000–2499 g band selected.",
+        rationale: "Auto-selected SRH MRD/091 because gestation is under 35 weeks. 2000–2499 g band is active.",
         exchangeNomogram: null,
         exchangeCurve: null,
       };
@@ -390,7 +420,7 @@ export function nominalPhototherapyChoice(
       return {
         nomogram: MRD091,
         curve: MRD091.curves[2] ?? null,
-        rationale: "Gestation under 35 weeks → MRD/091. 1500–1999 g band selected.",
+        rationale: "Auto-selected SRH MRD/091 because gestation is under 35 weeks. 1500–1999 g band is active.",
         exchangeNomogram: null,
         exchangeCurve: null,
       };
@@ -398,7 +428,7 @@ export function nominalPhototherapyChoice(
     return {
       nomogram: MRD091,
       curve: MRD091.curves[3] ?? null,
-      rationale: "Gestation under 35 weeks → MRD/091. 1250–1499 g band selected.",
+      rationale: "Auto-selected SRH MRD/091 because gestation is under 35 weeks. 1250–1499 g band is active.",
       exchangeNomogram: null,
       exchangeCurve: null,
     };
@@ -418,11 +448,11 @@ export function nominalPhototherapyChoice(
 
     const rationale = gestWeeks >= 38
       ? hasAdditionalRiskFactors
-        ? "Gestation ≥38 weeks with neurotoxicity / haemolysis risk → medium-risk ≥35 week line selected."
-        : "Gestation ≥38 weeks and clinically well → lower-risk ≥35 week line selected."
+        ? "Auto-selected the ≥35-week medium-risk pathway because gestation is ≥38 weeks but risk factors are present."
+        : "Auto-selected the ≥35-week lower-risk pathway because gestation is ≥38 weeks and no additional risk factors are marked."
       : hasAdditionalRiskFactors
-        ? "Gestation 35–37 6/7 weeks with neurotoxicity / haemolysis risk → higher-risk ≥35 week line selected."
-        : "Gestation 35–37 6/7 weeks and clinically well → medium-risk ≥35 week line selected.";
+        ? "Auto-selected the ≥35-week higher-risk pathway because gestation is 35–37 6/7 weeks and risk factors are present."
+        : "Auto-selected the ≥35-week medium-risk pathway because gestation is 35–37 6/7 weeks and no extra risk factors are marked.";
 
     return {
       nomogram: TERM_PHOTOTHERAPY,
