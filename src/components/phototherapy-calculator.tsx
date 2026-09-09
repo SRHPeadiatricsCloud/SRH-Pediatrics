@@ -159,11 +159,11 @@ export function PhototherapyNomogramCalculator() {
         <div className="relative">
           <p className="font-semibold tracking-wide text-cyan-200">SRH NICU bilirubin nomograms</p>
           <p className="mt-1 leading-relaxed text-slate-300/90">
-            <b className="text-white">SRH Bilirubin Nomograms — MRD/090, MRD/091, ≥35-week Phototherapy & Exchange</b>
+            <b className="text-white">SRH Bilirubin Nomograms — MRD/090, MRD/091, &gt;35-week Phototherapy & Exchange</b>
           </p>
           <p className="mt-1 leading-relaxed text-slate-400">
             Auto-selects the correct pathway by gestation, weight, ABO or Rh status, and added neurotoxicity risk factors.
-            Charts now show <b className="text-slate-200">both mg/dL and µmol/L</b> with color-coded hologram styling.
+            For the term / near-term pathway, the Bhutani chart notes are shown directly on the graph. Charts now show <b className="text-slate-200">both mg/dL and µmol/L</b> with color-coded hologram styling.
           </p>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function PhototherapyNomogramCalculator() {
         label="Additional bilirubin neurotoxicity risk factors"
         checked={clinicalRiskFactors}
         onChange={setClinicalRiskFactors}
-        helper="Examples: isoimmune haemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, low albumin."
+        helper="Risk factors: isoimmune hemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, or albumin <3 g/dL."
       />
 
       <div className="grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
@@ -434,6 +434,7 @@ function NomogramChart({
         "MRD/091: gestation under 35 weeks with weight ≥1250 g",
         `Current gestation entered: ${gestWeeks} weeks`,
       ];
+  const graphNotes = chart.graphNotes ?? pathwayGuide;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,0.96))] p-4 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
@@ -459,10 +460,12 @@ function NomogramChart({
           </div>
         </div>
         <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[42%] rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-sm">
-          <div className="font-black uppercase tracking-[0.18em] text-white/90">Risk line guide</div>
+          <div className="font-black uppercase tracking-[0.18em] text-white/90">
+            {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
+          </div>
           <div className="mt-1 space-y-1 leading-relaxed">
-            {pathwayGuide.map((item) => (
-              <div key={item}>{item}</div>
+            {graphNotes.map((item) => (
+              <div key={item}>• {item}</div>
             ))}
           </div>
         </div>

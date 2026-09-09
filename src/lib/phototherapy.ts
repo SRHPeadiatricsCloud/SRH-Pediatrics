@@ -24,6 +24,7 @@ export type PhototherapyNomogram = {
   curves: PhototherapyCurve[];
   eligibility: string;
   caution?: string;
+  graphNotes?: string[];
 };
 
 export type PhototherapySelection = {
@@ -183,9 +184,9 @@ const MRD091: PhototherapyNomogram = {
 
 const TERM_PHOTOTHERAPY: PhototherapyNomogram = {
   key: "term-phototherapy",
-  title: "≥35 weeks · Phototherapy cut-off",
-  shortTitle: "≥35 wk PT",
-  subtitle: "Term / near-term phototherapy threshold chart fine-tuned from the shared image",
+  title: "35 weeks and above · Phototherapy cut-off",
+  shortTitle: ">35 wk PT",
+  subtitle: "Bhutani-style term / near-term phototherapy threshold chart fine-tuned from the shared image",
   maxHours: 168,
   maxTsb: 428,
   yTickStep: 85,
@@ -260,13 +261,18 @@ const TERM_PHOTOTHERAPY: PhototherapyNomogram = {
     },
   ],
   eligibility: "Auto-selected when gestation is 35 weeks or above. Risk tier is chosen from gestation plus haemolysis / neurotoxicity flags.",
-  caution: "Recreated from the shared ≥35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
+  caution: "Recreated from the shared >35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
+  graphNotes: [
+    "Risk factors = isoimmune hemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, or albumin <3 g/dL.",
+    "For well infants 35–37 6/7 weeks, intervention can be adjusted around the medium-risk line: lower TSB thresholds for infants closer to 35 weeks and higher TSB thresholds for infants closer to 37 6/7 weeks.",
+    "Conventional phototherapy may be used in hospital or at home at TSB values 2–3 mg/dL below the charted lines, but home phototherapy should not be used in any infant with risk factors.",
+  ],
 };
 
 const TERM_EXCHANGE: PhototherapyNomogram = {
   key: "term-exchange",
-  title: "≥35 weeks · Exchange transfusion cut-off",
-  shortTitle: "≥35 wk ET",
+  title: "35 weeks and above · Exchange transfusion cut-off",
+  shortTitle: ">35 wk ET",
   subtitle: "Term / near-term exchange-transfusion chart fine-tuned from the shared image",
   maxHours: 168,
   maxTsb: 513,
@@ -338,9 +344,14 @@ const TERM_EXCHANGE: PhototherapyNomogram = {
       note: "Fine-tuned from the shared exchange chart · plateaus near 19 mg/dL (≈325 µmol/L).",
     },
   ],
-  eligibility: "Used alongside the ≥35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
+  eligibility: "Used alongside the >35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
   caution:
     "The shared source marks the first 24 hours as uncertain with dashed early segments. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.",
+  graphNotes: [
+    "The dashed segments in the first 24 hours indicate uncertainty due to a wide range of clinical circumstances and response to phototherapy.",
+    "Immediate exchange transfusion is recommended if the infant shows signs of acute bilirubin encephalopathy or if TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.",
+    "Measure serum albumin and calculate the bilirubin / albumin ratio when escalation is being considered.",
+  ],
 };
 
 export const PHOTOTHERAPY_NOMOGRAMS: PhototherapyNomogram[] = [MRD090, MRD091, TERM_PHOTOTHERAPY, TERM_EXCHANGE];

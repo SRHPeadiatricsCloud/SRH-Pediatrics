@@ -124,9 +124,9 @@
       <div class="eyebrow">Sri Ramakrishna Hospital · Department of Pediatrics</div>
       <h1>SRH Bilirubin Nomograms</h1>
       <p>
-        <b style="color:#fff">MRD/090, MRD/091, ≥35-week Phototherapy & Exchange</b> in one bedside calculator.
+        <b style="color:#fff">MRD/090, MRD/091, &gt;35-week Phototherapy & Exchange</b> in one bedside calculator.
         The pathway auto-selects from gestation, birth weight, ABO/Rh status, and additional neurotoxicity risk factors,
-        with the chart displayed in both <b style="color:#fff">mg/dL</b> and <b style="color:#fff">µmol/L</b>.
+        with the Bhutani chart notes shown directly on the graph and the chart displayed in both <b style="color:#fff">mg/dL</b> and <b style="color:#fff">µmol/L</b>.
       </p>
     </section>
 
@@ -142,7 +142,7 @@
           <input id="clinicalRisk" type="checkbox" />
           <div>
             <label for="clinicalRisk">Additional bilirubin neurotoxicity risk factors</label>
-            <small>Examples: isoimmune haemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, low albumin.</small>
+            <small>Risk factors: isoimmune hemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, or albumin &lt;3 g/dL.</small>
           </div>
         </div>
       </div>
@@ -220,14 +220,19 @@
       },
       {
         key: "term-phototherapy",
-        shortTitle: "≥35 wk PT",
-        title: "≥35 weeks · Phototherapy cut-off",
-        subtitle: "Term / near-term phototherapy threshold chart fine-tuned from the shared image",
+        shortTitle: ">35 wk PT",
+        title: "35 weeks and above · Phototherapy cut-off",
+        subtitle: "Bhutani-style term / near-term phototherapy threshold chart fine-tuned from the shared image",
         maxHours: 168,
         maxTsb: 428,
         yTickStep: 85,
         eligibility: "Auto-selected when gestation is 35 weeks or above. Risk tier is chosen from gestation plus haemolysis / neurotoxicity flags.",
-        caution: "Recreated from the shared ≥35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
+        caution: "Recreated from the shared >35-week phototherapy image. If the bilirubin value lies very close to a treatment boundary, confirm against the original chart.",
+        graphNotes: [
+          'Risk factors = isoimmune hemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, or albumin <3 g/dL.',
+          'For well infants 35–37 6/7 weeks, intervention can be adjusted around the medium-risk line: lower TSB thresholds for infants closer to 35 weeks and higher TSB thresholds for infants closer to 37 6/7 weeks.',
+          'Conventional phototherapy may be used in hospital or at home at TSB values 2–3 mg/dL below the charted lines, but home phototherapy should not be used in any infant with risk factors.'
+        ],
         curves: [
           { key: "term-lower-risk", label: "Lower risk · ≥38 weeks and well", symbol: "•••", color: "#67e8f9", dashArray: "1 10", note: "Fine-tuned from the shared phototherapy chart · plateaus near 20.8 mg/dL (≈356 µmol/L).", points: mgSeries([[0,6.5],[12,8.6],[24,11.8],[36,13.8],[48,15.5],[60,16.8],[72,17.8],[84,18.9],[96,19.8],[108,20.3],[120,20.8],[144,20.8],[168,20.8]]) },
           { key: "term-medium-risk", label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well", symbol: "– –", color: "#fbbf24", dashArray: "14 10", note: "Fine-tuned from the shared phototherapy chart · plateaus near 18 mg/dL (≈308 µmol/L).", points: mgSeries([[0,5],[12,7.1],[24,10],[36,11.8],[48,13.5],[60,14.6],[72,15.6],[84,16.6],[96,17.3],[108,17.8],[120,18],[144,18],[168,18]]) },
@@ -236,14 +241,19 @@
       },
       {
         key: "term-exchange",
-        shortTitle: "≥35 wk ET",
-        title: "≥35 weeks · Exchange transfusion cut-off",
+        shortTitle: ">35 wk ET",
+        title: "35 weeks and above · Exchange transfusion cut-off",
         subtitle: "Term / near-term exchange-transfusion chart fine-tuned from the shared image",
         maxHours: 168,
         maxTsb: 513,
         yTickStep: 85,
-        eligibility: "Used alongside the ≥35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
+        eligibility: "Used alongside the >35-week phototherapy chart for exchange-transfusion escalation at term / near-term gestation.",
         caution: "The source marks the first 24 hours as uncertain with dashed early segments. Immediate exchange is recommended if acute bilirubin encephalopathy is suspected or TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.",
+        graphNotes: [
+          'The dashed segments in the first 24 hours indicate uncertainty due to a wide range of clinical circumstances and response to phototherapy.',
+          'Immediate exchange transfusion is recommended if the infant shows signs of acute bilirubin encephalopathy or if TSB is at least 5 mg/dL (≈85 µmol/L) above the selected line.',
+          'Measure serum albumin and calculate the bilirubin / albumin ratio when escalation is being considered.'
+        ],
         curves: [
           { key: "term-lower-risk", label: "Lower risk · ≥38 weeks and well", symbol: "•••", color: "#67e8f9", dashArray: "1 10", note: "Fine-tuned from the shared exchange chart · plateaus near 25 mg/dL (≈428 µmol/L).", points: mgSeries([[0,16],[12,17.4],[24,19],[36,20.8],[48,22],[60,23.2],[72,24],[84,24.4],[96,25],[120,25],[144,25],[168,25]]) },
           { key: "term-medium-risk", label: "Medium risk · ≥38 weeks + risk factors, or 35–37 6/7 weeks and well", symbol: "– –", color: "#fbbf24", dashArray: "14 10", note: "Fine-tuned from the shared exchange chart · plateaus near 22.5 mg/dL (≈385 µmol/L).", points: mgSeries([[0,14],[12,15.2],[24,16.5],[36,18],[48,19],[60,20],[72,21.2],[84,21.9],[96,22.5],[120,22.5],[144,22.5],[168,22.5]]) },
@@ -357,6 +367,7 @@
             'MRD/091: gestation under 35 weeks with weight ≥1250 g',
             `Current gestation entered: ${gestWeeks} weeks`
           ];
+      const graphNotes = chart.graphNotes || pathwayGuide;
 
       let severity = 'info', headline = 'Below phototherapy line', note = 'Continue monitoring and clinical review.';
       const exchangeSuffix = exchangeThreshold == null ? '' : ` Exchange line at this age: ${exchangeThreshold} µmol/L (${micromolToMgDl(exchangeThreshold)} mg/dL).`;
@@ -405,7 +416,7 @@
       if (clinicalRisk) riskItems.push('Additional bilirubin neurotoxicity risk factors marked present');
       el('risks').innerHTML = `<div class="eyebrow" style="color:#f59e0b">Risk flags and selection logic</div>${riskItems.length ? riskItems.map(x=>`<div class="risk-item">${x}</div>`).join('') : '<p>No ABO or Rh incompatibility flag and no extra clinical risk factor selected.</p>'}<p style="margin-top:12px">${selected.why}</p><p>MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.</p>`;
       el('graphProfile').innerHTML = `<div class="ttl">Graph risk profile</div><div>${selected.why}</div><div style="margin-top:8px;color:#94a3b8">${activeRiskItems.map(x => `• ${x}`).join('<br/>')}</div>`;
-      el('graphGuide').innerHTML = `<div class="ttl" style="color:#e2e8f0">Risk line guide</div><div>${pathwayGuide.join('<br/>')}</div>`;
+      el('graphGuide').innerHTML = `<div class="ttl" style="color:#e2e8f0">${chart.graphNotes ? 'Source chart notes' : 'Risk line guide'}</div><div>${graphNotes.map(x => `• ${x}`).join('<br/>')}</div>`;
 
       el('tabs').innerHTML = NOMOGRAMS.map(n => `<button class="tab ${n.key===chart.key?'active':''}" onclick="window.activeKey='${n.key}';render()">${n.title}</button>`).join('');
       el('chartTitle').innerHTML = `<div class="eyebrow">Hologram chart</div><h2 style="margin:6px 0 4px">${chart.title}</h2><p style="margin:0 0 8px">${chart.subtitle}</p><p style="margin:0 0 8px">${chart.eligibility}</p><p style="margin:0 0 14px">${chart.caution || ''}</p>`;
