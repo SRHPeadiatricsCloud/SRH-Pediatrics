@@ -46,6 +46,8 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
           <p className="mb-3 text-[10px] text-slate-400">📖 {calc.citation}</p>
           {calc.id === "phototherapy-nomograms" ? (
             <PhototherapyNomogramCalculator />
+          ) : calc.id === "abg-vbg-auto-interpreter" ? (
+            <BloodGasInterpreter />
           ) : (
             <>
               {calc.external && (
