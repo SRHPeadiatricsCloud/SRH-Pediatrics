@@ -89,7 +89,17 @@
     .tab { cursor: pointer; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); font-weight: 700; }
     .tab.active { background: linear-gradient(135deg, #22d3ee, #3b82f6); color: #00131f; border-color: transparent; box-shadow: 0 0 24px rgba(34,211,238,.16); }
     .chartcard { padding: 18px; }
-    .chartwrap { overflow-x: auto; border: 1px solid rgba(56,189,248,.12); border-radius: 16px; background: rgba(0,0,0,.18); }
+    .chartwrap { position: relative; overflow: hidden; border: 1px solid rgba(56,189,248,.12); border-radius: 16px; background: rgba(0,0,0,.18); }
+    .chartscroll { overflow-x: auto; }
+    .graph-note {
+      position: absolute; z-index: 10; top: 12px; max-width: 42%;
+      border: 1px solid rgba(56,189,248,.18); border-radius: 14px; background: rgba(2,6,23,.76);
+      padding: 10px 12px; font-size: 10px; line-height: 1.45; color: #dbeafe; backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+    .graph-note.left { left: 12px; }
+    .graph-note.right { right: 12px; border-color: rgba(255,255,255,.10); color: #cbd5e1; }
+    .graph-note .ttl { font-weight: 900; text-transform: uppercase; letter-spacing: .18em; color: #67e8f9; margin-bottom: 6px; }
     .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .legend .item { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,.04); min-width: 220px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 12px currentColor; }
@@ -146,7 +156,11 @@
     <div id="tabs" class="tabs"></div>
     <section class="card chartcard">
       <div id="chartTitle"></div>
-      <div class="chartwrap"><svg id="chart" viewBox="0 0 860 420" style="min-width:780px;width:100%;display:block"></svg></div>
+      <div class="chartwrap">
+        <div class="graph-note left" id="graphProfile"></div>
+        <div class="graph-note right" id="graphGuide"></div>
+        <div class="chartscroll"><svg id="chart" viewBox="0 0 860 420" style="min-width:780px;width:100%;display:block"></svg></div>
+      </div>
       <div id="legend" class="legend"></div>
       <div class="footer">
         These curves were fine-tuned from the shared source images for bedside plotting. If a result sits exactly on a treatment boundary, confirm against the original chart before acting.
@@ -326,6 +340,23 @@
       const exchangeThreshold = selected.exchangeCurve ? curveAt(selected.exchangeCurve, ageHours) : (selected.curve?.exchange ?? null);
       const delta = threshold == null ? null : Math.round((tsbUmol - threshold) * 10) / 10;
       const exchangeDelta = exchangeThreshold == null ? null : Math.round((tsbUmol - exchangeThreshold) * 10) / 10;
+      const termChart = chart.key.startsWith('term-');
+      const activeRiskItems = [];
+      if (hasAbo) activeRiskItems.push('Possible ABO incompatibility');
+      if (hasRh) activeRiskItems.push('Possible Rh incompatibility');
+      if (clinicalRisk) activeRiskItems.push('Additional bilirubin neurotoxicity risk factors marked present');
+      if (!activeRiskItems.length) activeRiskItems.push('No ABO / Rh incompatibility or extra neurotoxicity risk flag selected');
+      const pathwayGuide = termChart
+        ? [
+            'Lower risk: ≥38 weeks and well',
+            'Medium risk: ≥38 weeks + risk factors, or 35–37 6/7 weeks and well',
+            'Higher risk: 35–37 6/7 weeks + risk factors'
+          ]
+        : [
+            'MRD/090: birth weight under 1250 g',
+            'MRD/091: gestation under 35 weeks with weight ≥1250 g',
+            `Current gestation entered: ${gestWeeks} weeks`
+          ];
 
       let severity = 'info', headline = 'Below phototherapy line', note = 'Continue monitoring and clinical review.';
       const exchangeSuffix = exchangeThreshold == null ? '' : ` Exchange line at this age: ${exchangeThreshold} µmol/L (${micromolToMgDl(exchangeThreshold)} mg/dL).`;
@@ -373,6 +404,8 @@
       if (hasRh) riskItems.push('Possible Rh incompatibility');
       if (clinicalRisk) riskItems.push('Additional bilirubin neurotoxicity risk factors marked present');
       el('risks').innerHTML = `<div class="eyebrow" style="color:#f59e0b">Risk flags and selection logic</div>${riskItems.length ? riskItems.map(x=>`<div class="risk-item">${x}</div>`).join('') : '<p>No ABO or Rh incompatibility flag and no extra clinical risk factor selected.</p>'}<p style="margin-top:12px">${selected.why}</p><p>MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.</p>`;
+      el('graphProfile').innerHTML = `<div class="ttl">Graph risk profile</div><div>${selected.why}</div><div style="margin-top:8px;color:#94a3b8">${activeRiskItems.map(x => `• ${x}`).join('<br/>')}</div>`;
+      el('graphGuide').innerHTML = `<div class="ttl" style="color:#e2e8f0">Risk line guide</div><div>${pathwayGuide.join('<br/>')}</div>`;
 
       el('tabs').innerHTML = NOMOGRAMS.map(n => `<button class="tab ${n.key===chart.key?'active':''}" onclick="window.activeKey='${n.key}';render()">${n.title}</button>`).join('');
       el('chartTitle').innerHTML = `<div class="eyebrow">Hologram chart</div><h2 style="margin:6px 0 4px">${chart.title}</h2><p style="margin:0 0 8px">${chart.subtitle}</p><p style="margin:0 0 8px">${chart.eligibility}</p><p style="margin:0 0 14px">${chart.caution || ''}</p>`;

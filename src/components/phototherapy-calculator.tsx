@@ -264,7 +264,15 @@ export function PhototherapyNomogramCalculator() {
         })}
       </div>
 
-      <NomogramChart chart={activeNomogram} currentCurveKey={activeCurveKey} ageHours={ageHours} tsbUmol={tsbUmol} />
+      <NomogramChart
+        chart={activeNomogram}
+        currentCurveKey={activeCurveKey}
+        ageHours={ageHours}
+        tsbUmol={tsbUmol}
+        gestWeeks={gestWeeks}
+        riskFlags={riskFlags}
+        selectionSummary={selection.rationale}
+      />
     </div>
   );
 }
@@ -374,11 +382,17 @@ function NomogramChart({
   currentCurveKey,
   ageHours,
   tsbUmol,
+  gestWeeks,
+  riskFlags,
+  selectionSummary,
 }: {
   chart: PhototherapyNomogram;
   currentCurveKey: string | null;
   ageHours: number;
   tsbUmol: number;
+  gestWeeks: number;
+  riskFlags: string[];
+  selectionSummary: string;
 }) {
   const width = 860;
   const height = 420;
@@ -407,6 +421,19 @@ function NomogramChart({
 
   const xTicks = Array.from({ length: Math.floor(chart.maxHours / 24) + 1 }, (_, i) => i * 24);
   const xMinorTicks = Array.from({ length: Math.floor(chart.maxHours / 12) + 1 }, (_, i) => i * 12).filter((tick) => !xTicks.includes(tick));
+  const termChart = chart.key.startsWith("term-");
+  const activeRiskItems = riskFlags.length > 0 ? riskFlags : ["No ABO / Rh incompatibility or extra neurotoxicity risk flag selected"];
+  const pathwayGuide = termChart
+    ? [
+        "Lower risk: ≥38 weeks and well",
+        "Medium risk: ≥38 weeks + risk factors, or 35–37 6/7 weeks and well",
+        "Higher risk: 35–37 6/7 weeks + risk factors",
+      ]
+    : [
+        "MRD/090: birth weight under 1250 g",
+        "MRD/091: gestation under 35 weeks with weight ≥1250 g",
+        `Current gestation entered: ${gestWeeks} weeks`,
+      ];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,0.96))] p-4 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
@@ -421,8 +448,26 @@ function NomogramChart({
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-cyan-400/10 bg-slate-950/70">
-        <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[780px] w-full">
+      <div className="relative mt-4 overflow-hidden rounded-xl border border-cyan-400/10 bg-slate-950/70">
+        <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[48%] rounded-xl border border-cyan-400/20 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-200 backdrop-blur-sm">
+          <div className="font-black uppercase tracking-[0.18em] text-cyan-200">Graph risk profile</div>
+          <div className="mt-1 leading-relaxed text-slate-300">{selectionSummary}</div>
+          <div className="mt-2 space-y-1 text-slate-400">
+            {activeRiskItems.map((item) => (
+              <div key={item}>• {item}</div>
+            ))}
+          </div>
+        </div>
+        <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[42%] rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-sm">
+          <div className="font-black uppercase tracking-[0.18em] text-white/90">Risk line guide</div>
+          <div className="mt-1 space-y-1 leading-relaxed">
+            {pathwayGuide.map((item) => (
+              <div key={item}>{item}</div>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[780px] w-full">
           <defs>
             <linearGradient id={`bg-${chart.key}`} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="rgba(34,211,238,0.10)" />
@@ -549,6 +594,7 @@ function NomogramChart({
             Total serum bilirubin (µmol/L)
           </text>
         </svg>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto]">
