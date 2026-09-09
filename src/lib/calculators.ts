@@ -60,15 +60,15 @@ export const CALCULATORS: Calculator[] = [
   /* ================= Neonatal / NICU ================= */
   {
     id: "phototherapy-nomograms",
-    name: "Hospital Phototherapy Nomograms (MRD/090 & MRD/091)",
+    name: "Hospital Bilirubin Nomograms (Phototherapy & Exchange)",
     category: "neonatal",
     citation:
-      "Sri Ramakrishna Hospital neonatal jaundice nomograms — MRD/090 for birth weight under 1250 g and MRD/091 for infants under 35 weeks gestation.",
+      "Sri Ramakrishna Hospital / unit bilirubin charts — MRD/090 for birth weight under 1250 g, MRD/091 for infants under 35 weeks gestation, plus supplied ≥35-week phototherapy and exchange-transfusion cut-off charts.",
     fields: [],
     compute: () => ({
       value: "Open the interactive charts below",
       severity: "info",
-      note: "Auto-selects the hospital phototherapy line from age, birth weight, TSB and blood groups.",
+      note: "Auto-selects the relevant bilirubin line from age, gestation, birth weight, TSB and risk flags.",
     }),
   },
   scale("apgar", "Apgar Score", "neonatal",

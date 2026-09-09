@@ -28,127 +28,155 @@ export function PhototherapyNomogramCalculator() {
   const [tsbUmol, setTsbUmol] = useState(170);
   const [motherGroup, setMotherGroup] = useState<BloodGroup>("Unknown");
   const [babyGroup, setBabyGroup] = useState<BloodGroup>("Unknown");
+  const [clinicalRiskFactors, setClinicalRiskFactors] = useState(false);
   const [activeChartKey, setActiveChartKey] = useState<string | null>(null);
 
-  const selection = useMemo(() => nominalPhototherapyChoice(weightGrams, gestWeeks), [weightGrams, gestWeeks]);
-  const bloodRisks = useMemo(() => bloodGroupRiskLabel(motherGroup, babyGroup), [motherGroup, babyGroup]);
-  const activeKey = activeChartKey ?? selection.nomogram?.key ?? PHOTOTHERAPY_NOMOGRAMS[0].key;
-  const activeNomogram = PHOTOTHERAPY_NOMOGRAMS.find((n) => n.key === activeKey) ?? PHOTOTHERAPY_NOMOGRAMS[0];
+  const aboRisk = useMemo(() => aboIncompatibilityRisk(motherGroup, babyGroup), [motherGroup, babyGroup]);
+  const rhRisk = useMemo(() => rhIncompatibilityRisk(motherGroup, babyGroup), [motherGroup, babyGroup]);
+  const combinedRisk = clinicalRiskFactors || aboRisk || rhRisk;
+
+  const selection = useMemo(
+    () => nominalPhototherapyChoice(weightGrams, gestWeeks, combinedRisk),
+    [combinedRisk, gestWeeks, weightGrams],
+  );
+
+  const riskFlags = useMemo(() => {
+    const flags = bloodGroupRiskLabel(motherGroup, babyGroup);
+    if (clinicalRiskFactors) {
+      flags.push("Additional bilirubin neurotoxicity risk factors marked present");
+    }
+    return flags;
+  }, [babyGroup, clinicalRiskFactors, motherGroup]);
+
+  const activeKey = activeChartKey ?? selection.nomogram?.key ?? PHOTOTHERAPY_NOMOGRAMS[0]?.key ?? "mrd-090";
+  const activeNomogram = PHOTOTHERAPY_NOMOGRAMS.find((n) => n.key === activeKey) ?? PHOTOTHERAPY_NOMOGRAMS[0]!;
+  const activeCurveKey =
+    (selection.curve && activeNomogram.curves.some((curve) => curve.key === selection.curve?.key) && selection.curve.key) ||
+    (selection.exchangeCurve &&
+      activeNomogram.curves.some((curve) => curve.key === selection.exchangeCurve?.key) &&
+      selection.exchangeCurve.key) ||
+    null;
 
   const interpretation = useMemo(() => {
     const curve = selection.curve;
     if (!curve || !selection.nomogram) {
       return {
         severity: "info" as const,
-        headline: "Outside these two hospital charts",
+        headline: "Reference only",
         threshold: null as number | null,
+        exchangeThreshold: null as number | null,
         delta: null as number | null,
-        exchange: null as number | null,
+        exchangeDelta: null as number | null,
         note: selection.rationale,
       };
     }
 
     const threshold = curveValueAt(curve, ageHours);
+    const exchangeThreshold = selection.exchangeCurve
+      ? curveValueAt(selection.exchangeCurve, ageHours)
+      : curve.exchange ?? null;
     const delta = Math.round((tsbUmol - threshold) * 10) / 10;
-    const exchange = curve.exchange ?? null;
-    const abo = aboIncompatibilityRisk(motherGroup, babyGroup);
-    const rh = rhIncompatibilityRisk(motherGroup, babyGroup);
-    const highRisk = abo || rh;
+    const exchangeDelta = exchangeThreshold != null ? Math.round((tsbUmol - exchangeThreshold) * 10) / 10 : null;
+    const highRisk = combinedRisk;
     const nearLine = tsbUmol >= threshold - 30;
+    const exchangeSuffix = exchangeThreshold != null
+      ? ` Exchange line at this age: ${exchangeThreshold} µmol/L (${micromolToMgDl(exchangeThreshold)} mg/dL).`
+      : "";
 
-    if (exchange != null && tsbUmol >= exchange) {
+    if (exchangeThreshold != null && tsbUmol >= exchangeThreshold + 85) {
       return {
         severity: "crit" as const,
-        headline: "At / above exchange threshold",
+        headline: "≥85 µmol/L above exchange line",
         threshold,
+        exchangeThreshold,
         delta,
-        exchange,
-        note: `TSB is at or above the exchange line for ${curve.label}. Start intensive phototherapy, prepare exchange transfusion and escalate immediately.`,
+        exchangeDelta,
+        note: `TSB is at least 5 mg/dL (85 µmol/L) above the selected exchange line for ${curve.label}. Escalate immediately for intensive phototherapy and exchange-transfusion pathway.${exchangeSuffix}`,
+      };
+    }
+    if (exchangeThreshold != null && tsbUmol >= exchangeThreshold) {
+      return {
+        severity: "crit" as const,
+        headline: "At / above exchange line",
+        threshold,
+        exchangeThreshold,
+        delta,
+        exchangeDelta,
+        note: `TSB is at or above the stored exchange threshold for ${curve.label}. Start intensive phototherapy, prepare exchange transfusion and escalate immediately.${exchangeSuffix}`,
       };
     }
     if (tsbUmol >= threshold) {
       return {
         severity: highRisk ? ("crit" as const) : ("warn" as const),
-        headline: highRisk ? "Above phototherapy line with haemolysis risk" : "Above phototherapy line",
+        headline: highRisk ? "Above phototherapy line with risk factors" : "Above phototherapy line",
         threshold,
+        exchangeThreshold,
         delta,
-        exchange,
+        exchangeDelta,
         note: highRisk
-          ? `TSB is above the phototherapy threshold and the blood groups suggest haemolysis risk. Treat promptly and monitor more closely.`
-          : `TSB is above the plotted phototherapy threshold for ${curve.label}. Start / continue phototherapy and recheck bilirubin as per unit protocol.`,
+          ? `TSB is above the selected phototherapy threshold and haemolysis / neurotoxicity risk is present. Treat promptly and trend bilirubin closely.${exchangeSuffix}`
+          : `TSB is above the plotted phototherapy threshold for ${curve.label}. Start / continue phototherapy and repeat bilirubin as per unit protocol.${exchangeSuffix}`,
       };
     }
     if (nearLine || highRisk) {
       return {
         severity: "warn" as const,
-        headline: highRisk ? "Below line but haemolysis risk present" : "Approaching phototherapy line",
+        headline: highRisk ? "Below line but risk factors present" : "Approaching phototherapy line",
         threshold,
+        exchangeThreshold,
         delta,
-        exchange,
+        exchangeDelta,
         note: highRisk
-          ? `Blood groups suggest possible ABO/Rh incompatibility. Even though the TSB is below the plotted line, trend bilirubin closely and send haemolysis work-up if clinically indicated.`
-          : `TSB is within 30 µmol/L of the plotted threshold. Recheck soon and ensure feeds, hydration and follow-up are clear.`,
+          ? `Risk factors suggest closer bilirubin surveillance even though the TSB is below the plotted treatment line. Send haemolysis work-up or broader evaluation if clinically indicated.${exchangeSuffix}`
+          : `TSB is within 30 µmol/L of the selected phototherapy line. Recheck soon and ensure feeds, hydration and follow-up are clear.${exchangeSuffix}`,
       };
     }
     return {
       severity: "info" as const,
       headline: "Below phototherapy line",
       threshold,
+      exchangeThreshold,
       delta,
-      exchange,
-      note: `Current TSB plots safely below the selected hospital line. Continue monitoring and clinical review.`,
+      exchangeDelta,
+      note: `Current TSB plots below the selected treatment line. Continue monitoring and clinical review.${exchangeSuffix}`,
     };
-  }, [ageHours, babyGroup, gestWeeks, motherGroup, selection, tsbUmol]);
+  }, [ageHours, combinedRisk, selection, tsbUmol]);
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-[11px] text-slate-300">
-        <p className="font-semibold text-cyan-200">Hospital phototherapy nomograms</p>
+        <p className="font-semibold text-cyan-200">Hospital bilirubin nomograms</p>
         <p className="mt-1 leading-relaxed text-slate-400">
-          Recreated bedside plotting for the two local neonatal jaundice charts: <b className="text-slate-200">MRD/090</b>
-          {" "}(birth weight under 1250 g) and <b className="text-slate-200">MRD/091</b> (preterm infant under 35 weeks).
-          Enter age, birth weight, TSB and blood groups to auto-select the likely chart and line.
+          Recreated bedside plotting for four bilirubin decision charts: <b className="text-slate-200">MRD/090</b>
+          {" "}(birth weight under 1250 g), <b className="text-slate-200">MRD/091</b> (preterm infant under 35 weeks),
+          the shared <b className="text-slate-200">≥35 week phototherapy cut-off</b> chart, and the shared
+          <b className="text-slate-200"> ≥35 week exchange-transfusion cut-off</b> chart.
         </p>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <Field
-          label="Age in hours"
-          value={ageHours}
-          onChange={setAgeHours}
-          min={0}
-          max={240}
-          unit="h"
-        />
-        <Field
-          label="Gestation"
-          value={gestWeeks}
-          onChange={setGestWeeks}
-          min={22}
-          max={42}
-          step={0.1}
-          unit="weeks"
-        />
-        <Field
-          label="Birth weight"
-          value={weightGrams}
-          onChange={setWeightGrams}
-          min={400}
-          max={5000}
-          unit="g"
-        />
+        <Field label="Age in hours" value={ageHours} onChange={setAgeHours} min={0} max={240} unit="h" />
+        <Field label="Gestation" value={gestWeeks} onChange={setGestWeeks} min={22} max={42} step={0.1} unit="weeks" />
+        <Field label="Birth weight" value={weightGrams} onChange={setWeightGrams} min={400} max={5000} unit="g" />
         <Field
           label="Total serum bilirubin"
           value={tsbUmol}
           onChange={setTsbUmol}
           min={0}
-          max={500}
+          max={600}
           unit="µmol/L"
           helper={`${micromolToMgDl(tsbUmol)} mg/dL`}
         />
         <SelectField label="Mother blood group" value={motherGroup} onChange={(v) => setMotherGroup(v as BloodGroup)} />
         <SelectField label="Baby blood group" value={babyGroup} onChange={(v) => setBabyGroup(v as BloodGroup)} />
       </div>
+
+      <ToggleField
+        label="Additional bilirubin neurotoxicity risk factors"
+        checked={clinicalRiskFactors}
+        onChange={setClinicalRiskFactors}
+        helper="Examples from the shared term charts: isoimmune haemolytic disease, G6PD deficiency, asphyxia, significant lethargy, temperature instability, sepsis, acidosis, low albumin."
+      />
 
       <div className="grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
         <div className={`rounded-2xl border p-4 ${TONE[interpretation.severity]}`}>
@@ -158,43 +186,50 @@ export function PhototherapyNomogramCalculator() {
               <div className="text-lg font-black text-white">{interpretation.headline}</div>
             </div>
             <span className="ml-auto rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/90">
-              {selection.nomogram ? `${selection.nomogram.shortTitle} · ${selection.curve?.symbol} ${selection.curve?.label}` : "reference only"}
+              {selection.nomogram ? `${selection.nomogram.shortTitle} · ${selection.curve?.label}` : "reference only"}
             </span>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <Metric k="Chosen chart" v={selection.nomogram?.title ?? "Use ≥35 week pathway"} />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric k="Chosen chart" v={selection.nomogram?.title ?? "Enter gestation / weight"} />
             <Metric
-              k="Threshold at this age"
+              k="Phototherapy line"
               v={interpretation.threshold != null ? `${interpretation.threshold} µmol/L` : "—"}
               sub={interpretation.threshold != null ? `${micromolToMgDl(interpretation.threshold)} mg/dL` : selection.rationale}
             />
             <Metric
-              k="Δ from line"
+              k="Exchange line"
+              v={interpretation.exchangeThreshold != null ? `${interpretation.exchangeThreshold} µmol/L` : "—"}
+              sub={interpretation.exchangeThreshold != null ? `${micromolToMgDl(interpretation.exchangeThreshold)} mg/dL` : "No exchange line stored for the selected path"}
+            />
+            <Metric
+              k="Δ from phototherapy"
               v={interpretation.delta != null ? `${interpretation.delta > 0 ? "+" : ""}${interpretation.delta} µmol/L` : "—"}
-              sub={interpretation.exchange != null ? `Exchange line ${interpretation.exchange} µmol/L` : "No exchange note stored for this line"}
+              sub={interpretation.exchangeDelta != null ? `Δ from exchange ${interpretation.exchangeDelta > 0 ? "+" : ""}${interpretation.exchangeDelta} µmol/L` : ""}
             />
           </div>
           <p className="mt-3 text-[12px] leading-relaxed text-current">{interpretation.note}</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-          <div className="lbl mb-2">Blood-group risk flags</div>
-          {bloodRisks.length > 0 ? (
+          <div className="lbl mb-2">Risk flags & line selection</div>
+          {riskFlags.length > 0 ? (
             <div className="space-y-1.5">
-              {bloodRisks.map((risk) => (
+              {riskFlags.map((risk) => (
                 <div key={risk} className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-2 text-xs text-amber-200">
                   {risk}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400">No ABO / Rh incompatibility flag from the entered blood groups.</p>
+            <p className="text-xs text-slate-400">No ABO / Rh incompatibility flag or extra risk factor selected.</p>
           )}
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] text-slate-400">
             <p>
               <b className="text-slate-200">Selection logic:</b> MRD/090 is used first for birth weight under 1250 g. MRD/091
-              is used for babies under 35 weeks with birth weight 1250 g or above.
+              is used for babies under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the shared term chart
+              chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.
             </p>
+            <p className="mt-2">{selection.rationale}</p>
           </div>
         </div>
       </div>
@@ -215,12 +250,7 @@ export function PhototherapyNomogramCalculator() {
         })}
       </div>
 
-      <NomogramChart
-        chart={activeNomogram}
-        currentCurveKey={selection.nomogram?.key === activeNomogram.key ? selection.curve?.key ?? null : null}
-        ageHours={ageHours}
-        tsbUmol={tsbUmol}
-      />
+      <NomogramChart chart={activeNomogram} currentCurveKey={activeCurveKey} ageHours={ageHours} tsbUmol={tsbUmol} />
     </div>
   );
 }
@@ -288,6 +318,33 @@ function SelectField({
   );
 }
 
+function ToggleField({
+  label,
+  checked,
+  onChange,
+  helper,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  helper?: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-400"
+      />
+      <span className="min-w-0">
+        <span className="lbl block">{label}</span>
+        {helper && <span className="mt-1 block text-[11px] leading-relaxed text-slate-400">{helper}</span>}
+      </span>
+    </label>
+  );
+}
+
 function Metric({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2 text-white">
@@ -314,6 +371,7 @@ function NomogramChart({
   const pad = { top: 18, right: 18, bottom: 38, left: 56 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
+  const yTickStep = chart.yTickStep ?? 50;
 
   const x = (hour: number) => pad.left + (Math.max(0, Math.min(chart.maxHours, hour)) / chart.maxHours) * innerW;
   const y = (tsb: number) => pad.top + innerH - (Math.max(0, Math.min(chart.maxTsb, tsb)) / chart.maxTsb) * innerH;
@@ -322,6 +380,10 @@ function NomogramChart({
 
   const selectedCurve = chart.curves.find((c) => c.key === currentCurveKey) ?? null;
   const selectedThreshold = selectedCurve ? curveValueAt(selectedCurve, ageHours) : null;
+
+  const yTicks: number[] = [];
+  for (let tick = 0; tick <= chart.maxTsb; tick += yTickStep) yTicks.push(tick);
+  if (yTicks[yTicks.length - 1] !== chart.maxTsb) yTicks.push(chart.maxTsb);
 
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
@@ -348,7 +410,7 @@ function NomogramChart({
               </text>
             </g>
           ))}
-          {Array.from({ length: Math.floor(chart.maxTsb / 50) + 1 }, (_, i) => i * 50).map((tick) => (
+          {yTicks.map((tick) => (
             <g key={`y-${tick}`}>
               <line x1={pad.left} y1={y(tick)} x2={width - pad.right} y2={y(tick)} stroke="rgba(148,163,184,.12)" />
               <text x={pad.left - 10} y={y(tick) + 4} textAnchor="end" fontSize="11" fill="#94a3b8">
