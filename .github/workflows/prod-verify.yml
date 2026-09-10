@@ -2,11 +2,6 @@ name: Production verify
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - arena/01a08999-srh-pediatrics
-    paths:
-      - ".github/workflows/prod-verify.yml"
 
 jobs:
   verify:
