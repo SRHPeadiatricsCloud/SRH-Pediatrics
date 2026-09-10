@@ -2,11 +2,11 @@
  * Anthropometry reference tables.
  *
  * WHO rows are extracted from the WHO MGRS LMS reference tables (2006)
- * distributed in the peditools chart-long export. IAP rows use the original
- * published centile tables from Indian Pediatr. 2015; the calculation layer
- * converts those exact anchors to smooth LMS-compatible rows without tracing
- * chart pixels. Fenton 2013/2025 remain fail-closed until their original LMS
- * releases are verified and cleared for redistribution.
+ * distributed in the peditools chart-long export. IAP scoring is intentionally
+ * disabled here until the original authorized IAP LMS release is available;
+ * published centile anchors are not substituted for LMS data. Fenton 2013 and
+ * 2025 LMS rows live in fenton-data.ts and are extracted from the official
+ * University of Calgary calculator workbooks.
  *
  * The calculation layer below never traces pixels: it interpolates L/M/S and
  * applies the Cole LMS equation. See the citations shown in the calculator.
@@ -19,18 +19,9 @@ export const WHO_WEIGHT_FOR_SIZE_LMS: Record<string, LmsRow[]> = {"m_weight_for_
 
 
 
-/** Exact published IAP 2015 centile anchors from Tables II–VII of the paper.
- * Rows are [age years, 3rd centile, 50th centile, 97th/derived upper].
- * Height and weight use the published 3rd/50th/97th values. BMI uses the
- * published 3rd/50th values and the published SD to construct the upper line.
- * The calculation layer converts these original reference points to smooth
- * LMS-compatible rows without tracing chart pixels.
- */
-export const IAP_2015_CENTILES: Record<string, LmsRow[]> = {"m_height":[[5,99,108.9,119.4],[5.5,101.6,111.9,122.7],[6,104.2,114.8,126],[6.5,106.8,117.8,129.3],[7,109.3,120.7,132.6],[7.5,111.8,123.5,135.9],[8,114.3,126.4,139.1],[8.5,116.7,129.1,142.2],[9,119,131.8,145.3],[9.5,121.3,134.5,148.3],[10,123.6,137.2,151.4],[10.5,125.9,139.9,154.4],[11,128.2,142.7,157.5],[11.5,130.7,145.5,160.6],[12,133.2,148.4,163.7],[12.5,135.7,151.4,166.8],[13,138.3,154.3,169.9],[13.5,140.9,157.2,172.7],[14,143.4,159.9,175.4],[14.5,145.8,162.3,177.7],[15,148,164.5,179.7],[15.5,150,166.5,181.4],[16,151.8,168.1,182.7],[16.5,153.4,169.6,183.8],[17,155,171,184.8],[17.5,156.6,172.3,185.8],[18,158.1,173.6,186.7]],"f_height":[[5,97.2,107.5,119.3],[5.5,99.8,110.5,122.5],[6,102.3,113.5,125.6],[6.5,104.9,116.5,128.7],[7,107.4,119.4,131.9],[7.5,110,122.4,135],[8,112.6,125.4,138.1],[8.5,115.2,128.4,141.3],[9,117.8,131.4,144.5],[9.5,120.5,134.4,147.6],[10,123.3,137.4,150.8],[10.5,126.1,140.4,153.9],[11,128.8,143.3,156.8],[11.5,131.5,145.9,159.6],[12,134,148.4,162],[12.5,136.3,150.5,164.1],[13,138.2,152.2,165.9],[13.5,139.9,153.6,167.2],[14,141.3,154.7,168.2],[14.5,142.4,155.5,169],[15,143.3,156.1,169.5],[15.5,144.1,156.6,169.8],[16,144.7,156.9,170.1],[16.5,145.2,157.2,170.2],[17,145.7,157.4,170.4],[17.5,146.2,157.6,170.5],[18,146.6,157.8,170.6]],"m_weight":[[5,13.2,17.1,24.2],[5.5,13.8,18.2,26.1],[6,14.5,19.3,28.3],[6.5,15.3,20.7,30.8],[7,16,21.9,33.4],[7.5,16.7,23.3,36.2],[8,17.5,24.8,39.4],[8.5,18.3,26.4,42.6],[9,19.1,27.9,45.5],[9.5,19.9,29.4,48.6],[10,20.7,31.1,51.8],[10.5,21.6,32.8,55.2],[11,22.6,34.7,58.7],[11.5,23.8,36.9,62.5],[12,24.9,39,66.1],[12.5,26.1,41.2,69.5],[13,27.5,43.3,72.6],[13.5,29,45.7,75.6],[14,30.7,48.2,78.3],[14.5,32.6,50.8,80.9],[15,34.5,53.1,83.1],[15.5,36.1,55.2,84.7],[16,37.5,56.8,85.8],[16.5,38.7,58.2,86.8],[17,39.8,59.5,87.5],[17.5,40.8,60.6,88],[18,41.8,61.6,88.4]],"f_weight":[[5,12.3,16.4,25],[5.5,13,17.6,27],[6,13.7,18.7,29.1],[6.5,14.4,19.9,31.2],[7,15.1,21.2,33.4],[7.5,15.9,22.5,35.7],[8,16.7,24,38.1],[8.5,17.5,25.5,40.7],[9,18.5,27.2,43.4],[9.5,19.5,29,46.3],[10,20.7,31,49.4],[10.5,22,33.2,52.6],[11,23.3,35.4,55.9],[11.5,24.8,37.6,59.1],[12,26.2,39.8,62.1],[12.5,27.6,41.8,64.8],[13,28.9,43.6,67.1],[13.5,30.2,45.1,69],[14,31.3,46.4,70.4],[14.5,32.3,47.5,71.4],[15,33.1,48.4,72.1],[15.5,34,49.1,72.5],[16,34.7,49.7,72.8],[16.5,35.5,50.3,73.1],[17,36.2,50.9,73.3],[17.5,36.9,51.5,73.4],[18,37.6,52,73.5]],"m_bmi":[[5,12.1,14.7,17.7093],[5.5,12.2,14.8,17.6212],[6,12.2,14.9,18.2854],[6.5,12.3,15,18.3854],[7,12.3,15.1,18.6735],[7.5,12.4,15.3,19.4377],[8,12.5,15.5,20.202],[8.5,12.6,15.7,20.9662],[9,12.7,15.9,20.7901],[9.5,12.8,16.2,21.4662],[10,12.9,16.4,22.2305],[10.5,13,16.7,22.7185],[11,13.1,17,23.0185],[11.5,13.2,17.3,23.5066],[12,13.3,17.7,24.0947],[12.5,13.5,17.9,24.6709],[13,13.6,18.2,24.7828],[13.5,13.7,18.5,25.4589],[14,13.8,18.7,25.6589],[14.5,14,19,25.5828],[15,14.2,19.3,26.2589],[15.5,14.4,19.6,25.9947],[16,14.6,19.9,26.8589],[16.5,14.9,20.2,27.347],[17,15.1,20.5,27.647],[17.5,15.4,20.8,27.5709],[18,15.6,21.1,27.1185]],"f_bmi":[[5,11.9,14.3,16.9331],[5.5,11.9,14.4,17.5973],[6,12,14.5,17.6973],[6.5,12.1,14.7,18.4616],[7,12.1,14.9,18.8497],[7.5,12.2,15.1,19.2377],[8,12.3,15.3,19.6258],[8.5,12.3,15.6,20.6781],[9,12.4,15.8,20.8781],[9.5,12.5,16.1,21.3662],[10,12.7,16.5,21.9543],[10.5,12.8,16.8,22.6305],[11,13,17.2,23.0305],[11.5,13.2,17.6,23.8066],[12,13.4,18,24.0185],[12.5,13.7,18.4,24.6066],[13,13.9,18.8,24.8185],[13.5,14.1,19.1,25.6828],[14,14.3,19.4,25.7947],[14.5,14.5,19.7,25.9066],[15,14.7,19.9,26.2947],[15.5,14.9,20.1,25.9305],[16,15,20.3,26.1305],[16.5,15.2,20.4,26.4185],[17,15.4,20.6,26.2424],[17.5,15.5,20.8,26.6305],[18,15.7,21,27.7709]]};
-
 export const REFERENCE_SOURCES = {
   who: { label: "WHO Child Growth Standards (MGRS), 2006", citation: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards: Methods and development. Geneva: WHO; 2006.", url: "https://www.who.int/tools/child-growth-standards" },
   iap: { label: "IAP 2015 Growth Charts", citation: "Indian Academy of Pediatrics Growth Chart Committee. Indian Pediatr. 2015;52:47–55.", url: "https://www.indianpediatrics.net/jan2015/47.pdf" },
-  fenton2013: { label: "Fenton 2013 (second generation)", citation: "Fenton TR, Kim JH. BMC Pediatrics. 2013;13:59.", url: "https://doi.org/10.1186/1471-2431-13-59" },
-  fenton2025: { label: "Fenton 2025 (third generation)", citation: "Fenton TR, Elmrayed S, Alshaikh BN. Paediatr Perinat Epidemiol. 2025. doi:10.1111/ppe.70035.", url: "https://doi.org/10.1111/ppe.70035" },
+  fenton2013: { label: "Fenton 2013 (second generation)", citation: "Fenton TR, Kim JH. BMC Pediatr. 2013;13:59. LMS source: University of Calgary exact-age calculator workbook.", url: "https://ucalgary.ca/resource/preterm-growth-chart/calculators-apps" },
+  fenton2025: { label: "Fenton 2025 (third generation)", citation: "Fenton TR, Elmrayed S, Alshaikh BN. PPE. 2025;39:543–555. LMS source: University of Calgary exact-age calculator workbook v1.1.", url: "https://ucalgary.ca/resource/preterm-growth-chart/calculators-apps" },
 } as const;

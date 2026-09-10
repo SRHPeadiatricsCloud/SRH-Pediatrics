@@ -1,10 +1,10 @@
 import {
-  IAP_2015_CENTILES,
   REFERENCE_SOURCES,
   WHO_LMS,
   WHO_WEIGHT_FOR_SIZE_LMS,
   type LmsRow,
 } from "./anthropometry-data";
+import { FENTON_2013_LMS, FENTON_2025_LMS } from "./fenton-data";
 
 export type AnthropometrySex = "m" | "f";
 export type AnthropometryMetric = "weight" | "height" | "head_circ" | "bmi" | "weight_for_size";
@@ -117,25 +117,20 @@ export function valueFromLms(z: number, lms: Lms): number {
   return base > 0 ? lms.M * Math.pow(base, 1 / lms.L) : NaN;
 }
 
-const IAP_CENTILE_Z = 1.880793608;
-
-function iapLmsRows(sex: AnthropometrySex, metric: "height" | "weight" | "bmi"): LmsRow[] | undefined {
-  const rows = IAP_2015_CENTILES[`${sex}_${metric}`];
-  // The IAP paper publishes the original 3rd, 50th and 97th centile anchors
-  // (and BMI SD values). Convert those exact reference points to LMS-compatible
-  // rows: L=1, M=P50, S=(P97-P3)/(2*z97*M). No pixels or hand-authored anchors.
-  return rows?.map(([age, p3, median, p97]) => [age, 1, median, (p97 - p3) / (2 * IAP_CENTILE_Z * median)]);
-}
-
 function rowsFor(version: ReferenceVersion, sex: AnthropometrySex, metric: AnthropometryMetric | "length_height" | "length"): LmsRow[] | undefined {
   const key = `${sex}_${metric}`;
   if (version === "who") {
     if (metric === "weight_for_size") return WHO_WEIGHT_FOR_SIZE_LMS[key.replace("weight_for_size", "weight_for_length")];
     return WHO_LMS[key];
   }
-  if (version === "iap") return iapLmsRows(sex, metric as "height" | "weight" | "bmi");
-  // Fenton 2013/2025 remain fail-closed until their original LMS releases are
-  // verified and cleared for redistribution. Never substitute another Fenton generation.
+  if (version === "fenton2013") {
+    return FENTON_2013_LMS[key];
+  }
+  if (version === "fenton2025") {
+    return FENTON_2025_LMS[key];
+  }
+  // IAP remains fail-closed until its original LMS release is authorized and
+  // verified. Published centile anchors are not an original LMS release.
   return undefined;
 }
 
@@ -144,6 +139,9 @@ export function getLms(version: ReferenceVersion, sex: AnthropometrySex, metric:
     ? (version === "iap" ? "height" : version === "fenton2013" || version === "fenton2025" ? "length" : "length_height")
     : metric;
   const rows = rowsFor(version, sex, actualMetric);
+  if ((version === "fenton2013" || version === "fenton2025") && rows?.length && (age < rows[0][0] || age > rows[rows.length - 1][0])) {
+    return null;
+  }
   return interpolateLms(rows, age);
 }
 
