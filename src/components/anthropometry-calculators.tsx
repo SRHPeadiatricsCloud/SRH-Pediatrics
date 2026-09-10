@@ -104,7 +104,7 @@ function ActionButton({ children, onClick, tone = "ghost" }: { children: React.R
 
 function ToolShell({ children, source, note }: { children: React.ReactNode; source: ReferenceVersion; note?: string }) {
   const src = sourceFor(source);
-  const unavailable = source === "iap" || source === "fenton2013" || source === "fenton2025";
+  const unavailable = source === "fenton2013" || source === "fenton2025";
   return <div className="space-y-3"><div className="text-xs leading-relaxed text-slate-400">{note ?? "Enter the required values. The point and provisional interpretation update immediately."}</div>{unavailable && <div className="rounded-xl border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-100"><b>Unavailable-data safeguard:</b> the original {src.label} LMS/reference release is not bundled yet. This tool stays visible for workflow review but will not calculate or classify from approximate, traced, or substituted data.</div>}{children}<SourceFooter source={source} src={src} /></div>;
 }
 
