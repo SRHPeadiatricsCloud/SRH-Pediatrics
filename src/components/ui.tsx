@@ -560,7 +560,7 @@ export function TopBar({
             src="/images/hospital-logo.png"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
-            height={27}
+            height={33}
             className="h-12 w-auto shrink-0 rounded-lg bg-white p-0.5 drop-shadow-sm"
           />
           <span className="leading-tight">

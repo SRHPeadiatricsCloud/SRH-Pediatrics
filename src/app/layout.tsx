@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               src="/images/hospital-logo.png"
               alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
               width={320}
-              height={176}
+              height={220}
               className="h-20 w-auto rounded-xl bg-white p-1 opacity-100 shadow-sm"
             />
           </div>

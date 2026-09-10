@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/images/hospital-logo.png", sizes: "800x440", type: "image/png" },
+      { src: "/images/hospital-logo.png", sizes: "539x371", type: "image/png" },
     ],
   };
 }
