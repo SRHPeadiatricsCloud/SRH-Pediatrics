@@ -2,11 +2,19 @@
    Standalone PWA service worker: app-shell caching + offline fallback.
    Live clinical data is always fetched network-first so the board never goes stale. */
 
-const VERSION = "srh-nicu-v2";
+const VERSION = "srh-nicu-v3";
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
-const PRECACHE = ["/", "/admit", "/handover", "/reference", "/icons/icon-512.png", "/manifest.webmanifest"];
+const PRECACHE = [
+  "/",
+  "/admit",
+  "/handover",
+  "/reference",
+  "/icons/icon-512.png",
+  "/images/hospital-logo.png",
+  "/manifest.webmanifest",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
