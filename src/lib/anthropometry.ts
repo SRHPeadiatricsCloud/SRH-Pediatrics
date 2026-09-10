@@ -1,6 +1,4 @@
 import {
-  FENTON_2013_LMS,
-  IAP_2015_LMS,
   REFERENCE_SOURCES,
   WHO_LMS,
   WHO_WEIGHT_FOR_SIZE_LMS,
@@ -124,16 +122,11 @@ function rowsFor(version: ReferenceVersion, sex: AnthropometrySex, metric: Anthr
     if (metric === "weight_for_size") return WHO_WEIGHT_FOR_SIZE_LMS[key.replace("weight_for_size", "weight_for_length")];
     return WHO_LMS[key];
   }
-  if (version === "iap") return IAP_2015_LMS[key];
-  if (version === "fenton2013") return FENTON_2013_LMS[key];
-  if (version === "fenton2025") {
-    // Fenton 2025 is intentionally a separate reference. The public 2025
-    // release uses the same LMS calculation contract, with its own chart
-    // generation and birth-size cut-offs; this table is kept separate so
-    // outputs are never combined with the 2013 chart.
-    const base = FENTON_2013_LMS[key];
-    return base?.map(([age, L, M, S]) => [age, L, M * (metric === "weight" ? 1.015 : 1.005), S * 0.985]);
-  }
+  // The IAP 2015 and Fenton 2013/2025 source files are not redistributed
+  // until their original LMS/reference releases are verified. Fail closed:
+  // never substitute hand-authored anchors, digitized curves, or a different
+  // Fenton generation for a clinical score.
+  if (version === "iap" || version === "fenton2013" || version === "fenton2025") return undefined;
   return undefined;
 }
 
@@ -153,7 +146,10 @@ export function assess(
   version: ReferenceVersion,
 ): Assessment {
   const lms = getLms(version, sex, metric, age);
-  if (!lms || !(value > 0)) {
+  if (!lms) {
+    return { z: NaN, percentile: NaN, band: "Reference unavailable", interpretation: "Verified original LMS/reference data is not bundled; no score or classification is calculated.", severity: "info", lms, available: false };
+  }
+  if (!(value > 0)) {
     return { z: NaN, percentile: NaN, band: "Enter required data", interpretation: "Complete the required fields to plot a point.", severity: "info", lms, available: false };
   }
   const z = zFromLms(value, lms);

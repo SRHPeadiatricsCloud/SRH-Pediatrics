@@ -85,7 +85,7 @@ function AnthroCard({ title, subtitle, citation, children, defaultOpen = false }
         <span className="min-w-0 flex-1"><span className="block text-sm font-black text-white">{title}</span><span className="mt-1 block text-[11px] leading-snug text-slate-400">{subtitle}</span></span>
         <span className="hidden shrink-0 text-[10px] font-bold text-slate-500 sm:block">{open ? "Collapse" : "Open"}</span>
       </button>
-      {open && <div className="border-t border-white/10 px-3 pb-4 pt-3 sm:px-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-400/15 bg-cyan-400/5 px-3 py-2"><span className="flex items-center gap-1.5 text-[11px] font-bold text-cyan-200"><Sparkles size={13} /> Live LMS chart · auto-plots on entry</span><span className="text-[10px] text-slate-400">{citation}</span></div>{children}</div>}
+      {open && <div className="border-t border-white/10 px-3 pb-4 pt-3 sm:px-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-400/15 bg-cyan-400/5 px-3 py-2"><span className="flex items-center gap-1.5 text-[11px] font-bold text-cyan-200"><Sparkles size={13} /> Live LMS chart · auto-plots when data is available</span><span className="text-[10px] text-slate-400">{citation}</span></div>{children}</div>}
     </article>
   );
 }
@@ -104,7 +104,8 @@ function ActionButton({ children, onClick, tone = "ghost" }: { children: React.R
 
 function ToolShell({ children, source, note }: { children: React.ReactNode; source: ReferenceVersion; note?: string }) {
   const src = sourceFor(source);
-  return <div className="space-y-3"><div className="text-xs leading-relaxed text-slate-400">{note ?? "Enter the required values. The point and provisional interpretation update immediately."}</div>{children}<SourceFooter source={source} src={src} /></div>;
+  const unavailable = source === "iap" || source === "fenton2013" || source === "fenton2025";
+  return <div className="space-y-3"><div className="text-xs leading-relaxed text-slate-400">{note ?? "Enter the required values. The point and provisional interpretation update immediately."}</div>{unavailable && <div className="rounded-xl border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-100"><b>Unavailable-data safeguard:</b> the original {src.label} LMS/reference release is not bundled yet. This tool stays visible for workflow review but will not calculate or classify from approximate, traced, or substituted data.</div>}{children}<SourceFooter source={source} src={src} /></div>;
 }
 
 function SourceFooter({ source, src }: { source: ReferenceVersion; src: ReturnType<typeof sourceFor> }) {
