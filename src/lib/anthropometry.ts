@@ -1,7 +1,10 @@
 import {
+  IAP_2015_BMI_CUTOFFS,
+  IAP_2015_CENTILES,
   REFERENCE_SOURCES,
   WHO_LMS,
   WHO_WEIGHT_FOR_SIZE_LMS,
+  type IapBmiCutoffRow,
   type LmsRow,
 } from "./anthropometry-data";
 import { FENTON_2013_LMS, FENTON_2025_LMS } from "./fenton-data";
@@ -117,20 +120,37 @@ export function valueFromLms(z: number, lms: Lms): number {
   return base > 0 ? lms.M * Math.pow(base, 1 / lms.L) : NaN;
 }
 
+const IAP_CENTILE_Z = 1.880793608;
+
+/**
+ * The IAP publication provides smoothed centile anchors rather than a public
+ * LMS download. Convert its exact P3/P50/P97 rows into an LMS-compatible curve
+ * so the chart can interpolate between the published half-year anchors without
+ * tracing pixels or substituting another reference.
+ */
+function iapLmsRows(sex: AnthropometrySex, metric: "height" | "weight" | "bmi"): LmsRow[] | undefined {
+  const rows = IAP_2015_CENTILES[`${sex}_${metric}`];
+  return rows?.map(([age, p3, median, p97]) => [
+    age,
+    1,
+    median,
+    (p97 - p3) / (2 * IAP_CENTILE_Z * median),
+  ]);
+}
+
 function rowsFor(version: ReferenceVersion, sex: AnthropometrySex, metric: AnthropometryMetric | "length_height" | "length"): LmsRow[] | undefined {
   const key = `${sex}_${metric}`;
   if (version === "who") {
     if (metric === "weight_for_size") return WHO_WEIGHT_FOR_SIZE_LMS[key.replace("weight_for_size", "weight_for_length")];
     return WHO_LMS[key];
   }
+  if (version === "iap") return iapLmsRows(sex, metric as "height" | "weight" | "bmi");
   if (version === "fenton2013") {
     return FENTON_2013_LMS[key];
   }
   if (version === "fenton2025") {
     return FENTON_2025_LMS[key];
   }
-  // IAP remains fail-closed until its original LMS release is authorized and
-  // verified. Published centile anchors are not an original LMS release.
   return undefined;
 }
 
@@ -178,16 +198,31 @@ export function percentileLabel(percentile: number): string {
   return `${Math.round(percentile)}th`;
 }
 
+function interpolateIapCutoff(rows: IapBmiCutoffRow[] | undefined, age: number): [number, number] | null {
+  if (!rows?.length || !Number.isFinite(age)) return null;
+  if (age <= rows[0][0]) return [rows[0][1], rows[0][2]];
+  if (age >= rows[rows.length - 1][0]) return [rows[rows.length - 1][1], rows[rows.length - 1][2]];
+  for (let i = 1; i < rows.length; i += 1) {
+    const right = rows[i];
+    if (right[0] >= age) {
+      const left = rows[i - 1];
+      const f = (age - left[0]) / (right[0] - left[0] || 1);
+      return [left[1] + (right[1] - left[1]) * f, left[2] + (right[2] - left[2]) * f];
+    }
+  }
+  return null;
+}
+
 export function classifyIapBmi(bmi: number, sex: AnthropometrySex, age: number): { label: string; severity: PointInterpretation; note: string } {
-  // IAP 2015 uses age-specific 23/27 kg/m² adult-equivalent lines. These are
-  // represented on the BMI LMS curve by the corresponding sex-specific z
-  // positions; the clinician-facing labels remain the published cut-offs.
-  const overweight = age < 10 ? 20.0 + age * 0.3 : sex === "m" ? 23 : 23;
-  const obese = age < 10 ? overweight + 3.0 : 27;
-  if (bmi >= obese) return { label: "Obese", severity: "crit", note: "Above the IAP 27 kg/m² adult-equivalent obesity line." };
-  if (bmi >= overweight) return { label: "Overweight", severity: "warn", note: "Above the IAP 23 kg/m² adult-equivalent overweight line." };
-  if (bmi < 14) return { label: "Underweight", severity: "warn", note: "Below the screening band; interpret with the BMI-for-age chart." };
-  return { label: "Normal", severity: "good", note: "Within the provisional screening band." };
+  const cutoffs = interpolateIapCutoff(IAP_2015_BMI_CUTOFFS[sex], age);
+  const lms = getLms("iap", sex, "bmi", age);
+  const thinness = lms ? valueFromLms(percentileToZ(3), lms) : NaN;
+  if (!cutoffs) return { label: "Unavailable", severity: "info", note: "The IAP 2015 reference is defined from 5 to 18 years." };
+  const [overweight, obese] = cutoffs;
+  if (bmi >= obese) return { label: "Obese", severity: "crit", note: `At or above the IAP 27-equivalent line (${obese.toFixed(1)} kg/m² at this age).` };
+  if (bmi >= overweight) return { label: "Overweight", severity: "warn", note: `At or above the IAP 23-equivalent line (${overweight.toFixed(1)} kg/m² at this age).` };
+  if (Number.isFinite(thinness) && bmi < thinness) return { label: "Thinness", severity: "warn", note: `Below the IAP 3rd percentile (${thinness.toFixed(1)} kg/m² at this age).` };
+  return { label: "Normal", severity: "good", note: "Below the IAP 23-equivalent line and at/above the 3rd percentile." };
 }
 
 export function midpoint(a: number, b: number): number {
