@@ -17,6 +17,7 @@ import {
 import { UnitBedDial, SubSpecialtyPicker, UnitSwitcher } from "@/components/unit-ui";
 import { WeightInput } from "@/components/weight-input";
 import { AdmissionTriage } from "@/components/triage";
+import { EditableListField } from "@/components/editable-list";
 type TriageState = {
   scale: string;
   band: string;
@@ -535,8 +536,17 @@ function AdmitForm() {
           </Section>
 
           {isNeo && (
-            <Section title="Antenatal & perinatal risk factors">
-              <DialWithOther options={ANTENATAL} value={antenatal} onChange={(v: string[]) => setAntenatal(v)} multi tone="amber" otherPlaceholder="Add other risk factor…" />
+            <Section
+              title="Antenatal & perinatal risk factors"
+              sub="Tap a preset to add it as editable text — add extra detail before admitting."
+            >
+              <EditableListField
+                options={ANTENATAL}
+                value={antenatal}
+                onChange={(v: string[]) => setAntenatal(v)}
+                placeholder="Add other risk factor or extra detail…"
+                emptyLabel="No antenatal or perinatal risk factors added yet."
+              />
             </Section>
           )}
 
