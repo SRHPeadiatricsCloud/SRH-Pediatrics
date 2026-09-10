@@ -888,6 +888,8 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+  if (typeof document === "undefined") return null as unknown as React.ReactNode;
+  return createPortal(dialog, document.body);
 }
 
 /** Lightweight realtime: polls an endpoint and re-renders when the payload changes. */

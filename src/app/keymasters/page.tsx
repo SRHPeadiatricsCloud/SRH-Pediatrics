@@ -4,6 +4,7 @@ import { KeyRound, Pencil, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInModal, TopBar, refreshHasKeys, useUser } from "@/components/ui";
 import { fmtTime } from "@/lib/clinical";
+import { ADMIN_NAME, ADMIN_ROLE, isAdminRole, sameName } from "@/lib/admin-constants";
 
 type Row = {
   id: number;
@@ -55,7 +56,8 @@ export default function KeymastersPage() {
   }, []);
 
   const bootstrap = hasKeys === false;
-  const canManage = user.signedIn || bootstrap;
+  const isAdmin = isAdminRole(user.role);
+  const canAdd = isAdmin;
 
   const add = async () => {
     setBusy(true);
@@ -124,6 +126,8 @@ export default function KeymastersPage() {
     await refreshHasKeys();
   };
 
+  const editingIsAdmin = editing ? sameName(editing.name, ADMIN_NAME) : false;
+
   return (
     <main className="min-h-screen pb-20">
       <TopBar />
@@ -163,7 +167,17 @@ export default function KeymastersPage() {
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-black text-white">
             <UserPlus size={14} className="text-cyan-300" /> Add to Keymaster List
           </h2>
-          <fieldset disabled={!canManage} className="space-y-3 disabled:opacity-50">
+          {!isAdmin && user.signedIn && (
+            <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-200">
+              Only the Admin ({ADMIN_NAME}) can add new keymasters.
+            </p>
+          )}
+          {!user.signedIn && (
+            <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-200">
+              Sign in as Admin to add keymasters.
+            </p>
+          )}
+          <fieldset disabled={!canAdd} className="space-y-3 disabled:opacity-50">
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="lbl mb-1 block">Full name</span>
@@ -212,20 +226,27 @@ export default function KeymastersPage() {
             <p className="text-[12px] text-slate-400">Nobody registered yet.</p>
           ) : (
             <ul className="space-y-2">
-              {rows.map((r) => (
-                <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-cyan-400/30 bg-cyan-400/10 text-[11px] font-black text-cyan-200">
-                    {r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-bold text-white">{r.name}</div>
-                    <div className="text-[10px] text-slate-400">
-                      {r.role}
-                      {r.unit ? ` · ${r.unit}` : ""} · code {r.codeMask} · added {fmtTime(r.createdAt)} by {r.createdBy}
+              {rows.map((r) => {
+                const isAdminRow = sameName(r.name, ADMIN_NAME);
+                const canEditThis = isAdmin || sameName(user.name, r.name);
+                const canDeleteThis = isAdmin && !isAdminRow;
+                return (
+                  <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg border border-cyan-400/30 bg-cyan-400/10 text-[11px] font-black text-cyan-200">
+                      {r.name
+                        .split(" ")
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-bold text-white">{r.name}</div>
+                      <div className="text-[10px] text-slate-400">
+                        {r.role}
+                        {r.unit ? ` · ${r.unit}` : ""} · code {r.codeMask} · added {fmtTime(r.createdAt)} by {r.createdBy}
+                      </div>
                     </div>
-                  </div>
-                  {user.signedIn && (
-                    <>
+                    {canEditThis && (
                       <button
                         className="btn-ghost !px-2 !py-1 text-[11px]"
                         onClick={() => {
@@ -235,17 +256,20 @@ export default function KeymastersPage() {
                           setEditUnit(r.unit);
                           setEditCode("");
                           setEditCurrent("");
+                          setErr("");
                         }}
                       >
                         <Pencil size={12} /> Edit
                       </button>
+                    )}
+                    {canDeleteThis && (
                       <button className="btn-ghost !px-2 !py-1 text-[11px] text-rose-300" onClick={() => remove(r)}>
                         <Trash2 size={12} /> Remove
                       </button>
-                    </>
-                  )}
-                </li>
-              ))}
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -258,11 +282,17 @@ export default function KeymastersPage() {
               <label className="lbl mb-1 block">Name</label>
               <input className="inp mb-2" value={editName} onChange={(e) => setEditName(e.target.value)} />
               <label className="lbl mb-1 block">Role</label>
-              <select className="inp mb-2" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
-                {ROLES.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
+              {editingIsAdmin ? (
+                <select className="inp mb-2" value={ADMIN_ROLE} disabled>
+                  <option>{ADMIN_ROLE}</option>
+                </select>
+              ) : (
+                <select className="inp mb-2" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                  {ROLES.map((r) => (
+                    <option key={r}>{r}</option>
+                  ))}
+                </select>
+              )}
               <label className="lbl mb-1 block">Home unit</label>
               <select className="inp mb-2" value={editUnit} onChange={(e) => setEditUnit(e.target.value)}>
                 {UNITS.map((u) => (
