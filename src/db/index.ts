@@ -194,6 +194,49 @@ function createMemoryPool() {
   const basePool = new BasePool();
   const baseQuery = basePool.query.bind(basePool);
 
+  /**
+   * pg-mem mishandles multi-row INSERTs when rows mix explicit values and
+   * `default` for NOT NULL columns with defaults (it resolves `default` to
+   * NULL for rows after the first). Split such statements into one INSERT
+   * per row and merge the results.
+   */
+  function splitMultiRowInsert(text: string, values: unknown[]) {
+    const m = /^(\s*insert\s+into\s[\s\S]*?\bvalues\s*)/i.exec(text);
+    if (!m) return null;
+    const prefix = m[1];
+    let i = m[0].length;
+    const tuples: string[] = [];
+    let depth = 0;
+    let start = -1;
+    let inString = false;
+    for (; i < text.length; i++) {
+      const ch = text[i];
+      if (inString) {
+        if (ch === "'") inString = text[i + 1] === "'" ? (i++, true) : false;
+        continue;
+      }
+      if (ch === "'") { inString = true; continue; }
+      if (ch === "(") { if (depth === 0) start = i; depth++; continue; }
+      if (ch === ")") {
+        depth--;
+        if (depth === 0) tuples.push(text.slice(start, i + 1));
+        continue;
+      }
+      if (depth === 0 && !/[\s,]/.test(ch)) break;
+    }
+    if (tuples.length < 2) return null;
+    const suffix = text.slice(i);
+    const rows = tuples.map((tuple) => {
+      const params: unknown[] = [];
+      const sqlTuple = tuple.replace(/\$(\d+)/g, (_all, n: string) => {
+        params.push(values[Number(n) - 1]);
+        return `$${params.length}`;
+      });
+      return { sql: `${prefix}${sqlTuple}${suffix}`, params };
+    });
+    return rows;
+  }
+
   basePool.query = async (...args: unknown[]) => {
     const first = args[0] as string | { text?: string; rowMode?: string } | undefined;
     const text = typeof first === "string" ? first : (first?.text ?? "");
@@ -214,16 +257,57 @@ function createMemoryPool() {
       return lastResult;
     }
 
+    if (/^\s*insert\s+into\s/i.test(text) && /\bdefault\b/i.test(text)) {
+      const values =
+        typeof first === "object" && first
+          ? ((first as { values?: unknown[] }).values ?? (args[1] as unknown[] | undefined) ?? [])
+          : ((args[1] as unknown[] | undefined) ?? []);
+      const split = splitMultiRowInsert(text, values);
+      if (split) {
+        const merged: { rows: unknown[]; rowCount: number; command: string; fields: unknown[] } = {
+          rows: [],
+          rowCount: 0,
+          command: "INSERT",
+          fields: [],
+        };
+        for (const row of split) {
+          const result = await baseQuery(row.sql, row.params);
+          merged.rows.push(...(result.rows ?? []));
+          merged.rowCount += result.rowCount ?? 0;
+          if (Array.isArray(result.fields) && result.fields.length) merged.fields = result.fields;
+        }
+        if (typeof first === "object" && first && first.rowMode === "array") {
+          const fields = merged.fields as { name: string }[];
+          merged.rows = (merged.rows as Record<string, unknown>[]).map((row) => {
+            const names = fields.length > 0 ? fields.map((f) => f.name) : Object.keys(row);
+            return names.map((name) => row[name]);
+          });
+        }
+        return merged;
+      }
+    }
+
     if (typeof first === "object" && first) {
       const config = { ...first, types: undefined };
       if (first.rowMode === "array") {
         const result = await baseQuery({ ...config, rowMode: undefined }, ...(args.slice(1) as [unknown?]));
         const fields = Array.isArray(result.fields) ? result.fields : [];
-        const names: string[] = fields.map((f: { name: string }) => f.name);
+        // pg-mem often reports an empty `fields` array; fall back to the row's
+        // own keys (insertion order matches the SELECT/RETURNING column order)
+        // so drizzle's array-row mapping receives real values instead of [].
+        const rows = (result.rows ?? []).map((row: Record<string, unknown>) => {
+          const names: string[] =
+            fields.length > 0 ? fields.map((f: { name: string }) => f.name) : Object.keys(row);
+          return names.map((name: string) => row[name]);
+        });
+        const effectiveFields =
+          fields.length > 0
+            ? fields
+            : Object.keys((result.rows ?? [])[0] ?? {}).map((name) => ({ name }));
         return {
           ...result,
-          rows: result.rows.map((row: Record<string, unknown>) => names.map((name: string) => row[name])),
-          fields,
+          rows,
+          fields: effectiveFields,
         };
       }
       return baseQuery(config, ...(args.slice(1) as [unknown?]));
