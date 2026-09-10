@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { keymasters } from "@/db/schema";
 import { hashCode } from "@/lib/guard";
+import { ensureAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 /** Verify a name + employee code against the Keymaster List. */
 export async function POST(req: Request) {
+  await ensureAdmin();
   const body = await req.json().catch(() => ({}));
   const name = String(body.name ?? "").trim();
   const code = String(body.code ?? "").trim();
