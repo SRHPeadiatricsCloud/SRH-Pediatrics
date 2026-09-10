@@ -611,12 +611,18 @@ table thead th {
   position: relative;
   z-index: 2;
 }
+.anthro-hologram .anthro-chart {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  transform: none;
+}
+
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .anthro-hologram svg {
-    transition: transform 0.28s ease, filter 0.28s ease;
+  .anthro-hologram .anthro-chart {
+    transition: filter 0.28s ease;
   }
-  .anthro-hologram:hover svg {
-    transform: perspective(1100px) rotateX(0.7deg) rotateY(-0.7deg) scale(1.005);
+  .anthro-hologram:hover .anthro-chart {
     filter: drop-shadow(0 0 12px rgba(34,211,238,0.11));
   }
 }

@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; import { createPortal } from "react-dom";
+import { EditableListField } from "@/components/editable-list";
 
 export function Chip({
   label,
@@ -106,6 +107,20 @@ export function DialWithOther({
 }) {
   const [draft, setDraft] = useState("");
   const arr = Array.isArray(value) ? value : value ? [value] : [];
+
+  // Multi-selects use the same editable-row interaction as handover lists.
+  // This keeps preset selections editable instead of collapsing them into chips.
+  if (multi) {
+    return (
+      <EditableListField
+        options={options}
+        value={arr}
+        onChange={(next) => onChange(next as never)}
+        placeholder={otherPlaceholder}
+        emptyLabel="No selections added yet."
+      />
+    );
+  }
 
   const addCustom = () => {
     const t = draft.trim();

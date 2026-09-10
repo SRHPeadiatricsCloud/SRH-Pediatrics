@@ -2,7 +2,7 @@
    Standalone PWA service worker: app-shell caching + offline fallback.
    Live clinical data is always fetched network-first so the board never goes stale. */
 
-const VERSION = "srh-nicu-v3";
+const VERSION = "srh-nicu-v2.0.024";
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 

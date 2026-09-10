@@ -76,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             browser bar · Use the 🔗 Share link button to invite your team
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
-            v{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.
+            V.{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.
           </p>
         </footer>
         <SaveToast />
