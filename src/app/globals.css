@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 /* ============================================================
+   BASE FONT SCALE — readability default (TopBar A-/A+ can tune
+   85%–170%; persisted in localStorage("srh_font_scale") and
+   bootstrapped pre-paint in layout.tsx).
+   ============================================================ */
+html {
+  font-size: 110%;
+}
+
+/* ============================================================
    DESIGN TOKENS
    ============================================================ */
 :root {
@@ -131,8 +140,8 @@ a.card:hover {
   user-select: none;
   border-radius: 999px;
   border: 1px solid var(--border);
-  padding: 6px 13px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   transition: all 0.16s ease;
@@ -194,8 +203,8 @@ html.light .chip-on.tone-emerald {
 .btn-ghost {
   cursor: pointer;
   border-radius: var(--r-ctl);
-  padding: 9px 16px;
-  font-size: 13px;
+  padding: 10px 17px;
+  font-size: 14.5px;
   font-weight: 700;
   transition: all 0.16s ease;
   display: inline-flex;
@@ -246,12 +255,12 @@ html.light .btn-primary {
    ============================================================ */
 .inp {
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
   border-radius: var(--r-ctl);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--card-solid) 88%, transparent);
   padding: 11px 14px;
-  font-size: 14px;
+  font-size: 15.5px;
   line-height: 1.35;
   color: var(--text);
   outline: none;
@@ -275,7 +284,7 @@ select.inp {
 .lbl {
   display: block;
   margin-bottom: 6px;
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -857,4 +866,19 @@ body,
 .btn-ghost,
 .chip {
   transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease;
+}
+
+/* ============================================================
+   READABILITY BOOST — floor for the tiniest utility sizes.
+   Unlayered rules beat Tailwind's utilities layer, so these
+   lift 9/10/11px text to 11/12/13px app-wide.
+   ============================================================ */
+.text-\[9px\] {
+  font-size: 11px;
+}
+.text-\[10px\] {
+  font-size: 12px;
+}
+.text-\[11px\] {
+  font-size: 13px;
 }

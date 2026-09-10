@@ -28,12 +28,12 @@ export const viewport: Viewport = {
   colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
 };
 
-const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}}catch(e){}})();`;
+const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}var f=parseFloat(localStorage.getItem("srh_font_scale"));if(isFinite(f)){f=Math.min(1.7,Math.max(0.85,f));document.documentElement.style.fontSize=(f*100)+"%"}}catch(e){}})();`;
 
 const fontVars: CSSProperties = {
   ["--font-display" as string]: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -52,7 +52,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <footer className="no-print border-t border-white/5 py-5 text-center">
           <div className="mb-2 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/hospital-logo.svg" alt="" width={36} height={36} className="h-9 w-9 opacity-90" />
+            <img
+              src="/images/hospital-logo.png"
+              alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
+              width={320}
+              height={176}
+              className="h-20 w-auto rounded-xl bg-white p-1 opacity-100 shadow-sm"
+            />
           </div>
           <p className="text-[11px] text-slate-500">
             Sri Ramakrishna Hospital · Department of Pediatrics

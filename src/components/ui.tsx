@@ -450,13 +450,103 @@ export function ThemeToggle() {
   );
 }
 
+/* ============================================================
+   FONT SIZE CONTROL — replaces the old Refresh button.
+   A- / A+ adjusts the root font-size (85%–170%, 10% steps),
+   persists in localStorage("srh_font_scale") and is bootstrapped
+   by the inline script in layout.tsx before first paint.
+   ============================================================ */
+export const FONT_SCALE_KEY = "srh_font_scale";
+export const FONT_SCALE_MIN = 0.85;
+export const FONT_SCALE_MAX = 1.7;
+export const FONT_SCALE_DEFAULT = 1.1; // matches html { font-size: 110% }
+
+export function applyFontScale(scale: number): void {
+  if (typeof document === "undefined") return;
+  const clamped = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, scale));
+  document.documentElement.style.fontSize = `${clamped * 100}%`;
+}
+
+export function readFontScale(): number {
+  if (typeof window === "undefined") return FONT_SCALE_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(FONT_SCALE_KEY);
+    const parsed = raw === null ? NaN : Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) {
+      return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, parsed));
+    }
+  } catch {
+    /* storage unavailable — fall through to default */
+  }
+  return FONT_SCALE_DEFAULT;
+}
+
+export function FontSizeControl() {
+  const [scale, setScale] = useState<number>(FONT_SCALE_DEFAULT);
+
+  useEffect(() => {
+    // Hydration-safe: read the persisted scale after mount (SSR renders the default).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setScale(readFontScale());
+  }, []);
+
+  const step = (dir: -1 | 1) => {
+    const next = Math.round((scale + dir * 0.1) * 10) / 10;
+    const clamped = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, next));
+    setScale(clamped);
+    try {
+      window.localStorage.setItem(FONT_SCALE_KEY, String(clamped));
+    } catch {
+      /* ignore private-mode storage errors */
+    }
+    applyFontScale(clamped);
+  };
+
+  const pct = Math.round(scale * 100);
+
+  return (
+    <div
+      role="group"
+      aria-label="Text size"
+      className="flex items-center overflow-hidden rounded-lg border border-white/15 bg-white/5"
+    >
+      <button
+        type="button"
+        onClick={() => step(-1)}
+        disabled={pct <= FONT_SCALE_MIN * 100}
+        aria-label="Decrease text size"
+        title="Smaller text (min 85%)"
+        className="px-2.5 py-1.5 text-[13px] font-black leading-none text-slate-200 transition hover:bg-white/10 disabled:opacity-40"
+      >
+        A-
+      </button>
+      <span
+        aria-live="polite"
+        className="min-w-[44px] border-x border-white/10 px-1 py-1.5 text-center text-[11px] font-bold leading-none text-cyan-300"
+      >
+        {pct}%
+      </span>
+      <button
+        type="button"
+        onClick={() => step(1)}
+        disabled={pct >= FONT_SCALE_MAX * 100}
+        aria-label="Increase text size"
+        title="Larger text (max 170%)"
+        className="px-2.5 py-1.5 text-[13px] font-black leading-none text-slate-200 transition hover:bg-white/10 disabled:opacity-40"
+      >
+        A+
+      </button>
+    </div>
+  );
+}
+
 export function TopBar({
   live,
-  onRefresh,
   unit,
   onUnitChange,
 }: {
   live?: boolean;
+  /** Retained for call-site compatibility — the Refresh button was replaced by the FontSizeControl; boards poll live. */
   onRefresh?: () => void;
   unit?: string;
   onUnitChange?: (u: string) => void;
@@ -467,11 +557,11 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.svg"
-            alt="Sri Ramakrishna Hospital"
-            width={40}
-            height={40}
-            className="h-10 w-10 shrink-0 drop-shadow-sm"
+            src="/images/hospital-logo.png"
+            alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
+            width={48}
+            height={27}
+            className="h-12 w-auto shrink-0 rounded-lg bg-white p-0.5 drop-shadow-sm"
           />
           <span className="leading-tight">
             <span className="block text-sm font-black tracking-tight text-white">
@@ -494,11 +584,7 @@ export function TopBar({
           <StaffNameInput />
           <ShareButton />
           <ThemeToggle />
-          {onRefresh && (
-            <button onClick={onRefresh} className="btn-ghost text-xs">
-              Refresh
-            </button>
-          )}
+          <FontSizeControl />
         </div>
       </div>
       {/* Primary navigation — visible on every device (horizontally scrollable on mobile/tablet) */}
