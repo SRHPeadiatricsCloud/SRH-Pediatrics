@@ -1,0 +1,24 @@
+name: Production verify
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/health
+        run: |
+          BODY=$(curl -sf https://srh-pediatrics.vercel.app/api/health)
+          echo "health: $BODY"
+          test "$BODY" = '{"ok":true}'
+      - name: POST /api/seed
+        run: |
+          BODY=$(curl -sf -X POST https://srh-pediatrics.vercel.app/api/seed)
+          echo "seed: $BODY"
+          test "$BODY" = '{"ok":true,"count":9}'
+      - name: GET /api/babies (post-seed sanity)
+        run: |
+          COUNT=$(curl -sf https://srh-pediatrics.vercel.app/api/babies | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["babies"]))')
+          echo "babies: $COUNT"
+          test "$COUNT" = "9"
