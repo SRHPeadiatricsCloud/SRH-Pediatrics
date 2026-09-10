@@ -591,6 +591,36 @@ table thead th {
   }
 }
 
+/* Anthropometry charts use the same clinical hologram language as the
+   bilirubin nomograms, with a restrained parallax sheen for pointer users. */
+.anthro-hologram {
+  position: relative;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+.anthro-hologram::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(115deg, rgba(255,255,255,0.08), transparent 18%, transparent 72%, rgba(34,211,238,0.06));
+  mix-blend-mode: screen;
+}
+.anthro-hologram > * {
+  position: relative;
+  z-index: 2;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .anthro-hologram svg {
+    transition: transform 0.28s ease, filter 0.28s ease;
+  }
+  .anthro-hologram:hover svg {
+    transform: perspective(1100px) rotateX(0.7deg) rotateY(-0.7deg) scale(1.005);
+    filter: drop-shadow(0 0 12px rgba(34,211,238,0.11));
+  }
+}
+
 main > div {
   animation: riseIn 0.32s ease-out;
 }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
 import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
+import { AnthropometrySection } from "@/components/anthropometry-calculators";
 import { CALCULATORS, CATEGORIES } from "@/lib/calculators";
 import type { Calculator as CalcDef } from "@/lib/calc-types";
 
@@ -109,6 +110,7 @@ export default function CalculatorsPage() {
   const focusedCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const anthropometryQueryHit = !q.trim() || /anthrop|who|iap|fenton|bmi|height|weight|growth|mid-parental|mph|preterm/i.test(q);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -175,7 +177,9 @@ export default function CalculatorsPage() {
           </div>
         )}
 
-        {grouped.length === 0 && <p className="card p-8 text-center text-sm text-slate-400">No calculator matches “{q}”.</p>}
+        {!focusedCalc && (cat === "all" || cat === "growth") && <AnthropometrySection query={q} />}
+
+        {grouped.length === 0 && (!anthropometryQueryHit || focusedCalc) && <p className="card p-8 text-center text-sm text-slate-400">No calculator matches “{q}”.</p>}
 
         <div className="space-y-4">
           {grouped.map((group) => (
