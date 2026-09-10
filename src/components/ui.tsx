@@ -832,7 +832,7 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[90] items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
       <div className="card w-full max-w-sm p-5">
         <div className="mb-3 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg border border-cyan-400/40 bg-cyan-400/10 text-cyan-300">
