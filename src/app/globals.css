@@ -4491,3 +4491,92 @@ html.light .bp-threshold-table td { color: #0e6686; }
 html.light .bp-evidence-note b, html.light .bp-result-notes b { color: #234467; }
 html.light .bp-source-grid a span { color: #57718d; }
 html.light .bp-limitations { color: #7b491d; background: rgba(251, 146, 60, .1); }
+
+/* NICU drugs and doses workspace */
+.drugs-page { background: radial-gradient(circle at 8% 0%, rgba(6, 182, 212, .08), transparent 34rem), radial-gradient(circle at 96% 12%, rgba(217, 70, 239, .07), transparent 30rem); }
+.dose-workspace { display: grid; gap: 14px; color: #dcecff; }
+.dose-hero, .dose-card, .dose-catalog, .dose-disclaimer { border: 1px solid rgba(125, 150, 190, .18); border-radius: 16px; background: rgba(10, 21, 40, .7); }
+.dose-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px; }
+.dose-kicker, .dose-card-heading > div > span, .dose-hero > div > span { display: block; color: #79d9ed; font-size: 10px; font-weight: 950; letter-spacing: .15em; text-transform: uppercase; }
+.dose-hero h1 { margin: 4px 0 0; color: #f8fbff; font-size: clamp(24px, 4vw, 38px); font-weight: 950; letter-spacing: -.04em; }
+.dose-hero p { max-width: 770px; margin: 7px 0 0; color: #a7bad2; font-size: 12px; line-height: 1.6; }
+.dose-safety, .dose-status { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; border: 1px solid rgba(251, 146, 60, .35); border-radius: 999px; padding: 7px 10px; color: #fed7aa; background: rgba(251, 146, 60, .1); font-size: 10px; font-weight: 950; white-space: nowrap; }
+.dose-group-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; border: 1px solid rgba(125, 150, 190, .18); border-radius: 14px; padding: 6px; background: rgba(12, 23, 43, .72); }
+.dose-group-tabs button { display: grid; gap: 2px; border: 1px solid transparent; border-radius: 10px; padding: 11px 10px; color: #9db2cc; background: transparent; text-align: left; font-size: 12px; font-weight: 950; cursor: pointer; }
+.dose-group-tabs button:hover { border-color: rgba(103, 232, 249, .4); color: #e7fbff; }
+.dose-group-tabs button.active { border-color: rgba(34, 211, 238, .58); color: #f1fdff; background: linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(99, 102, 241, .2)); }
+.dose-group-tabs small { color: #8ca4bf; font-size: 9px; font-weight: 700; }
+.dose-main-grid { display: grid; grid-template-columns: minmax(340px, .85fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+.dose-card, .dose-catalog { padding: 15px; }
+.dose-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.dose-card-heading > svg { color: #67e8f9; }
+.dose-card-heading h2 { margin: 3px 0 0; color: #f0f7ff; font-size: 16px; font-weight: 950; letter-spacing: -.02em; }
+.dose-card-heading > small { color: #8399b5; font-size: 9px; font-weight: 800; }
+.dose-select-field, .dose-field, .dose-strength-field { display: grid; gap: 5px; margin-top: 13px; border: 1px solid rgba(125, 150, 190, .18); border-radius: 11px; padding: 10px; background: rgba(17, 32, 57, .62); }
+.dose-select-field > span, .dose-field > span, .dose-strength-field > span { color: #d9e9fb; font-size: 10px; font-weight: 950; }
+.dose-select-field select { width: 100%; border: 1px solid rgba(139, 163, 197, .27); border-radius: 8px; outline: 0; padding: 9px; color: #f7fbff; background: #0b1a30; font-size: 12px; font-weight: 850; }
+.dose-select-field small, .dose-field small, .dose-strength-field small { min-height: 12px; color: #8298b3; font-size: 9px; line-height: 1.35; }
+.dose-subheading { margin-top: 17px; padding-top: 13px; border-top: 1px solid rgba(125, 150, 190, .14); }
+.dose-subheading h2 { font-size: 13px; }
+.dose-input-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
+.dose-field { margin-top: 0; padding: 8px; }
+.dose-field > div, .dose-strength-field > div { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(139, 163, 197, .25); border-radius: 8px; padding: 0 8px; background: rgba(5, 13, 27, .65); }
+.dose-field input, .dose-strength-field input { min-width: 0; width: 100%; border: 0; outline: 0; padding: 8px 0; color: #f8fbff; background: transparent; font-size: 15px; font-weight: 950; }
+.dose-field b, .dose-strength-field b { flex: 0 0 auto; color: #7dd3fc; font-size: 9px; white-space: nowrap; }
+.dose-strength-field { margin-top: 9px; }
+.dose-strength-field > div { max-width: 360px; }
+.dose-clear { margin-top: 10px; border: 1px solid rgba(139, 163, 197, .25); border-radius: 8px; padding: 7px 10px; color: #aec1d8; background: rgba(5, 13, 27, .5); font-size: 10px; font-weight: 900; cursor: pointer; }
+.dose-clear:hover { border-color: rgba(103, 232, 249, .4); color: #e8fbff; }
+.dose-status.ready { border-color: rgba(52, 211, 153, .4); color: #bbf7d0; background: rgba(16, 185, 129, .13); }
+.dose-result-banner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 13px; }
+.dose-result-banner > div { display: grid; gap: 3px; border: 1px solid rgba(34, 211, 238, .28); border-radius: 11px; padding: 11px; background: linear-gradient(145deg, rgba(8, 145, 178, .16), rgba(30, 41, 84, .26)); }
+.dose-result-banner small, .dose-volume span { color: #8ba7c3; font-size: 9px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dose-result-banner strong { color: #dffbff; font-size: 18px; font-weight: 950; line-height: 1.25; }
+.dose-result-banner span { color: #9ab1c9; font-size: 10px; line-height: 1.3; }
+.dose-volume { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px; border: 1px solid rgba(251, 146, 60, .35); border-radius: 10px; padding: 9px 11px; color: #fed7aa; background: rgba(234, 88, 12, .12); }
+.dose-volume b { color: #fff0da; font-size: 16px; font-weight: 950; }
+.dose-result-list { display: grid; gap: 7px; margin: 10px 0 0; }
+.dose-result-list > div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; border-top: 1px solid rgba(125, 150, 190, .12); padding-top: 7px; }
+.dose-result-list dt { color: #7f97b3; font-size: 9px; font-weight: 950; text-transform: uppercase; letter-spacing: .1em; }
+.dose-result-list dd { margin: 0; color: #c6d7eb; font-size: 10px; line-height: 1.5; }
+.dose-awaiting { display: flex; align-items: flex-start; gap: 10px; min-height: 150px; margin-top: 13px; border: 1px dashed rgba(125, 150, 190, .28); border-radius: 11px; padding: 18px; color: #94a9c3; font-size: 11px; line-height: 1.55; }
+.dose-awaiting svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-divider { height: 1px; margin: 15px 0; background: rgba(125, 150, 190, .15); }
+.dose-reference-table-wrap { overflow-x: auto; border: 1px solid rgba(125, 150, 190, .16); border-radius: 10px; }
+.dose-reference-table { width: 100%; border-collapse: collapse; min-width: 430px; font-size: 10px; }
+.dose-reference-table caption { padding: 9px; color: #bdeff8; background: rgba(31, 52, 83, .55); text-align: left; font-size: 9px; font-weight: 950; letter-spacing: .12em; text-transform: uppercase; }
+.dose-reference-table th, .dose-reference-table td { border-top: 1px solid rgba(125, 150, 190, .12); padding: 7px 8px; text-align: left; vertical-align: top; }
+.dose-reference-table thead th { color: #8097b2; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+.dose-reference-table tbody th { width: 45%; color: #d7e8fb; font-weight: 850; }
+.dose-reference-table tbody td { color: #9eeaf5; font-weight: 850; line-height: 1.4; }
+.dose-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.dose-catalog-item { display: grid; gap: 4px; min-width: 0; border: 1px solid rgba(125, 150, 190, .16); border-radius: 9px; padding: 9px; color: #c9daed; background: rgba(17, 32, 57, .5); text-align: left; cursor: pointer; }
+.dose-catalog-item:hover, .dose-catalog-item.active { border-color: rgba(103, 232, 249, .47); background: rgba(8, 145, 178, .13); }
+.dose-catalog-item b { overflow: hidden; color: #edf8ff; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.dose-catalog-item small { color: #8199b5; font-size: 9px; line-height: 1.35; }
+.dose-disclaimer { display: flex; align-items: flex-start; gap: 9px; border-color: rgba(251, 146, 60, .3); padding: 12px 14px; color: #f5d2ab; background: rgba(124, 45, 18, .13); font-size: 10px; line-height: 1.55; }
+.dose-disclaimer svg { flex: 0 0 auto; color: #fb923c; }
+.dose-disclaimer p { margin: 0; }
+.dose-disclaimer b { color: #ffe2be; }
+@media (max-width: 900px) { .dose-main-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dose-hero { display: grid; } .dose-group-tabs { grid-template-columns: 1fr; } .dose-input-grid, .dose-result-banner, .dose-catalog-grid { grid-template-columns: 1fr; } .dose-result-list > div { grid-template-columns: 1fr; gap: 3px; } }
+html.light .drugs-page { background: radial-gradient(circle at 8% 0%, rgba(6, 182, 212, .08), transparent 34rem), #f6f9fe; }
+html.light .dose-hero, html.light .dose-card, html.light .dose-catalog, html.light .dose-disclaimer { border-color: rgba(54, 80, 116, .2); background: rgba(255, 255, 255, .88); }
+html.light .dose-hero h1, html.light .dose-card-heading h2, html.light .dose-catalog-item b { color: #173557; }
+html.light .dose-hero p, html.light .dose-result-list dd { color: #536985; }
+html.light .dose-group-tabs { border-color: rgba(54, 80, 116, .2); background: rgba(231, 239, 249, .8); }
+html.light .dose-group-tabs button { color: #526c89; }
+html.light .dose-group-tabs button.active { color: #143e63; background: rgba(34, 211, 238, .16); }
+html.light .dose-select-field, html.light .dose-field, html.light .dose-strength-field, html.light .dose-catalog-item { border-color: rgba(54, 80, 116, .18); background: rgba(248, 251, 255, .92); }
+html.light .dose-select-field > span, html.light .dose-field > span, html.light .dose-strength-field > span { color: #244567; }
+html.light .dose-select-field select, html.light .dose-field > div, html.light .dose-strength-field > div { border-color: rgba(54, 80, 116, .2); color: #173557; background: #fff; }
+html.light .dose-field input, html.light .dose-strength-field input { color: #173557; }
+html.light .dose-field small, html.light .dose-select-field small, html.light .dose-strength-field small, html.light .dose-catalog-item small { color: #637a94; }
+html.light .dose-result-banner > div { border-color: rgba(14, 116, 144, .25); background: #edfafd; }
+html.light .dose-result-banner strong { color: #0b526e; }
+html.light .dose-reference-table caption { color: #24446a; background: #e6effa; }
+html.light .dose-reference-table thead th { color: #56708c; }
+html.light .dose-reference-table tbody th { color: #234467; }
+html.light .dose-reference-table tbody td { color: #0d6b83; }
+html.light .dose-disclaimer { color: #7b491d; background: rgba(251, 146, 60, .1); }
+html.light .dose-disclaimer b { color: #7b491d; }

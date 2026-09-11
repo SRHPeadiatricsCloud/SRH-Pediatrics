@@ -612,7 +612,7 @@ export function TopBar({
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
           <MobileNavLink href="/handover" icon={<Printer size={13} />}>Shift sheet</MobileNavLink>
-          <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Parameters</MobileNavLink>
+          <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Drugs &amp; doses</MobileNavLink>
           <MobileNavLink href="/learning" icon={<GraduationCap size={13} />}>Learning space</MobileNavLink>
           <MobileNavLink href="/updates" icon={<Newspaper size={13} />}>Recent updates</MobileNavLink>
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
