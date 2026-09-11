@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, ClipboardCheck, Clock3, ExternalLink, History, Keyboard, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Star, Stethoscope, Target, X } from "lucide-react";
+import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, History, Keyboard, RotateCcw, Ruler, Search, ShieldCheck, Star, Stethoscope, Target, X } from "lucide-react";
 import { Calculator as CalculatorIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
@@ -409,10 +409,27 @@ function ParklandVisual({ values, onBurnChange }: { values: Record<string, numbe
   );
 }
 
+type LibraryItem = {
+  id: string;
+  name: string;
+  detail: string;
+  category: CalcDef["category"];
+  kind: "calculator" | "anthropometry";
+  calc?: CalcDef;
+};
+
+const ANTHROPOMETRY_ITEM: LibraryItem = {
+  id: "anthropometry",
+  name: "Anthropometry & growth charts",
+  detail: "WHO · IAP · Fenton · BMI",
+  category: "growth",
+  kind: "anthropometry",
+};
+
 export default function CalculatorsPage() {
-  const [focusCalc, setFocusCalc] = useState("");
-  const [openCalcId, setOpenCalcId] = useState<string | null>(null);
-  const focusedCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
+  const [focusCalc, setFocusCalc] = useState("downes");
+  const activeCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
+  const anthropometryActive = focusCalc === ANTHROPOMETRY_ITEM.id;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [view, setView] = useState<"all" | "saved">("all");
@@ -429,9 +446,16 @@ export default function CalculatorsPage() {
         if (Array.isArray(saved)) setSavedIds(saved.filter((id): id is string => typeof id === "string" && CALCULATORS.some((calc) => calc.id === id)));
         if (Array.isArray(recent)) setRecentIds(recent.filter((id): id is string => typeof id === "string" && CALCULATORS.some((calc) => calc.id === id)));
       } catch {
-        // Ignore unavailable or malformed local storage; calculators remain usable.
+        // Local storage is optional; the library remains fully usable without it.
       }
     });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    const queryId = new URLSearchParams(window.location.search).get("calc")?.trim() ?? "";
+    const nextId = queryId === "anthropometry" || CALCULATORS.some((calc) => calc.id === queryId) ? queryId : "downes";
+    const frame = window.requestAnimationFrame(() => setFocusCalc(nextId));
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
@@ -448,6 +472,7 @@ export default function CalculatorsPage() {
   }, []);
 
   const rememberCalculator = (id: string) => {
+    if (id === ANTHROPOMETRY_ITEM.id) return;
     setRecentIds((current) => {
       const next = [id, ...current.filter((item) => item !== id)].slice(0, 4);
       window.localStorage.setItem("srh_calculator_recent", JSON.stringify(next));
@@ -456,14 +481,7 @@ export default function CalculatorsPage() {
   };
   const launchCalculator = (id: string) => {
     rememberCalculator(id);
-    setOpenCalcId(id);
     setFocusCalc(id);
-    setCat("all");
-    setView("all");
-    setQ("");
-  };
-  const toggleCalculator = (id: string) => {
-    setOpenCalcId((current) => current === id ? null : id);
   };
   const toggleSaved = (id: string) => {
     setSavedIds((current) => {
@@ -473,89 +491,64 @@ export default function CalculatorsPage() {
     });
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const calc = new URLSearchParams(window.location.search).get("calc")?.trim() || "";
-    const frame = window.requestAnimationFrame(() => {
-      setFocusCalc(calc);
-      setOpenCalcId(calc || null);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-  const filtered = useMemo(() => {
-    if (focusedCalc) return [focusedCalc];
+  const filteredCalculators = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return CALCULATORS.filter((c) => {
-      if (view === "saved" && !savedIds.includes(c.id)) return false;
-      if (cat !== "all" && c.category !== cat) return false;
+    return CALCULATORS.filter((calc) => {
+      if (view === "saved" && !savedIds.includes(calc.id)) return false;
+      if (cat !== "all" && calc.category !== cat) return false;
       if (!needle) return true;
-      const fieldSearch = c.fields.map((field) => field.type === "select" ? `${field.label} ${field.options.map((option) => option.label).join(" ")}` : `${field.label} ${field.unit ?? ""}`).join(" ");
-      return `${c.name} ${c.citation} ${c.category} ${fieldSearch}`.toLowerCase().includes(needle);
+      const fieldSearch = calc.fields.map((field) => field.type === "select"
+        ? `${field.label} ${field.options.map((option) => option.label).join(" ")}`
+        : `${field.label} ${field.unit ?? ""}`).join(" ");
+      return `${calc.name} ${calc.citation} ${calc.category} ${fieldSearch}`.toLowerCase().includes(needle);
     });
-  }, [q, cat, focusedCalc, savedIds, view]);
+  }, [q, cat, savedIds, view]);
+
+  const libraryGroups = useMemo(() => {
+    const items: LibraryItem[] = [];
+    if (view === "all" && cat !== "neonatal" && (cat === "all" || cat === "growth") && anthropometryQueryHit) items.push(ANTHROPOMETRY_ITEM);
+    for (const calc of filteredCalculators) items.push({ id: calc.id, name: calc.name, detail: calc.external ? "Primary source linked" : calc.citation.split("(")[0].trim(), category: calc.category, kind: "calculator", calc });
+    const map: Record<string, LibraryItem[]> = {};
+    for (const item of items) (map[item.category] ??= []).push(item);
+    return CATEGORIES.filter((category) => map[category.key]?.length).map((category) => ({ ...category, items: map[category.key] }));
+  }, [anthropometryQueryHit, cat, filteredCalculators, view]);
 
   const recentCalculators = recentIds.map((id) => CALCULATORS.find((calc) => calc.id === id)).filter((calc): calc is CalcDef => Boolean(calc));
-
-  const grouped = useMemo(() => {
-    const map: Record<string, CalcDef[]> = {};
-    for (const c of CATEGORIES) map[c.key] = [];
-    for (const c of filtered) (map[c.category] ??= []).push(c);
-    return CATEGORIES.filter((c) => map[c.key]?.length).map((c) => ({ ...c, items: map[c.key] }));
-  }, [filtered]);
+  const visibleCount = filteredCalculators.length + (libraryGroups.some((group) => group.items.some((item) => item.id === ANTHROPOMETRY_ITEM.id)) ? 1 : 0);
 
   return (
-    <main className="min-h-screen pb-20">
+    <main className="calculator-page min-h-screen pb-20">
       <TopBar />
-      <div className="mx-auto max-w-[1200px] px-4 py-5">
-        <section className="calculator-hero card mb-4">
-          <div className="calculator-hero-grid">
-            <div className="calculator-hero-copy">
-              <div className="calc-hero-overline"><span className="calc-hero-icon"><CalculatorIcon size={17} /></span><span>SRH clinical tools</span><span className="calc-hero-live"><i /> Evidence-aware workspace</span></div>
-              <h1>Calculator cockpit</h1>
-              <p>Fast, guided clinical scoring with clear inputs, transparent interpretation and visual bedside references.</p>
-              <div className="calc-hero-meta"><span><ClipboardCheck size={13} /> {CALCULATORS.length} curated clinical tools</span><span><ShieldCheck size={13} /> Sources and limitations shown</span><span><Sparkles size={13} /> Live interpretation</span></div>
+      <div className="calculator-shell mx-auto max-w-[1440px] px-4 py-5">
+        <section className="calculator-command card">
+          <div className="calculator-command-main">
+            <div className="calculator-command-title">
+              <div className="calc-command-mark"><CalculatorIcon size={22} /></div>
+              <div><div className="calc-command-overline">SRH · Pediatric decision support</div><h1>Calculator workspace</h1><p>Choose one tool, complete one workflow, and keep the clinical interpretation in view.</p></div>
             </div>
-            <div className="calculator-hero-search">
-              <label htmlFor="calculator-search">Find a tool, domain or clinical feature</label>
-              <div className="calc-search-wrap"><Search size={17} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd><Keyboard size={11} />⌘K</kbd>{focusedCalc && <button type="button" onClick={() => { setFocusCalc(""); setOpenCalcId(null); }} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
-              <p>{focusedCalc ? "Focused tool loaded · clear focus to search the full library" : `${filtered.length} tool${filtered.length === 1 ? "" : "s"} currently visible`}</p>
-            </div>
+            <div className="calculator-command-stats"><span><b>{CALCULATORS.length + 1}</b> tools</span><span><b>01</b> active workflow</span><span><b>⌘K</b> quick search</span></div>
           </div>
-          <div className="calc-howto-strip"><span className="calc-howto-title"><Target size={14} /> How to use</span><span><b>01</b> Open a tool</span><span><b>02</b> Complete highlighted fields</span><span><b>03</b> Review interpretation + safety note</span></div>
+          <div className="calculator-command-search"><label htmlFor="calculator-search">Find a calculator or clinical feature</label><div className="calc-search-wrap"><Search size={18} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Search ROP, respiratory distress, bilirubin, birth weight…" value={q} onChange={(event) => setQ(event.target.value)} /><kbd><Keyboard size={11} />⌘K</kbd>{q && <button type="button" onClick={() => setQ("")} aria-label="Clear search"><X size={14} /></button>}</div><span>{visibleCount} result{visibleCount === 1 ? "" : "s"} · search includes fields, units and source text</span></div>
         </section>
 
-        <section className="calc-spotlight-row mb-4" aria-label="Featured clinical tools">
-          <div className="calc-spotlight-heading"><span>Start with a guided tool</span><small>high-use bedside workflows</small></div>
-          <div className="calc-spotlights">{SPOTLIGHTS.map((spotlight) => <button key={spotlight.id} type="button" className={`calc-spotlight calc-spotlight-${spotlight.accent}`} onClick={() => launchCalculator(spotlight.id)}><span><b>{spotlight.label}</b><small>{spotlight.detail}</small></span><ArrowUpRight size={15} /></button>)}</div>
-        </section>
+        <div className="calc-workspace-layout">
+          <aside className="calc-library-rail card" aria-label="Calculator library">
+            <div className="calc-rail-heading"><div><span>Library</span><b>One tool at a time</b></div><span className="calc-rail-count">{CALCULATORS.length + 1}</span></div>
+            <div className="calc-rail-tabs"><button type="button" className={view === "all" ? "active" : ""} onClick={() => setView("all")}>All tools</button><button type="button" className={view === "saved" ? "active" : ""} onClick={() => setView("saved")}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved <b>{savedIds.length}</b></button></div>
+            <label className="calc-rail-filter"><span>Clinical area</span><select value={cat} onChange={(event) => setCat(event.target.value)}><option value="all">All clinical areas</option>{CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
+            <div className="calc-rail-results"><span>{view === "saved" ? "Saved tools" : "Available tools"}</span><span>{visibleCount}</span></div>
+            <div className="calc-library-list">
+              {libraryGroups.map((group) => <div key={group.key} className="calc-library-group"><div className="calc-library-group-title"><span>{group.label}</span><b>{group.items.length}</b></div>{group.items.map((item) => <button key={item.id} type="button" className={`calc-library-item ${focusCalc === item.id ? "active" : ""}`} onClick={() => launchCalculator(item.id)}><span className={`calc-library-icon calc-mark-${item.category}`}>{item.kind === "anthropometry" ? <Ruler size={14} /> : <Stethoscope size={14} />}</span><span className="calc-library-copy"><b>{item.name}</b><small>{item.detail}</small></span>{item.kind === "calculator" && item.calc && savedIds.includes(item.calc.id) && <Star className="calc-library-star" size={13} fill="currentColor" />}{focusCalc === item.id && <ChevronRight className="calc-library-current" size={14} />}</button>)}</div>)}
+              {libraryGroups.length === 0 && <div className="calc-rail-empty"><BookOpen size={20} /><b>{view === "saved" ? "No saved tools" : "No matches"}</b><span>{view === "saved" ? "Star tools to keep them here." : "Try a different search or clinical area."}</span></div>}
+            </div>
+          </aside>
 
-        {recentCalculators.length > 0 && <section className="calc-recent-row mb-4" aria-label="Recently opened calculators"><div className="calc-recent-heading"><History size={14} /><span>Recent</span></div><div className="calc-recent-list">{recentCalculators.map((calc) => <button key={calc.id} type="button" onClick={() => launchCalculator(calc.id)}><Clock3 size={13} /><span>{calc.name}</span><ArrowUpRight size={12} /></button>)}</div></section>}
-
-        <div className="card calc-category-nav mb-4">
-          <div className="calc-filter-title"><SlidersHorizontal size={14} /> Browse the library</div>
-          <div className="calc-category-chips"><button className={`chip ${view === "all" && cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat("all"); setFocusCalc(""); setOpenCalcId(null); }}>All tools</button><button className={`chip calc-saved-filter ${view === "saved" ? "chip-on" : "chip-off"}`} onClick={() => { setView("saved"); setCat("all"); setFocusCalc(""); setOpenCalcId(null); }}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved {savedIds.length}</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${view === "all" && cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat(category.key); setFocusCalc(""); setOpenCalcId(null); }}>{category.label}</button>)}</div>
-        </div>
-
-        {focusedCalc && (
-          <div className="calc-focus-banner mb-4"><div><span className="calc-focus-kicker">Focused workflow</span><b>{focusedCalc.name}</b><small>{categoryLabel(focusedCalc.category)} · source-linked interpretation</small></div><button type="button" onClick={() => { setFocusCalc(""); setOpenCalcId(null); }}><X size={13} /> Return to library</button></div>
-        )}
-
-        {!focusedCalc && (cat === "all" || cat === "growth") && <AnthropometrySection query={q} />}
-
-        {grouped.length === 0 && (!anthropometryQueryHit || focusedCalc || view === "saved") && <div className="card calc-empty-state"><BookOpen size={22} /><b>{view === "saved" ? "No saved calculators yet" : `No calculator matches “${q}”`}</b><span>{view === "saved" ? "Use the star on any tool to build a personal bedside shortlist." : "Try a calculator name, category, field label, unit or clinical feature."}</span></div>}
-
-        <div className="space-y-4">
-          {grouped.map((group) => (
-            <section key={group.key}>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-black text-cyan-300">
-                <Stethoscope size={14} /> {group.label}
-                <span className="text-[10px] font-semibold text-slate-500">({group.items.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {group.items.map((c) => <CalcCard key={c.id} calc={c} open={c.id === openCalcId} saved={savedIds.includes(c.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={toggleCalculator} />)}
-              </div>
-            </section>
-          ))}
+          <section className="calc-workspace-stage" aria-live="polite">
+            {activeCalc && <div className="calc-stage-heading"><div><span className="calc-stage-kicker">Active workflow · {categoryLabel(activeCalc.category)}</span><h2>{activeCalc.name}</h2><p>{activeCalc.external ? "Primary source linked" : "Citation and limitations shown below"} · one focused workflow at a time</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Ready for entry</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
+            {anthropometryActive && <div className="calc-stage-heading"><div><span className="calc-stage-kicker">Active workflow · Growth & nutrition</span><h2>{ANTHROPOMETRY_ITEM.name}</h2><p>WHO, IAP and Fenton references remain separate and visible.</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Reference charts</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
+            {activeCalc ? <CalcCard calc={activeCalc} open saved={savedIds.includes(activeCalc.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={(id) => setFocusCalc((current) => current === id ? "" : id)} /> : anthropometryActive ? <AnthropometrySection query="" /> : <div className="calc-stage-placeholder"><div className="calc-placeholder-icon"><CalculatorIcon size={25} /></div><span className="calc-stage-kicker">Workspace ready</span><h2>Choose a calculator from the library</h2><p>Only the active tool opens here, so the rest of the library stays compact on mobile and desktop.</p><button type="button" className="btn-primary" onClick={() => searchRef.current?.focus()}><Search size={15} /> Find a tool</button></div>}
+            {activeCalc && recentCalculators.length > 0 && <div className="calc-stage-recent"><History size={14} /><span>Recent:</span>{recentCalculators.filter((calc) => calc.id !== activeCalc.id).slice(0, 3).map((calc) => <button key={calc.id} type="button" onClick={() => launchCalculator(calc.id)}>{calc.name}<ArrowUpRight size={12} /></button>)}</div>}
+          </section>
         </div>
       </div>
     </main>
