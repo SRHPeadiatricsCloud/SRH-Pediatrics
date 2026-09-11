@@ -10,7 +10,7 @@
 
 export const BACKUP_SCHEMA_VERSION = 2;
 // Displayed in the shell footer and backup metadata. Increment the patch segment for each feature release.
-export const APP_VERSION = "2.0.029";
+export const APP_VERSION = "2.0.030";
 
 export type BackupEnvelope = {
   kind: "srh-nicu-backup";

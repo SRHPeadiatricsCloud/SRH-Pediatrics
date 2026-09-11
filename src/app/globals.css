@@ -1592,3 +1592,43 @@ html.light .anthro-hologram .text-cyan-300 {
 html.light .anthro-hologram .text-rose-300 {
   color: #b20d6d;
 }
+
+/* Anthropometry point callout: keeps the current centile and z-score attached
+   to the marker instead of forcing the reader to cross-reference the result box. */
+.anthro-point-callout {
+  pointer-events: none;
+}
+.anthro-callout-leader {
+  stroke: rgba(34,211,238,0.75);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.anthro-callout-bg {
+  fill: rgba(2,6,23,0.9);
+  stroke: rgba(34,211,238,0.75);
+  stroke-width: 1;
+}
+.anthro-callout-title {
+  fill: #a5f3fc;
+  font-weight: 800;
+}
+.anthro-callout-value {
+  fill: #ffffff;
+  font-weight: 900;
+}
+html.light .anthro-callout-leader {
+  stroke: #743193;
+  stroke-width: 1.8;
+}
+html.light .anthro-callout-bg {
+  fill: #ffffff;
+  stroke: #743193;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 4px 6px rgba(91,35,120,0.2));
+}
+html.light .anthro-callout-title {
+  fill: #5b2378 !important;
+}
+html.light .anthro-callout-value {
+  fill: #17233d !important;
+}
