@@ -939,3 +939,372 @@ body,
 .text-\[11px\] {
   font-size: 13px;
 }
+
+/* ============================================================
+   LIGHT MODE v3 — Sri Ramakrishna brand palette
+   Uses the logo's purple, magenta, orange and blue for a brighter,
+   calmer clinical surface with high-contrast text throughout.
+   ============================================================ */
+html.light {
+  color-scheme: light;
+  --brand-purple: #743193;
+  --brand-purple-deep: #5b2378;
+  --brand-magenta: #ed1694;
+  --brand-orange: #f26a29;
+  --brand-blue: #23a0dc;
+  --brand-blue-deep: #0878b5;
+  --light-ink: #17233d;
+  --light-ink-soft: #34445f;
+  --light-muted: #596b86;
+  --light-line: #d9deea;
+  --light-surface: #ffffff;
+  --light-surface-soft: #f7f8fc;
+  --light-surface-blue: #f0f8fd;
+  --bg: #f4f7fb;
+  --bg-glow-1: rgba(35, 160, 220, 0.18);
+  --bg-glow-2: rgba(116, 49, 147, 0.14);
+  --bg-glow-3: rgba(237, 22, 148, 0.08);
+  --card: linear-gradient(145deg, #ffffff 0%, #fdfcff 68%, #f8f5fb 100%);
+  --card-solid: #ffffff;
+  --card-hi: #f5f7fc;
+  --border: var(--light-line);
+  --border-strong: #b9bfd2;
+  --text: var(--light-ink);
+  --text-2: var(--light-ink-soft);
+  --text-3: var(--light-muted);
+  --text-4: #72819a;
+  --accent: var(--brand-blue);
+  --accent-2: var(--brand-purple);
+  --accent-soft: rgba(35, 160, 220, 0.13);
+  --shadow-card: 0 1px 2px rgba(23, 35, 61, 0.05), 0 13px 30px -19px rgba(70, 47, 105, 0.34);
+  --shadow-pop: 0 18px 36px -21px rgba(70, 47, 105, 0.42);
+}
+
+html.light body {
+  background:
+    radial-gradient(1000px 520px at 3% -12%, var(--bg-glow-2) 0%, transparent 62%),
+    radial-gradient(950px 500px at 100% -8%, var(--bg-glow-1) 0%, transparent 60%),
+    radial-gradient(900px 560px at 56% 112%, var(--bg-glow-3) 0%, transparent 64%),
+    linear-gradient(180deg, #edf5fb 0%, #f7f8fc 48%, #ffffff 100%);
+  background-attachment: fixed;
+  color: var(--light-ink);
+}
+
+html.light .card {
+  background: var(--card);
+  border-color: var(--light-line);
+  box-shadow: var(--shadow-card);
+}
+html.light .card::before {
+  height: 3px;
+  opacity: 0.82;
+  background: linear-gradient(
+    90deg,
+    transparent 2%,
+    var(--brand-magenta) 20%,
+    var(--brand-orange) 43%,
+    var(--brand-blue) 66%,
+    var(--brand-purple) 88%,
+    transparent 98%
+  );
+}
+html.light a.card:hover {
+  border-color: #b9a6c8;
+  box-shadow: var(--shadow-pop);
+}
+
+/* Clear, brand-tinted panels replace muddy translucent dark utilities. */
+html.light .bg-slate-950,
+html.light .bg-slate-900 {
+  background-color: var(--light-surface-soft);
+  color: var(--light-ink);
+}
+html.light .bg-slate-950\/40,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/95,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/95 {
+  background-color: var(--light-surface-soft);
+  color: var(--light-ink);
+}
+html.light .bg-white {
+  background-color: #ffffff;
+}
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+html.light .bg-white\/\[0\.02\],
+html.light .bg-white\/\[0\.03\],
+html.light .bg-white\/\[0\.04\],
+html.light .bg-white\/\[0\.07\] {
+  background-color: #f1f4fa;
+}
+
+/* Logo-derived semantic surfaces. */
+html.light .bg-cyan-400\/5,
+html.light .bg-cyan-400\/10,
+html.light .bg-cyan-400\/15,
+html.light .bg-sky-400\/5,
+html.light .bg-sky-400\/10,
+html.light .bg-sky-500\/15 {
+  background-color: #e4f4fb;
+}
+html.light .bg-violet-400\/10,
+html.light .bg-indigo-400\/10,
+html.light .bg-indigo-400\/15,
+html.light .bg-purple-400\/10 {
+  background-color: #f0e9f5;
+}
+html.light .bg-fuchsia-400\/10,
+html.light .bg-pink-400\/10 {
+  background-color: #fde7f4;
+}
+html.light .bg-rose-400\/10,
+html.light .bg-rose-500\/10,
+html.light .bg-rose-500\/15,
+html.light .bg-rose-500\/20 {
+  background-color: #ffe5eb;
+}
+html.light .bg-amber-400\/5,
+html.light .bg-amber-400\/10,
+html.light .bg-amber-500\/15 {
+  background-color: #fff0df;
+}
+html.light .bg-emerald-400\/10 {
+  background-color: #e0f6eb;
+}
+
+/* Text contrast: never use pale dark-mode text on a white surface. */
+html.light .text-white,
+html.light h1,
+html.light h2,
+html.light h3 {
+  color: var(--light-ink);
+}
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: var(--light-ink-soft);
+}
+html.light .text-slate-400 {
+  color: #4f607b;
+}
+html.light .text-slate-500 {
+  color: #64738a;
+}
+html.light .text-slate-600 {
+  color: #56657b;
+}
+html.light .text-cyan-100,
+html.light .text-cyan-200,
+html.light .text-cyan-300,
+html.light .text-sky-200,
+html.light .text-sky-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .text-violet-100,
+html.light .text-violet-200,
+html.light .text-violet-300,
+html.light .text-purple-200,
+html.light .text-purple-300 {
+  color: var(--brand-purple-deep);
+}
+html.light .text-fuchsia-200,
+html.light .text-fuchsia-300,
+html.light .text-pink-200,
+html.light .text-pink-300 {
+  color: #b20d6d;
+}
+html.light .text-rose-100,
+html.light .text-rose-200,
+html.light .text-rose-300 {
+  color: #bd234d;
+}
+html.light .text-amber-100,
+html.light .text-amber-200,
+html.light .text-amber-300 {
+  color: #a6530c;
+}
+html.light .text-emerald-200,
+html.light .text-emerald-300 {
+  color: #08764f;
+}
+html.light .text-indigo-200,
+html.light .text-indigo-300 {
+  color: #514096;
+}
+
+/* Borders stay visible against both white cards and tinted panels. */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/20 {
+  border-color: var(--light-line);
+}
+html.light .border-cyan-400\/20,
+html.light .border-cyan-400\/25,
+html.light .border-cyan-400\/30,
+html.light .border-cyan-400\/35,
+html.light .border-cyan-400\/40 {
+  border-color: #88cde8;
+}
+html.light .border-sky-400\/25,
+html.light .border-sky-400\/30,
+html.light .border-sky-400\/40 {
+  border-color: #8fcfe9;
+}
+html.light .border-violet-400\/20,
+html.light .border-violet-400\/25,
+html.light .border-violet-400\/30,
+html.light .border-violet-400\/35,
+html.light .border-purple-400\/30 {
+  border-color: #c4acd1;
+}
+html.light .border-fuchsia-400\/30,
+html.light .border-pink-400\/30 {
+  border-color: #edabd0;
+}
+html.light .border-rose-400\/20,
+html.light .border-rose-400\/25,
+html.light .border-rose-400\/30,
+html.light .border-rose-400\/40,
+html.light .border-rose-400\/50,
+html.light .border-rose-500\/40 {
+  border-color: #f1a9bb;
+}
+html.light .border-amber-400\/20,
+html.light .border-amber-400\/25,
+html.light .border-amber-400\/30,
+html.light .border-amber-400\/40 {
+  border-color: #efc080;
+}
+html.light .border-emerald-400\/20,
+html.light .border-emerald-400\/30,
+html.light .border-emerald-400\/40 {
+  border-color: #8bd5b3;
+}
+
+/* Brand-led controls. */
+html.light .chip-off {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink-soft);
+}
+html.light .chip-off:hover {
+  background: #e9f6fc;
+  border-color: var(--brand-blue);
+  color: var(--light-ink);
+}
+html.light .chip-on {
+  background: linear-gradient(135deg, var(--brand-purple) 0%, var(--brand-blue) 100%);
+  color: #ffffff;
+  box-shadow: 0 7px 18px -11px rgba(116, 49, 147, 0.7), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+html.light .chip-on.tone-rose {
+  background: linear-gradient(135deg, var(--brand-magenta) 0%, #c50c72 100%);
+  color: #ffffff;
+}
+html.light .chip-on.tone-amber {
+  background: linear-gradient(135deg, #ffb14e 0%, var(--brand-orange) 100%);
+  color: #442000;
+}
+html.light .chip-on.tone-emerald {
+  background: linear-gradient(135deg, #37c98b 0%, #08764f 100%);
+  color: #ffffff;
+}
+html.light .btn-primary {
+  background: linear-gradient(135deg, var(--brand-purple) 0%, var(--brand-blue) 100%);
+  color: #ffffff;
+  box-shadow: 0 11px 25px -15px rgba(116, 49, 147, 0.78), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+html.light .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.07) saturate(1.08);
+}
+html.light .btn-ghost {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink-soft);
+}
+html.light .btn-ghost:hover:not(:disabled) {
+  background: #e9f6fc;
+  border-color: var(--brand-blue);
+  color: var(--light-ink);
+}
+html.light .inp {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink);
+  box-shadow: inset 0 1px 2px rgba(23, 35, 61, 0.025);
+}
+html.light .inp:focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(35, 160, 220, 0.17), inset 0 1px 2px rgba(23, 35, 61, 0.025);
+}
+html.light .lbl {
+  color: #52637e;
+}
+
+/* Header and tabs have a quiet brand gradient instead of a dull grey bar. */
+html.light header {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: #d4dbea !important;
+  box-shadow: 0 8px 26px -22px rgba(91, 35, 120, 0.62);
+}
+html.light header nav {
+  background: linear-gradient(90deg, rgba(116,49,147,0.08), rgba(35,160,220,0.10) 56%, rgba(237,22,148,0.05));
+  border-top-color: #e1e4ee !important;
+}
+html.light header nav a[aria-current="page"] {
+  border-color: rgba(116,49,147,0.52);
+  background: linear-gradient(135deg, rgba(116,49,147,0.12), rgba(35,160,220,0.14));
+  color: var(--brand-purple-deep);
+}
+html.light .theme-switch {
+  background: #ffffff;
+  border-color: #c7cada;
+  box-shadow: 0 2px 6px rgba(23, 35, 61, 0.08);
+}
+html.light .theme-switch button {
+  color: var(--light-ink-soft);
+}
+html.light .theme-switch button.theme-on.bg-amber-400 {
+  background: var(--brand-purple);
+  color: #ffffff;
+}
+html.light .theme-switch button:hover {
+  background: #edf6fb;
+}
+
+/* Gradients used by hero panels inherit the logo palette. */
+html.light .from-cyan-500\/10 { --tw-gradient-from: rgba(35,160,220,0.14); }
+html.light .via-indigo-500\/10 { --tw-gradient-via: rgba(116,49,147,0.09); }
+html.light .to-fuchsia-500\/10 { --tw-gradient-to: rgba(237,22,148,0.08); }
+html.light .bg-gradient-to-br {
+  background-image: linear-gradient(145deg, rgba(35,160,220,0.18) 0%, rgba(116,49,147,0.14) 100%);
+}
+
+/* Tables, dividers and focus affordances. */
+html.light table thead th {
+  background: linear-gradient(180deg, #eef8fc 0%, #f2edf8 100%);
+  color: #244468;
+  border-bottom: 2px solid #b9dce9;
+}
+html.light table tbody tr {
+  border-color: #e2e6ef;
+}
+html.light table tbody tr:hover {
+  background: #f0f8fc;
+}
+html.light :focus-visible {
+  outline: 3px solid rgba(237, 22, 148, 0.38);
+  outline-offset: 2px;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(116, 49, 147, 0.34);
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 160, 220, 0.58);
+}

@@ -13,9 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0891b2",
     categories: ["medical", "health", "productivity"],
     icons: [
-      { src: "/icons/icon-512.png?v=2.0.026", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png?v=2.0.026", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/images/hospital-logo.png?v=2.0.026", sizes: "539x371", type: "image/png" },
+      { src: "/icons/icon-512.png?v=2.0.027", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png?v=2.0.027", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/images/hospital-logo.png?v=2.0.027", sizes: "539x371", type: "image/png" },
     ],
   };
 }
