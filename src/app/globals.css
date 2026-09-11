@@ -1387,3 +1387,208 @@ html.light .border-orange-400\/40 {
 html.light .bg-orange-400\/10 {
   background-color: #fff0df;
 }
+
+/* ============================================================
+   CLINICAL CHARTS — light-mode hologram treatment
+   ============================================================ */
+.bilirubin-field,
+.bilirubin-toggle {
+  background: linear-gradient(180deg, rgba(15,23,42,0.88), rgba(2,6,23,0.88));
+}
+.bilirubin-input {
+  background: rgba(6,10,18,0.58);
+}
+.bilirubin-unit {
+  color: var(--text-3);
+}
+.bilirubin-metric {
+  background: rgba(6,10,18,0.30);
+}
+.bilirubin-metric-label,
+.bilirubin-metric-sub {
+  color: rgba(255,255,255,0.68);
+}
+.bilirubin-chart-shell {
+  background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(2,6,23,0.96));
+}
+
+html.light .bilirubin-intro {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(35,160,220,0.18), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(237,22,148,0.12), transparent 34%),
+    linear-gradient(145deg, #f8fcff 0%, #f8f2fb 100%) !important;
+  border-color: #b9dce9;
+  color: var(--light-ink-soft);
+  box-shadow: 0 12px 26px -18px rgba(35,160,220,0.58);
+}
+html.light .bilirubin-intro .text-white,
+html.light .bilirubin-intro .text-slate-200,
+html.light .bilirubin-intro .text-slate-300,
+html.light .bilirubin-intro .text-slate-400 {
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-field,
+html.light .bilirubin-toggle {
+  border-color: #d7d5e5;
+  background: linear-gradient(135deg, #fbf8fd 0%, #f1f8fc 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.92), 0 4px 12px -10px rgba(91,35,120,0.45);
+}
+html.light .bilirubin-field:hover,
+html.light .bilirubin-toggle:hover {
+  border-color: #b9a6c8;
+  background: linear-gradient(135deg, #fffafe 0%, #eef9fd 100%) !important;
+}
+html.light .bilirubin-input {
+  background: #ffffff !important;
+  border-color: #cbd4e2 !important;
+  color: var(--light-ink) !important;
+}
+html.light .bilirubin-input:focus {
+  border-color: var(--brand-blue) !important;
+  box-shadow: 0 0 0 3px rgba(35,160,220,0.16) !important;
+}
+html.light .bilirubin-unit {
+  color: #52637e;
+}
+html.light .bilirubin-result {
+  box-shadow: 0 10px 25px -18px rgba(91,35,120,0.4);
+}
+html.light .bilirubin-risk-panel {
+  border-color: #c5d4e1;
+  background: linear-gradient(145deg, #fbfcff 0%, #f4f8fc 100%) !important;
+  box-shadow: 0 10px 24px -18px rgba(35,160,220,0.45);
+}
+html.light .bilirubin-metric {
+  border-color: #d7dce7;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f8fc 100%);
+  color: var(--light-ink);
+}
+html.light .bilirubin-metric-label {
+  color: #52637e;
+}
+html.light .bilirubin-metric-value {
+  color: var(--light-ink);
+}
+html.light .bilirubin-metric-sub {
+  color: #5e7089;
+}
+html.light .bilirubin-chart-shell {
+  border-color: #c7b6d3;
+  background: linear-gradient(145deg, #fbfdff 0%, #f8f1fb 100%) !important;
+  box-shadow: 0 15px 34px -22px rgba(116,49,147,0.52);
+}
+html.light .bilirubin-chart-shell h3 {
+  color: var(--light-ink);
+}
+html.light .bilirubin-chart-shell .text-slate-300,
+html.light .bilirubin-chart-shell .text-slate-400 {
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-plot {
+  border-color: #b9dce9;
+  background: #f8fbff !important;
+  box-shadow: inset 0 0 28px rgba(35,160,220,0.08);
+}
+html.light .bilirubin-chart {
+  background: linear-gradient(145deg, #f5fbfe 0%, #fbf5fc 100%);
+}
+html.light .bilirubin-chart > rect:first-of-type {
+  fill: #f5fbfe !important;
+}
+html.light .bilirubin-chart > rect:nth-of-type(2) {
+  fill: #fbfdff !important;
+}
+html.light .bilirubin-chart stop:first-of-type {
+  stop-color: #dff4fb !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart stop:nth-of-type(2) {
+  stop-color: #eee6f6 !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart stop:last-of-type {
+  stop-color: #fde7f4 !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart > line {
+  stroke: rgba(35,160,220,0.22) !important;
+}
+html.light .bilirubin-chart text {
+  fill: #38516e !important;
+}
+html.light .bilirubin-chart .bilirubin-exchange-label {
+  fill: #b20d6d !important;
+}
+html.light .bilirubin-chart .bilirubin-current-label {
+  fill: #243b5b !important;
+}
+html.light .bilirubin-notes {
+  border-color: #b9dce9;
+  background: linear-gradient(135deg, #f1f9fd 0%, #f8f1fb 100%) !important;
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-notes .text-cyan-200,
+html.light .bilirubin-notes .text-cyan-300,
+html.light .bilirubin-notes .text-slate-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .bilirubin-legend {
+  border-color: #d7d5e5;
+  background: #ffffff !important;
+  color: var(--light-ink);
+  box-shadow: 0 5px 14px -12px rgba(91,35,120,0.5);
+}
+html.light .bilirubin-legend .text-white {
+  color: var(--light-ink) !important;
+}
+html.light .bilirubin-legend .text-slate-300 {
+  color: #52637e;
+}
+
+/* Growth charts: brighter canvas, crisp grid, and luminous curve lines. */
+html.light .anthro-hologram {
+  border-color: #b9dce9;
+  background: linear-gradient(145deg, #f8fdff 0%, #fbf4fc 100%) !important;
+  box-shadow: 0 15px 34px -22px rgba(116,49,147,0.5), inset 0 0 32px rgba(35,160,220,0.06);
+}
+html.light .anthro-hologram::before {
+  background: linear-gradient(115deg, rgba(35,160,220,0.16), transparent 24%, transparent 70%, rgba(237,22,148,0.12));
+  mix-blend-mode: multiply;
+}
+html.light .anthro-hologram svg {
+  border: 1px solid #c6dfeb;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f5fbfe 0%, #fbf5fc 100%);
+}
+html.light .anthro-hologram svg > rect:first-of-type {
+  fill: #f5fbfe !important;
+}
+html.light .anthro-hologram svg > rect:nth-of-type(2) {
+  fill: #fbfdff !important;
+}
+html.light .anthro-hologram svg stop:first-of-type {
+  stop-color: #dff4fb !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg stop:nth-of-type(2) {
+  stop-color: #eee6f6 !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg stop:last-of-type {
+  stop-color: #fde7f4 !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg line {
+  stroke: rgba(35,160,220,0.18) !important;
+}
+html.light .anthro-hologram svg text {
+  fill: #3d526c !important;
+}
+html.light .anthro-hologram .text-cyan-100,
+html.light .anthro-hologram .text-cyan-200,
+html.light .anthro-hologram .text-cyan-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .anthro-hologram .text-rose-300 {
+  color: #b20d6d;
+}
