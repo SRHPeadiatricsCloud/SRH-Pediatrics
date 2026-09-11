@@ -1,13 +1,13 @@
 "use client";
 
-import { ChevronDown, ChevronRight, ExternalLink, Search, Stethoscope } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, ClipboardCheck, ExternalLink, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Stethoscope, Target, X } from "lucide-react";
 import { Calculator as CalculatorIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
 import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
 import { AnthropometrySection } from "@/components/anthropometry-calculators";
-import { CALCULATORS, CATEGORIES } from "@/lib/calculators";
+import { CALCULATORS, CATEGORIES, newBallardCompletedWeeks } from "@/lib/calculators";
 import type { Calculator as CalcDef, CalcResult } from "@/lib/calc-types";
 
 const SEV_STYLE: Record<string, string> = {
@@ -17,107 +17,109 @@ const SEV_STYLE: Record<string, string> = {
   crit: "border-rose-400/50 bg-rose-500/15 text-rose-200",
 };
 
+const SPOTLIGHTS = [
+  { id: "rop", label: "ROP", detail: "zone · stage · plus", accent: "violet" },
+  { id: "downes", label: "Downes", detail: "respiratory distress", accent: "cyan" },
+  { id: "ballard", label: "New Ballard", detail: "gestational maturity", accent: "orange" },
+  { id: "parkland", label: "Paediatric burns", detail: "Lund–Browder + fluids", accent: "rose" },
+  { id: "ponderal", label: "Ponderal", detail: "birth proportionality", accent: "indigo" },
+] as const;
+
+function categoryLabel(category: CalcDef["category"]): string {
+  return CATEGORIES.find((item) => item.key === category)?.label ?? category;
+}
+
 function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: boolean }) {
   const [open, setOpen] = useState(forceOpen);
   const [values, setValues] = useState<Record<string, number>>({});
   const [result, setResult] = useState<CalcResult | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
+  const enteredCount = calc.fields.filter((field) => Object.prototype.hasOwnProperty.call(values, field.key)).length;
+  const complete = calc.fields.length > 0 && enteredCount === calc.fields.length;
+  const progress = calc.fields.length ? Math.round((enteredCount / calc.fields.length) * 100) : 0;
+  const liveResult = useMemo(() => complete ? calc.compute(values) : null, [calc, complete, values]);
+  const shownResult = liveResult ?? result;
 
   useEffect(() => {
     if (!forceOpen) return;
-    setOpen(true);
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const frame = window.requestAnimationFrame(() => {
+      setOpen(true);
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [forceOpen]);
 
-  const complete = calc.fields.length > 0 && calc.fields.every((field) => Object.prototype.hasOwnProperty.call(values, field.key));
-  const liveResult = useMemo(() => complete ? calc.compute(values) : null, [calc, complete, values]);
-  const shownResult = liveResult ?? result;
   const setValue = (key: string, value: number) => {
     setValues((previous) => ({ ...previous, [key]: value }));
     setResult(null);
   };
+  const reset = () => {
+    setValues({});
+    setResult(null);
+  };
 
   return (
-    <div ref={ref} className="card overflow-hidden">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-white/[0.03]"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {open ? <ChevronDown size={16} className="shrink-0 text-cyan-300" /> : <ChevronRight size={16} className="shrink-0 text-slate-400" />}
-        <Stethoscope size={14} className="shrink-0 text-cyan-300/70" />
-        <span className="flex-1 text-sm font-bold text-white">{calc.name}</span>
-        <span className="text-[9px] uppercase tracking-wide text-slate-500">{calc.citation.split("(")[0].trim()}</span>
-      </button>
+    <div ref={ref} className={`card calc-card overflow-hidden ${open ? "calc-card-open" : ""}`}>
+      <div className="calc-card-header">
+        <button type="button" className="calc-card-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+          <span className="calc-card-chevron">{open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}</span>
+          <span className={`calc-card-mark calc-mark-${calc.category}`}><Stethoscope size={15} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="calc-card-eyebrow">{categoryLabel(calc.category)} <i>·</i> {calc.fields.length ? "guided entry" : "interactive module"}</span>
+            <span className="calc-card-name">{calc.name}</span>
+            <span className="calc-card-citation">{calc.citation.split("(")[0].trim()}</span>
+          </span>
+        </button>
+        <div className="calc-card-actions">
+          {calc.fields.length > 0 && <span className={`calc-progress-pill ${complete ? "done" : ""}`} title={`${enteredCount} of ${calc.fields.length} fields complete`}><span>{complete ? <Check size={11} /> : `${enteredCount}/${calc.fields.length}`}</span>{complete ? "Ready" : "Fields"}</span>}
+          <button type="button" className="calc-card-open-label" onClick={() => setOpen((value) => !value)} aria-label={`${open ? "Collapse" : "Open"} ${calc.name}`}>{open ? "Close" : "Open"}</button>
+        </div>
+      </div>
 
       {open && (
-        <div className="border-t border-white/10 px-4 pb-4 pt-3">
-          <p className="mb-3 text-[10px] text-slate-400">📖 {calc.citation}</p>
+        <div className="calc-card-body">
+          <div className="calc-card-context">
+            <div className="calc-card-context-main"><ShieldCheck size={14} /><span>Validated decision support</span><i>·</i><span>Not a diagnosis</span></div>
+            {calc.external && <a href={calc.external.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={11} /> {calc.external.label}</a>}
+          </div>
+          <p className="calc-citation-full">{calc.citation}</p>
           {calc.id === "phototherapy-nomograms" ? (
             <PhototherapyNomogramCalculator />
           ) : calc.id === "abg-vbg-auto-interpreter" ? (
             <BloodGasInterpreter />
           ) : (
             <>
-              {calc.external && (
-                <a href={calc.external.url} target="_blank" rel="noopener noreferrer"
-                  className="mb-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">
-                  <ExternalLink size={11} /> {calc.external.label}
-                </a>
-              )}
+              <div className="calc-workflow-head">
+                <div><span className="calc-step-kicker">{calc.fields.length ? "Guided assessment" : "Clinical module"}</span><h3>{calc.fields.length ? "Enter each finding, then review the interpretation" : "Review the source and complete the module below"}</h3></div>
+                {calc.fields.length > 0 && <span className="calc-workflow-count">{complete ? "All required fields complete" : `${enteredCount} of ${calc.fields.length} fields`}</span>}
+              </div>
+              {calc.fields.length > 0 && <div className="calc-progress-track" aria-label={`${progress}% complete`}><i style={{ width: `${progress}%` }} /></div>}
               <CalculatorVisual calc={calc} values={values} result={liveResult} onValueChange={setValue} />
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {calc.fields.map((field) => (
-                  <label key={field.key} className="calculator-field rounded-xl p-3">
-                    <span className="lbl">{field.label}</span>
-                    {field.type === "select" ? (
-                      <select
-                        className="calculator-input inp text-sm"
-                        value={values[field.key] ?? ""}
-                        onChange={(e) => setValue(field.key, Number(e.target.value))}
-                      >
-                        <option value="">— select —</option>
-                        {field.options.map((o) => (
-                          <option key={o.value} value={o.value}>({o.value}) {o.label}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <>
-                        <input
-                          type="number"
-                          className="calculator-input inp text-center text-base font-bold"
-                          inputMode="decimal"
-                          value={values[field.key] ?? ""}
-                          placeholder={field.placeholder ?? "—"}
-                          min={field.min}
-                          max={field.max}
-                          onChange={(e) => setValue(field.key, Number(e.target.value) || 0)}
-                        />
-                        {field.unit && <span className="mt-1 block text-[10px] text-slate-500">{field.unit}</span>}
-                      </>
-                    )}
-                  </label>
-                ))}
+                {calc.fields.map((field, index) => {
+                  const fieldId = `calc-${calc.id}-${field.key}`;
+                  const filled = Object.prototype.hasOwnProperty.call(values, field.key);
+                  return (
+                    <label key={field.key} htmlFor={fieldId} className={`calculator-field calc-input-card rounded-xl p-3 ${filled ? "calc-input-filled" : ""}`}>
+                      <span className="calc-input-label"><span><b>{String(index + 1).padStart(2, "0")}</b>{field.label}</span>{filled && <Check size={12} />}</span>
+                      {field.type === "select" ? (
+                        <select id={fieldId} className="calculator-input inp text-sm" value={values[field.key] ?? ""} onChange={(event) => setValue(field.key, Number(event.target.value))}>
+                          <option value="">Choose an option…</option>
+                          {field.options.map((option) => <option key={`${field.key}-${option.value}`} value={option.value}>({option.value}) {option.label}</option>)}
+                        </select>
+                      ) : (
+                        <>
+                          <input id={fieldId} type="number" className="calculator-input inp text-center text-base font-bold" inputMode="decimal" value={values[field.key] ?? ""} placeholder={field.placeholder ?? "Enter value"} min={field.min} max={field.max} onChange={(event) => setValue(field.key, Number(event.target.value) || 0)} />
+                          {field.unit && <span className="mt-1 block text-[10px] text-slate-500">{field.unit}{field.min != null && field.max != null ? ` · ${field.min}–${field.max}` : ""}</span>}
+                        </>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
-              {calc.fields.length > 0 && !complete && Object.keys(values).length > 0 && (
-                <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-200">
-                  Complete each field to show the validated interpretation.
-                </p>
-              )}
-              {calc.fields.length > 0 && (
-                <button className="btn-primary mt-3 !py-1.5 text-xs" disabled={!complete} onClick={() => setResult(calc.compute(values))}>
-                  Calculate / update interpretation
-                </button>
-              )}
-              {shownResult && (
-                <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[shownResult.severity]}`}>
-                  <div className="text-base font-black tabular-nums">{shownResult.value}</div>
-                  <p className="mt-1 text-[11px] leading-snug">{shownResult.interpretation ?? shownResult.note ?? ""}</p>
-                  {shownResult.interpretation && shownResult.note && <p className="mt-2 border-t border-current/15 pt-2 text-[10px] leading-snug opacity-80">{shownResult.note}</p>}
-                  {shownResult.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {shownResult.outOfRange}</p>}
-                </div>
-              )}
+              {calc.fields.length > 0 && !complete && enteredCount > 0 && <p className="calc-incomplete-note"><Target size={13} /> Complete the remaining fields to unlock the validated interpretation.</p>}
+              {calc.fields.length > 0 && <div className="calc-action-row"><button type="button" className="btn-primary calc-run-button" disabled={!complete} onClick={() => setResult(calc.compute(values))}>{complete ? "Run interpretation" : "Complete fields first"}<ArrowUpRight size={14} /></button><button type="button" className="btn-ghost calc-reset-button" disabled={!enteredCount} onClick={reset}><RotateCcw size={13} /> Reset</button></div>}
+              {shownResult && <div className={`calc-result-panel mt-3 rounded-xl border p-3 ${SEV_STYLE[shownResult.severity]}`} aria-live="polite"><div className="calc-result-topline"><span className="calc-result-kicker">Interpretation</span><span className="calc-result-state">{liveResult ? "Live" : "Saved"}</span></div><div className="text-base font-black tabular-nums">{shownResult.value}</div><p className="mt-1 text-[11px] leading-snug">{shownResult.interpretation ?? shownResult.note ?? ""}</p>{shownResult.interpretation && shownResult.note && <p className="mt-2 border-t border-current/15 pt-2 text-[10px] leading-snug opacity-80">{shownResult.note}</p>}{shownResult.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {shownResult.outOfRange}</p>}</div>}
             </>
           )}
         </div>
@@ -125,7 +127,6 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
     </div>
   );
 }
-
 
 function CalculatorVisual({ calc, values, result, onValueChange }: { calc: CalcDef; values: Record<string, number>; result: CalcResult | null; onValueChange: (key: string, value: number) => void }) {
   if (calc.id === "downes") return <DownesVisual values={values} result={result} />;
@@ -224,7 +225,7 @@ function BallardVisual({ values, result }: { values: Record<string, number>; res
   const allFindingKeys = [...neuroKeys, ...physicalKeys];
   const selected = allFindingKeys.filter((key) => values[key] != null).length;
   const total = allFindingKeys.reduce((sum, key) => sum + (values[key] ?? 0), 0);
-  const ga = selected === allFindingKeys.length && values.sex != null ? Math.floor(24 + total * 0.4) : null;
+  const ga = selected === allFindingKeys.length && values.sex != null ? newBallardCompletedWeeks(total) : null;
   return (
     <VisualFrame title="New Ballard maturity map" subtitle="Use the actual New Ballard physical and neuromuscular examination findings. This body schematic is an identification aid, not a substitute for examining the infant or for gestational dating when reliable dates are available.">
       <div className="grid items-center gap-3 md:grid-cols-[160px_1fr]">
@@ -379,7 +380,8 @@ export default function CalculatorsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const calc = new URLSearchParams(window.location.search).get("calc")?.trim() || "";
-    setFocusCalc(calc);
+    const frame = window.requestAnimationFrame(() => setFocusCalc(calc));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
   const filtered = useMemo(() => {
     if (focusedCalc) return [focusedCalc];
@@ -387,7 +389,8 @@ export default function CalculatorsPage() {
     return CALCULATORS.filter((c) => {
       if (cat !== "all" && c.category !== cat) return false;
       if (!needle) return true;
-      return `${c.name} ${c.citation} ${c.category}`.toLowerCase().includes(needle);
+      const fieldSearch = c.fields.map((field) => field.type === "select" ? `${field.label} ${field.options.map((option) => option.label).join(" ")}` : `${field.label} ${field.unit ?? ""}`).join(" ");
+      return `${c.name} ${c.citation} ${c.category} ${fieldSearch}`.toLowerCase().includes(needle);
     });
   }, [q, cat, focusedCalc]);
 
@@ -402,43 +405,35 @@ export default function CalculatorsPage() {
     <main className="min-h-screen pb-20">
       <TopBar />
       <div className="mx-auto max-w-[1200px] px-4 py-5">
-        <div className="card mb-4 flex flex-wrap items-center gap-3 p-4">
-          <span className="grid h-11 w-11 place-items-center rounded-xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300">
-            <CalculatorIcon size={20} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-black tracking-tight text-white">Quick Access Calculators</h1>
-            <p className="text-[11px] text-slate-400">
-              {CALCULATORS.length} validated clinical calculators · provisional decision support — not a diagnosis
-            </p>
+        <section className="calculator-hero card mb-4">
+          <div className="calculator-hero-grid">
+            <div className="calculator-hero-copy">
+              <div className="calc-hero-overline"><span className="calc-hero-icon"><CalculatorIcon size={17} /></span><span>SRH clinical tools</span><span className="calc-hero-live"><i /> Evidence-aware workspace</span></div>
+              <h1>Calculator cockpit</h1>
+              <p>Fast, guided clinical scoring with clear inputs, transparent interpretation and visual bedside references.</p>
+              <div className="calc-hero-meta"><span><ClipboardCheck size={13} /> {CALCULATORS.length} validated tools</span><span><ShieldCheck size={13} /> Source-linked</span><span><Sparkles size={13} /> Live interpretation</span></div>
+            </div>
+            <div className="calculator-hero-search">
+              <label htmlFor="calculator-search">Find a tool, domain or clinical feature</label>
+              <div className="calc-search-wrap"><Search size={17} /><input id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd>⌘ K</kbd>{focusedCalc && <button type="button" onClick={() => setFocusCalc("")} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
+              <p>{focusedCalc ? "Focused tool loaded · clear focus to search the full library" : `${filtered.length} tool${filtered.length === 1 ? "" : "s"} currently visible`}</p>
+            </div>
           </div>
-          <div className="relative">
-            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="inp !w-64 !py-1.5 !pl-8 text-xs"
-              placeholder="Search calculator by name…"
-              value={focusedCalc ? focusedCalc.name : q}
-              onChange={(e) => setQ(e.target.value)}
-              disabled={!!focusedCalc}
-            />
-          </div>
-        </div>
+          <div className="calc-howto-strip"><span className="calc-howto-title"><Target size={14} /> How to use</span><span><b>01</b> Open a tool</span><span><b>02</b> Complete highlighted fields</span><span><b>03</b> Review interpretation + safety note</span></div>
+        </section>
 
-        <div className="card mb-4 flex flex-wrap items-center gap-1.5 p-3">
-          <button className={`chip ${cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => setCat("all")} disabled={!!focusedCalc}>
-            All categories
-          </button>
-          {CATEGORIES.map((c) => (
-            <button key={c.key} className={`chip ${cat === c.key ? "chip-on" : "chip-off"}`} onClick={() => setCat(c.key)} disabled={!!focusedCalc}>
-              {c.label}
-            </button>
-          ))}
+        <section className="calc-spotlight-row mb-4" aria-label="Featured clinical tools">
+          <div className="calc-spotlight-heading"><span>Start with a guided tool</span><small>high-use bedside workflows</small></div>
+          <div className="calc-spotlights">{SPOTLIGHTS.map((spotlight) => <button key={spotlight.id} type="button" className={`calc-spotlight calc-spotlight-${spotlight.accent}`} onClick={() => { setFocusCalc(spotlight.id); setCat("all"); setQ(""); }}><span><b>{spotlight.label}</b><small>{spotlight.detail}</small></span><ArrowUpRight size={15} /></button>)}</div>
+        </section>
+
+        <div className="card calc-category-nav mb-4">
+          <div className="calc-filter-title"><SlidersHorizontal size={14} /> Browse by clinical area</div>
+          <div className="calc-category-chips"><button className={`chip ${cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setCat("all"); setFocusCalc(""); }}>All tools</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setCat(category.key); setFocusCalc(""); }}>{category.label}</button>)}</div>
         </div>
 
         {focusedCalc && (
-          <div className="card mb-4 border-cyan-400/30 bg-cyan-400/5 p-3 text-[11px] text-cyan-100">
-            Direct calculator link loaded: <b>{focusedCalc.name}</b>
-          </div>
+          <div className="calc-focus-banner mb-4"><div><span className="calc-focus-kicker">Focused workflow</span><b>{focusedCalc.name}</b><small>{categoryLabel(focusedCalc.category)} · source-linked interpretation</small></div><button type="button" onClick={() => setFocusCalc("")}><X size={13} /> Return to library</button></div>
         )}
 
         {!focusedCalc && (cat === "all" || cat === "growth") && <AnthropometrySection query={q} />}

@@ -17,7 +17,7 @@ Updated 11 September 2026 for release 2.0.032. These references support the calc
 ## New Ballard score
 
 - Scoring domains and the conversion grid come from the official score sheet: [New Ballard Score sheet](https://www.ballardscore.com/files/BallardScore_scoresheet.pdf).
-- The score has six neuromuscular and six physical findings. Genitalia are selected using the sex-appropriate row rather than adding male and female rows together. The official grid runs from score −10 = 20 weeks to score 50 = 44 weeks; the computer estimate uses the equivalent `floor(24 + 0.4 × score)` and reports completed weeks to avoid false precision.
+- The score has six neuromuscular and six physical findings. Genitalia are selected using the sex-appropriate row rather than adding male and female rows together. The official grid runs from score −10 = 20 weeks to score 50 = 44 weeks. Intermediate scores use the official completed-week convention: interpolate between the grid points and round down (for example, 27 = 34 weeks and 28 = 35 weeks), rather than applying a linear formula that implies false precision. See the [official Ballard conversion guidance](https://www.ballardscore.com/CatalogView/FAQ).
 - The examination remains a clinical estimate and should be correlated with reliable early ultrasound or menstrual dating. NCBI background: [Ballard and Dubowitz assessments](https://www.ncbi.nlm.nih.gov/books/NBK613281/).
 
 ## Paediatric burns and Parkland calculation

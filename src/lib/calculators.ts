@@ -56,6 +56,29 @@ function scale(
   };
 }
 
+// The official New Ballard Score uses an even-week conversion grid rather than
+// a linear equation. Intermediate scores are recorded as completed weeks only;
+// the official FAQ illustrates downward interpolation (for example, 27 = 34
+// weeks and 28 = 35 weeks). Keep the grid explicit so the bedside convention
+// remains visible and cannot silently drift into false half-week precision.
+const NEW_BALLARD_GA_GRID: readonly [score: number, weeks: number][] = [
+  [-10, 20], [-5, 22], [0, 24], [5, 26], [10, 28], [15, 30], [20, 32],
+  [25, 34], [30, 36], [35, 38], [40, 40], [45, 42], [50, 44],
+];
+
+export function newBallardCompletedWeeks(score: number): number | null {
+  if (score < NEW_BALLARD_GA_GRID[0][0] || score > NEW_BALLARD_GA_GRID.at(-1)![0]) return null;
+  for (let index = 1; index < NEW_BALLARD_GA_GRID.length; index += 1) {
+    const [upperScore, upperWeeks] = NEW_BALLARD_GA_GRID[index];
+    if (score <= upperScore) {
+      const [lowerScore, lowerWeeks] = NEW_BALLARD_GA_GRID[index - 1];
+      const interpolatedWeeks = lowerWeeks + ((score - lowerScore) / (upperScore - lowerScore)) * (upperWeeks - lowerWeeks);
+      return Math.floor(interpolatedWeeks);
+    }
+  }
+  return NEW_BALLARD_GA_GRID.at(-1)![1];
+}
+
 export const CALCULATORS: Calculator[] = [
 
   /* ================= Neonatal / NICU ================= */
@@ -285,7 +308,7 @@ export const CALCULATORS: Calculator[] = [
   },
 
   scale("ballard", "New Ballard Score (gestational age)", "neonatal",
-    "Ballard JL et al. J Pediatr 1991;119:417–23; official New Ballard Score sheet (20–44 weeks)",
+    "Ballard JL et al. J Pediatr 1991;119:417–23; official New Ballard Score sheet and conversion guidance (20–44 weeks)",
     [
       { key: "posture", label: "Posture", options: [[-1, "Arms and legs extended"], [0, "Slight flexion"], [1, "Beginning flexion"], [2, "Well flexed"], [3, "Full flexion"]] },
       { key: "sw", label: "Square window (wrist)", options: [[-1, "> 90°"], [0, "90°"], [1, "60°"], [2, "45°"], [3, "< 45°"], [4, "0°"]] },
@@ -302,12 +325,13 @@ export const CALCULATORS: Calculator[] = [
       { key: "sex", label: "Genitalia row used", options: [[0, "Male"], [1, "Female"]] },
     ],
     (t) => {
-      const ga = 24 + (t * 0.4);
-      if (t < -10 || t > 50) return { severity: "warn", interpretation: `Total maturity score ${t} is outside the validated New Ballard range (−10 to 50).` };
-      const completedWeeks = Math.floor(ga);
+      const completedWeeks = newBallardCompletedWeeks(t);
+      if (completedWeeks === null) {
+        return { severity: "warn", interpretation: `Total maturity score ${t} is outside the validated New Ballard range (−10 to 50).` };
+      }
       return {
         severity: completedWeeks < 32 ? "crit" : completedWeeks < 37 ? "warn" : "info",
-        interpretation: `Estimated gestational age ${completedWeeks} completed weeks (maturity score ${t}). Use the official conversion table and correlate with reliable early ultrasound or menstrual dates; clinical estimates are typically only accurate within about 2 weeks.`,
+        interpretation: `Estimated gestational age ${completedWeeks} completed weeks (maturity score ${t}). This uses the official even-week grid with downward interpolation to completed weeks; correlate with reliable early ultrasound or menstrual dates, as clinical estimates are typically only accurate within about 2 weeks.`,
       };
     },
     undefined,
@@ -1343,7 +1367,7 @@ export const CALCULATORS: Calculator[] = [
 const REPUTABLE_CALCULATOR_SOURCES: Record<string, NonNullable<Calculator["external"]>> = {
   downes: { label: "Peer-reviewed Downes evidence", url: "https://www.nature.com/articles/s41372-024-02086-z" },
   rop: { label: "AAP ROP screening/treatment statement", url: "https://publications.aap.org/pediatrics/article/142/6/e20183061/37478/Screening-Examination-of-Premature-Infants-for" },
-  ballard: { label: "Official New Ballard score sheet", url: "https://www.ballardscore.com/files/BallardScore_scoresheet.pdf" },
+  ballard: { label: "Official New Ballard conversion guidance", url: "https://www.ballardscore.com/CatalogView/FAQ" },
   parkland: { label: "University pediatric Lund–Browder chart", url: "https://www.southalabama.edu/colleges/com/departments/surgery/resources/burn-initial/lund-and-browder-pediatric.pdf" },
   ponderal: { label: "PubMed ponderal-index evidence", url: "https://pubmed.ncbi.nlm.nih.gov/9491856/" },
 };
