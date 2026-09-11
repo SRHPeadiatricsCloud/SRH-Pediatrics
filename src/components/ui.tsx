@@ -969,21 +969,23 @@ export function useLocked(): boolean {
 /** Amber strip shown while the session is view-only. */
 export function LockBanner() {
   const locked = useLocked();
+  const user = useUser();
   useEffect(() => {
+    // View-only is also a privacy state: keep the navigation tabs available,
+    // but visually obscure all clinical page content until the session is
+    // authenticated. This is deliberately independent of `locked` so setup
+    // mode cannot accidentally expose patient data to an unsigned visitor.
     document.body.classList.toggle("view-only", locked);
-  }, [locked]);
+    document.body.classList.toggle("privacy-view", !user.signedIn);
+  }, [locked, user.signedIn]);
   if (!locked) return null;
   return (
     <div className="no-print relative z-40 border-b border-amber-400/40 bg-amber-500/15 backdrop-blur">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2 text-[11px] font-semibold text-amber-200">
         <LockIcon size={12} strokeWidth={2.5} aria-hidden />
         <span>
-          <b>View-only mode.</b> Sign in with your <b>employee code</b> (top-right) to unlock editing, admitting and
-          autosave. Browsing stays open to everyone. Keys are managed in the{" "}
-          <Link href="/keymasters" className="font-bold underline">
-            Keymaster List
-          </Link>
-          .
+          <b>View-only privacy mode.</b> Clinical content is blurred until you sign in with your <b>employee code</b>
+          {" "}(top-right). The navigation tabs remain available.
         </span>
       </div>
     </div>

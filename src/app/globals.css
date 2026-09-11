@@ -643,6 +643,27 @@ main > div {
 /* ============================================================
    VIEW-ONLY MODE (unsigned session)
    ============================================================ */
+/*
+ * Privacy boundary: TopBar contains the navigation tabs and sign-in
+ * control, so it remains usable. Every other direct child of a page main is
+ * obscured and non-interactive until a verified session exists. This is a
+ * visual privacy guard for shared screens; API authorization remains the
+ * security boundary for data access and writes.
+ */
+body.privacy-view main > :not(header),
+body.privacy-view footer {
+  filter: blur(12px) saturate(0.55);
+  opacity: 0.58;
+  pointer-events: none;
+  user-select: none;
+  transition: filter 180ms ease, opacity 180ms ease;
+}
+body.privacy-view main > header {
+  filter: none;
+  opacity: 1;
+  pointer-events: auto;
+  user-select: auto;
+}
 body.view-only .btn-primary {
   opacity: 0.55;
   filter: saturate(0.45);
