@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
 import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
+import { BloodPressureCentileCalculator } from "@/components/blood-pressure-centile-calculator";
 import { AnthropometrySection } from "@/components/anthropometry-calculators";
 import { CALCULATORS, CATEGORIES, newBallardCompletedWeeks } from "@/lib/calculators";
 import type { Calculator as CalcDef, CalcResult } from "@/lib/calc-types";
@@ -123,6 +124,8 @@ function CalcCard({
             <PhototherapyNomogramCalculator />
           ) : calc.id === "abg-vbg-auto-interpreter" ? (
             <BloodGasInterpreter />
+          ) : calc.id === "bp-centiles" ? (
+            <BloodPressureCentileCalculator />
           ) : (
             <>
               <div className="calc-workflow-head">

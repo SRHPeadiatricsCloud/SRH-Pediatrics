@@ -81,6 +81,20 @@ export function newBallardCompletedWeeks(score: number): number | null {
 
 export const CALCULATORS: Calculator[] = [
 
+  {
+    id: "bp-centiles",
+    name: "Blood Pressure Centiles (Preterm · Neonate · Pediatrics)",
+    category: "cardio",
+    citation: "AAP 2017 Tables 4–5 / Flynn et al. 2017; Samanta et al. Indian Pediatrics 2015 neonatal centiles; NNF/neonatal standards context",
+    fields: [],
+    compute: () => ({
+      value: "Open the mode-specific BP workflow",
+      severity: "info",
+      note: "Separate preterm, term-neonate and pediatric references with independent SBP/DBP interpretation.",
+    }),
+    external: { label: "AAP 2017 pediatric BP guideline", url: "https://publications.aap.org/pediatrics/article/140/3/e20171904/38358/Clinical-Practice-Guideline-for-Screening-and" },
+  },
+
   /* ================= Neonatal / NICU ================= */
   {
     id: "phototherapy-nomograms",

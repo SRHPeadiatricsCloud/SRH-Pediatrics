@@ -43,3 +43,21 @@ Reviewed 11 September 2026 against representative point-of-care tools and human-
 - [AHRQ Electronic Health Record Usability: Interface Design Considerations](https://digital.ahrq.gov/sites/default/files/docs/citation/09-10-0091-2-EF.pdf) and [NIST Technical Basis for User Interface Design of Health IT](https://nvlpubs.nist.gov/nistpubs/gcr/2015/NIST.GCR.15-996.pdf) reinforce task-focused layouts, readable information hierarchy, error prevention, and evaluation against clinical cognitive workload. The calculator workflow now validates numeric ranges before enabling interpretation, gives field-level errors, supports keyboard search, and keeps privacy behavior intact.
 
 These UX sources inform presentation only. They do not override the primary clinical source or local policy for any calculator. Where a threshold, score, reference population, or management recommendation varies, the interface must expose that limitation rather than silently choosing a universal rule.
+
+## Blood-pressure centile calculator
+
+The calculator has three explicit workflows and does not merge neonatal and paediatric ranges:
+
+- **Paediatrics (1–17 completed years):** AAP 2017 Clinical Practice Guideline Tables 4–5, derived from normal-weight children, with sex, age and measured height. The implementation stores the published height columns (5th, 10th, 25th, 50th, 75th, 90th and 95th height percentiles) and the published 50th, 90th and 95th BP values. The measured height is mapped to the nearest published height column; it is not silently interpolated. The 95th + 12 mmHg threshold is calculated exactly as specified by AAP. AAP 2017 does **not** publish a 5th BP centile in Tables 4–5, so that requested row is shown as “not reported” rather than being invented. For ages 13–17, the result shows the centile rows but classifies using the AAP fixed adolescent thresholds (120/80, 130/80 and 140/90). SBP and DBP are classified independently, and the higher category is reported.
+- **Preterm:** Indian term/preterm neonatal normative data from Samanta et al., *Indian Pediatrics* 2015;52:669–673. The supported source population is 32–36 weeks’ gestation at birth and postnatal days 4, 7 and 14. Gestational-age-specific 10th, 50th, 90th and 95th SBP/DBP values are shown; the 5th centile is the study’s status-wide preterm value for the selected day.
+- **Neonate / term newborn:** The same Indian study, for 37–40 weeks’ gestation at birth and postnatal days 4, 7 and 14. Sex remains a required record field, but the study reported no significant male/female difference. The term 5th centile is status-wide for the selected day, while 50th/90th/95th are gestational-age-specific. No neonatal “95th +12” or universal stage-2 boundary is asserted.
+
+Sources visible in the workflow:
+
+- [AAP 2017 pediatric BP guideline](https://publications.aap.org/pediatrics/article/140/3/e20171904/38358/Clinical-Practice-Guideline-for-Screening-and)
+- [Samanta et al. Normative Blood Pressure Data for Indian Neonates](https://www.indianpediatrics.net/aug2015/aug-669-673.htm)
+- [Narang et al. Indian school-child oscillometric centiles](https://indianpediatrics.net/nov2015/939.pdf) — useful Indian comparison, not the height-specific AAP source
+- [Neonatal Blood Pressure Standards: What Is “Normal”?](https://www.nccwebsite.org/content/documents/courses/Neonatal%20BP%20standards-1.pdf) — standard neonatal reference review highlighting gestation, postnatal age, birth weight, illness, sex and measurement effects
+- NNF / IAP neonatal guidance is presented as clinical context; this implementation does not label a secondary table as an NNF-published universal centile standard because a definitive NNF table was not verified.
+
+Safety wording is intentional: neonatal measurements are population references from a selected, stable Indian study and are not universally diagnostic. Use the correct cuff and limb, repeat unexpected values, and correlate SBP/DBP with perfusion, symptoms, illness, treatment and local protocol. The bedside MAP ≈ gestational-age rule is not used as a substitute for centile data.
