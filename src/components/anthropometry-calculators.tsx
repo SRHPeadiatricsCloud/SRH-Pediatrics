@@ -61,7 +61,7 @@ export function AnthropometrySection({ query = "" }: { query?: string }) {
         </div>
         <span className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{visible.length} tools · live plot</span>
       </div>
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid items-start gap-3 xl:grid-cols-2">
         {visible.map((card) => (
           <AnthroCard
             key={card.id}
@@ -85,7 +85,7 @@ export function AnthropometrySection({ query = "" }: { query?: string }) {
 
 function AnthroCard({ title, subtitle, citation, children, open, onToggle }: CardProps) {
   return (
-    <article className="card overflow-hidden">
+    <article className="card anthro-card self-start overflow-hidden">
       <button type="button" className="flex min-h-[78px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03]" onClick={onToggle} aria-expanded={open}>
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${open ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" : "border-white/10 bg-white/5 text-slate-400"}`}><Ruler size={17} /></span>
         <span className="min-w-0 flex-1"><span className="block text-sm font-black text-white">{title}</span><span className="mt-1 block text-[11px] leading-snug text-slate-400">{subtitle}</span></span>
@@ -231,7 +231,7 @@ function CombinedTool() {
   const [value, setValue] = useState(125);
   const version: ReferenceVersion = age < 5 ? "who" : "iap";
   const internalAge = age < 5 ? age * 12 : age;
-  const result = useMemo(() => assess(value, internalAge, sex, metric, version), [age, metric, sex, value, version]);
+  const result = useMemo(() => assess(value, internalAge, sex, metric, version), [internalAge, metric, sex, value, version]);
   return <ToolShell source="combined" note="The chart switches reference at 5 years: WHO MGRS for 0–<5 years and IAP 2015 for 5–18 years. The active standard is shown in the result footer."><div className="grid gap-2 sm:grid-cols-2"><Select label="Indicator" value={metric} onChange={(v) => setMetric(v as AnthropometryMetric)} options={[{ value: "height", label: "Height-for-age" }, { value: "weight", label: "Weight-for-age" }]} /><Select label="Sex" value={sex} onChange={(v) => setSex(v as AnthropometrySex)} options={[{ value: "m", label: "Boy" }, { value: "f", label: "Girl" }]} /><Field label="Age" value={age} onChange={setAge} unit="years" min={0} max={18} step={0.01} /><Field label={metric === "height" ? "Height" : "Weight"} value={value} onChange={setValue} unit={metric === "height" ? "cm" : "kg"} min={0} step={0.1} /></div><div className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-2 text-xs text-violet-100">Active standard: <b>{version === "who" ? "WHO 2006 MGRS" : "IAP 2015"}</b> · no LMS values are combined or averaged.</div><AssessmentBox result={result} unit={metric === "height" ? "cm" : "kg"} reference={version} /><HologramChart version={version} metric={metric} sex={sex} age={age} value={value} minAge={version === "who" ? 0 : 5} maxAge={version === "who" ? 5 : 18} ageUnit="years" label={metric === "height" ? "Height (cm)" : "Weight (kg)"} convertAge={(x) => version === "who" ? x * 12 : x} /></ToolShell>;
 }
 

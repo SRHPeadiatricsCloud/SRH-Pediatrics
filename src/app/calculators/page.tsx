@@ -31,18 +31,19 @@ function categoryLabel(category: CalcDef["category"]): string {
 
 function CalcCard({
   calc,
-  forceOpen = false,
+  open = false,
   saved = false,
   onToggleSaved,
   onOpen,
+  onToggle,
 }: {
   calc: CalcDef;
-  forceOpen?: boolean;
+  open?: boolean;
   saved?: boolean;
   onToggleSaved?: (id: string) => void;
   onOpen?: (id: string) => void;
+  onToggle?: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(forceOpen);
   const [values, setValues] = useState<Record<string, number>>({});
   const [result, setResult] = useState<CalcResult | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -58,20 +59,17 @@ function CalcCard({
   const shownResult = liveResult ?? result;
 
   const openCard = () => {
-    setOpen((value) => {
-      if (!value) onOpen?.(calc.id);
-      return !value;
-    });
+    if (!open) onOpen?.(calc.id);
+    onToggle?.(calc.id);
   };
 
   useEffect(() => {
-    if (!forceOpen) return;
+    if (!open) return;
     const frame = window.requestAnimationFrame(() => {
-      setOpen(true);
       ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [forceOpen]);
+  }, [open]);
 
   const setValue = (key: string, value: number | undefined) => {
     setValues((previous) => {
@@ -413,6 +411,7 @@ function ParklandVisual({ values, onBurnChange }: { values: Record<string, numbe
 
 export default function CalculatorsPage() {
   const [focusCalc, setFocusCalc] = useState("");
+  const [openCalcId, setOpenCalcId] = useState<string | null>(null);
   const focusedCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
@@ -457,10 +456,14 @@ export default function CalculatorsPage() {
   };
   const launchCalculator = (id: string) => {
     rememberCalculator(id);
+    setOpenCalcId(id);
     setFocusCalc(id);
     setCat("all");
     setView("all");
     setQ("");
+  };
+  const toggleCalculator = (id: string) => {
+    setOpenCalcId((current) => current === id ? null : id);
   };
   const toggleSaved = (id: string) => {
     setSavedIds((current) => {
@@ -473,7 +476,10 @@ export default function CalculatorsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const calc = new URLSearchParams(window.location.search).get("calc")?.trim() || "";
-    const frame = window.requestAnimationFrame(() => setFocusCalc(calc));
+    const frame = window.requestAnimationFrame(() => {
+      setFocusCalc(calc);
+      setOpenCalcId(calc || null);
+    });
     return () => window.cancelAnimationFrame(frame);
   }, []);
   const filtered = useMemo(() => {
@@ -511,7 +517,7 @@ export default function CalculatorsPage() {
             </div>
             <div className="calculator-hero-search">
               <label htmlFor="calculator-search">Find a tool, domain or clinical feature</label>
-              <div className="calc-search-wrap"><Search size={17} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd><Keyboard size={11} />⌘K</kbd>{focusedCalc && <button type="button" onClick={() => setFocusCalc("")} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
+              <div className="calc-search-wrap"><Search size={17} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd><Keyboard size={11} />⌘K</kbd>{focusedCalc && <button type="button" onClick={() => { setFocusCalc(""); setOpenCalcId(null); }} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
               <p>{focusedCalc ? "Focused tool loaded · clear focus to search the full library" : `${filtered.length} tool${filtered.length === 1 ? "" : "s"} currently visible`}</p>
             </div>
           </div>
@@ -527,11 +533,11 @@ export default function CalculatorsPage() {
 
         <div className="card calc-category-nav mb-4">
           <div className="calc-filter-title"><SlidersHorizontal size={14} /> Browse the library</div>
-          <div className="calc-category-chips"><button className={`chip ${view === "all" && cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat("all"); setFocusCalc(""); }}>All tools</button><button className={`chip calc-saved-filter ${view === "saved" ? "chip-on" : "chip-off"}`} onClick={() => { setView("saved"); setCat("all"); setFocusCalc(""); }}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved {savedIds.length}</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${view === "all" && cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat(category.key); setFocusCalc(""); }}>{category.label}</button>)}</div>
+          <div className="calc-category-chips"><button className={`chip ${view === "all" && cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat("all"); setFocusCalc(""); setOpenCalcId(null); }}>All tools</button><button className={`chip calc-saved-filter ${view === "saved" ? "chip-on" : "chip-off"}`} onClick={() => { setView("saved"); setCat("all"); setFocusCalc(""); setOpenCalcId(null); }}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved {savedIds.length}</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${view === "all" && cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat(category.key); setFocusCalc(""); setOpenCalcId(null); }}>{category.label}</button>)}</div>
         </div>
 
         {focusedCalc && (
-          <div className="calc-focus-banner mb-4"><div><span className="calc-focus-kicker">Focused workflow</span><b>{focusedCalc.name}</b><small>{categoryLabel(focusedCalc.category)} · source-linked interpretation</small></div><button type="button" onClick={() => setFocusCalc("")}><X size={13} /> Return to library</button></div>
+          <div className="calc-focus-banner mb-4"><div><span className="calc-focus-kicker">Focused workflow</span><b>{focusedCalc.name}</b><small>{categoryLabel(focusedCalc.category)} · source-linked interpretation</small></div><button type="button" onClick={() => { setFocusCalc(""); setOpenCalcId(null); }}><X size={13} /> Return to library</button></div>
         )}
 
         {!focusedCalc && (cat === "all" || cat === "growth") && <AnthropometrySection query={q} />}
@@ -546,7 +552,7 @@ export default function CalculatorsPage() {
                 <span className="text-[10px] font-semibold text-slate-500">({group.items.length})</span>
               </h2>
               <div className="space-y-2">
-                {group.items.map((c) => <CalcCard key={c.id} calc={c} forceOpen={c.id === focusCalc} saved={savedIds.includes(c.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} />)}
+                {group.items.map((c) => <CalcCard key={c.id} calc={c} open={c.id === openCalcId} saved={savedIds.includes(c.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={toggleCalculator} />)}
               </div>
             </section>
           ))}
