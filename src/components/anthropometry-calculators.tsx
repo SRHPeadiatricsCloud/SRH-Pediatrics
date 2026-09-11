@@ -91,11 +91,11 @@ function AnthroCard({ title, subtitle, citation, children, defaultOpen = false }
 }
 
 function Field({ label, value, onChange, unit, min, max, step = 1, placeholder }: { label: string; value: number | string; onChange: (v: number) => void; unit?: string; min?: number; max?: number; step?: number; placeholder?: string }) {
-  return <label className="block rounded-xl border border-cyan-400/10 bg-slate-950/35 p-2.5"><span className="lbl mb-1 block">{label}</span><div className="flex items-center gap-1.5"><input className="inp !min-h-[38px] !border-cyan-400/10 !bg-slate-950/70 !py-1.5 text-sm font-bold" type="number" inputMode="decimal" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(Number(e.target.value))} />{unit && <span className="shrink-0 text-[10px] text-slate-500">{unit}</span>}</div></label>;
+  return <label className="anthro-field block rounded-xl p-2.5"><span className="lbl mb-1 block">{label}</span><div className="flex items-center gap-1.5"><input className="anthro-input inp !min-h-[38px] !py-1.5 text-sm font-bold" type="number" inputMode="decimal" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(Number(e.target.value))} />{unit && <span className="anthro-unit shrink-0 text-[10px] font-bold">{unit}</span>}</div></label>;
 }
 
 function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
-  return <label className="block rounded-xl border border-cyan-400/10 bg-slate-950/35 p-2.5"><span className="lbl mb-1 block">{label}</span><select className="inp !min-h-[38px] !border-cyan-400/10 !bg-slate-950/70 !py-1.5 text-sm font-semibold" value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
+  return <label className="anthro-field block rounded-xl p-2.5"><span className="lbl mb-1 block">{label}</span><select className="anthro-input inp !min-h-[38px] !py-1.5 text-sm font-semibold" value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
 }
 
 function ActionButton({ children, onClick, tone = "ghost" }: { children: React.ReactNode; onClick: () => void; tone?: "ghost" | "primary" }) {

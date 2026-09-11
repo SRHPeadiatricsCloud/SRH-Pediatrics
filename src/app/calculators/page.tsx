@@ -59,11 +59,11 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
               )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {calc.fields.map((field) => (
-                  <label key={field.key} className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+                  <label key={field.key} className="calculator-field rounded-xl p-3">
                     <span className="lbl">{field.label}</span>
                     {field.type === "select" ? (
                       <select
-                        className="inp text-sm"
+                        className="calculator-input inp text-sm"
                         value={values[field.key] ?? ""}
                         onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
                       >
@@ -75,7 +75,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                     ) : (
                       <>
                         <input
-                          className="inp text-center text-base font-bold"
+                          className="calculator-input inp text-center text-base font-bold"
                           inputMode="decimal"
                           value={values[field.key] ?? ""}
                           placeholder={field.placeholder ?? "—"}

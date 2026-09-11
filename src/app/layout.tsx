@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     title: "SRH Pediatrics",
   },
   icons: {
-    icon: [{ url: "/icons/icon-512.png?v=2.0.027", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/icons/icon-512.png?v=2.0.027", sizes: "512x512", type: "image/png" }],
+    icon: [{ url: "/icons/icon-512.png?v=2.0.028", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/icons/icon-512.png?v=2.0.028", sizes: "512x512", type: "image/png" }],
   },
 };
 
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="mb-2 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/hospital-logo.png?v=2.0.027"
+              src="/images/hospital-logo.png?v=2.0.028"
               alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
               width={320}
               height={220}
