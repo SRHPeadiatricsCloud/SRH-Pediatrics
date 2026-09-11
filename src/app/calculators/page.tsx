@@ -66,7 +66,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                   <ExternalLink size={11} /> {calc.external.label}
                 </a>
               )}
-              <CalculatorVisual id={calc.id} values={values} result={liveResult} />
+              <CalculatorVisual calc={calc} values={values} result={liveResult} onValueChange={setValue} />
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {calc.fields.map((field) => (
                   <label key={field.key} className="calculator-field rounded-xl p-3">
@@ -114,6 +114,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                 <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[shownResult.severity]}`}>
                   <div className="text-base font-black tabular-nums">{shownResult.value}</div>
                   <p className="mt-1 text-[11px] leading-snug">{shownResult.interpretation ?? shownResult.note ?? ""}</p>
+                  {shownResult.interpretation && shownResult.note && <p className="mt-2 border-t border-current/15 pt-2 text-[10px] leading-snug opacity-80">{shownResult.note}</p>}
                   {shownResult.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {shownResult.outOfRange}</p>}
                 </div>
               )}
@@ -126,11 +127,14 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
 }
 
 
-function CalculatorVisual({ id, values, result }: { id: string; values: Record<string, number>; result: CalcResult | null }) {
-  if (id === "downes") return <DownesVisual values={values} result={result} />;
-  if (id === "ballard") return <BallardVisual values={values} result={result} />;
-  if (id === "rop") return <RopVisual values={values} result={result} />;
-  if (id === "parkland") return <ParklandVisual values={values} />;
+function CalculatorVisual({ calc, values, result, onValueChange }: { calc: CalcDef; values: Record<string, number>; result: CalcResult | null; onValueChange: (key: string, value: number) => void }) {
+  if (calc.id === "downes") return <DownesVisual values={values} result={result} />;
+  if (calc.id === "ballard") return <BallardVisual values={values} result={result} />;
+  if (calc.id === "rop") return <RopVisual values={values} result={result} />;
+  if (calc.id === "parkland") return <ParklandVisual values={values} onBurnChange={(value) => onValueChange("burn", value)} />;
+  if (calc.fields.length > 0 && calc.fields.every((field) => field.type === "select")) {
+    return <ScaleSummaryVisual calc={calc} values={values} result={result} />;
+  }
   return null;
 }
 
@@ -147,6 +151,32 @@ function VisualFrame({ title, subtitle, children }: { title: string; subtitle: s
       {children}
       <p className="calc-visual-subtitle">{subtitle}</p>
     </div>
+  );
+}
+
+function ScaleSummaryVisual({ calc, values, result }: { calc: CalcDef; values: Record<string, number>; result: CalcResult | null }) {
+  const rows = calc.fields.flatMap((field) => {
+    if (field.type !== "select") return [];
+    const maximum = Math.max(1, ...field.options.map((option) => Math.abs(option.value)));
+    const value = values[field.key];
+    return [{ label: field.label, value, maximum, percent: value == null ? 0 : Math.min(100, (Math.abs(value) / maximum) * 100) }];
+  });
+  const selected = rows.filter((row) => row.value != null).length;
+  const score = rows.reduce((sum, row) => sum + (row.value ?? 0), 0);
+  const maxScore = rows.reduce((sum, row) => sum + row.maximum, 0);
+  return (
+    <VisualFrame title={`${calc.name} domain map`} subtitle="Each bar mirrors the selected response in that calculator's own scoring domain. The bars improve pattern recognition; the validated result and clinical context remain authoritative.">
+      <div className="grid items-center gap-3 md:grid-cols-[150px_1fr]">
+        <div className="scale-summary-meter" style={{ "--meter": `${maxScore ? Math.min(100, Math.abs(score) / maxScore * 100) : 0}%` } as React.CSSProperties}>
+          <div><b>{selected ? score : "—"}</b><span>{selected}/{rows.length} selected</span></div>
+        </div>
+        <div className="scale-summary-bars">
+          {rows.slice(0, 8).map((row) => <div className="scale-summary-row" key={row.label}><span>{row.label}</span><i><b style={{ width: `${row.percent}%` }} /></i><em>{row.value ?? "—"}</em></div>)}
+          {rows.length > 8 && <span className="text-[9px] font-bold text-slate-500">{rows.length - 8} more domains shown in the fields below.</span>}
+          {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
+        </div>
+      </div>
+    </VisualFrame>
   );
 }
 
@@ -190,10 +220,11 @@ function DownesVisual({ values, result }: { values: Record<string, number>; resu
 
 function BallardVisual({ values, result }: { values: Record<string, number>; result: CalcResult | null }) {
   const neuroKeys = ["posture", "sw", "ar", "pa", "sc", "he"];
-  const physicalKeys = ["skin", "lanugo", "plantar", "breast", "eyeear", "genM", "genF"];
-  const selected = Object.keys(values).length;
-  const total = Object.values(values).reduce((sum, value) => sum + value, 0);
-  const ga = selected === 13 ? (total + 200) / 5 : null;
+  const physicalKeys = ["skin", "lanugo", "plantar", "breast", "eyeear", "genitalia"];
+  const allFindingKeys = [...neuroKeys, ...physicalKeys];
+  const selected = allFindingKeys.filter((key) => values[key] != null).length;
+  const total = allFindingKeys.reduce((sum, key) => sum + (values[key] ?? 0), 0);
+  const ga = selected === allFindingKeys.length && values.sex != null ? Math.floor(24 + total * 0.4) : null;
   return (
     <VisualFrame title="New Ballard maturity map" subtitle="Use the actual New Ballard physical and neuromuscular examination findings. This body schematic is an identification aid, not a substitute for examining the infant or for gestational dating when reliable dates are available.">
       <div className="grid items-center gap-3 md:grid-cols-[160px_1fr]">
@@ -206,8 +237,8 @@ function BallardVisual({ values, result }: { values: Record<string, number>; res
         </svg>
         <div className="space-y-2">
           <div className="ballard-domain"><div><span>Neuromuscular</span><b>{neuroKeys.filter((key) => values[key] != null).length}/6 recorded</b></div><div className="domain-track"><i style={{ width: `${(neuroKeys.filter((key) => values[key] != null).length / 6) * 100}%` }} /></div></div>
-          <div className="ballard-domain"><div><span>Physical</span><b>{physicalKeys.filter((key) => values[key] != null).length}/7 recorded</b></div><div className="domain-track physical"><i style={{ width: `${(physicalKeys.filter((key) => values[key] != null).length / 7) * 100}%` }} /></div></div>
-          <div className="visual-total"><span>{ga != null ? "Estimated gestational age" : `${selected}/13 findings selected`}</span><b>{ga != null ? `${ga.toFixed(1)} wk` : "—"}</b></div>
+          <div className="ballard-domain"><div><span>Physical</span><b>{physicalKeys.filter((key) => values[key] != null).length}/6 recorded</b></div><div className="domain-track physical"><i style={{ width: `${(physicalKeys.filter((key) => values[key] != null).length / 6) * 100}%` }} /></div></div>
+          <div className="visual-total"><span>{ga != null ? "Estimated gestational age" : `${selected}/12 findings${values.sex != null ? " · sex row selected" : ""}`}</span><b>{ga != null ? `${ga} completed wk` : "—"}</b></div>
           {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
         </div>
       </div>
@@ -218,7 +249,9 @@ function BallardVisual({ values, result }: { values: Record<string, number>; res
 function RopVisual({ values, result }: { values: Record<string, number>; result: CalcResult | null }) {
   const zone = values.zone;
   const stage = values.stage;
-  const plus = values.plus === 1;
+  const vascular = values.plus;
+  const plus = vascular === 2;
+  const preplus = vascular === 1;
   const aprop = values.aprop === 1;
   return (
     <VisualFrame title="ROP zone, stage and plus-disease guide" subtitle="Schematic only: ROP classification requires a dilated retinal examination by an appropriately trained ophthalmologist. Zone, stage, plus disease and AP-ROP determine urgency together.">
@@ -240,8 +273,8 @@ function RopVisual({ values, result }: { values: Record<string, number>; result:
           <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
             <span className={`visual-pill ${zone ? "active" : ""}`}>Zone {zone ?? "—"}</span>
             <span className={`visual-pill ${stage != null ? "active" : ""}`}>Stage {stage ?? "—"}</span>
-            <span className={`visual-pill ${plus ? "alert" : ""}`}>Plus {plus ? "present" : "absent / —"}</span>
-            <span className={`visual-pill ${aprop ? "alert" : ""}`}>AP-ROP {aprop ? "present" : "absent / —"}</span>
+            <span className={`visual-pill ${plus ? "alert" : preplus ? "active" : ""}`}>Vessels {plus ? "plus" : preplus ? "pre-plus" : vascular === 0 ? "no plus" : "—"}</span>
+            <span className={`visual-pill ${aprop ? "alert" : ""}`}>AP-ROP {aprop ? "present" : aprop === false && values.aprop != null ? "absent" : "—"}</span>
           </div>
           {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
         </div>
@@ -250,28 +283,86 @@ function RopVisual({ values, result }: { values: Record<string, number>; result:
   );
 }
 
-function ParklandVisual({ values }: { values: Record<string, number> }) {
+type LundAgeKey = "birth" | "one" | "five" | "ten" | "fifteen" | "adult";
+type LundRegion = { key: string; label: string };
+
+const LUND_BROWDER = {
+  birth: { label: "Birth–1 y", head: 19, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 5.5, thighRight: 5.5, lowerLegLeft: 5, lowerLegRight: 5, footLeft: 3.5, footRight: 3.5 },
+  one: { label: "1–4 y", head: 17, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 6.5, thighRight: 6.5, lowerLegLeft: 5, lowerLegRight: 5, footLeft: 3.5, footRight: 3.5 },
+  five: { label: "5–9 y", head: 13, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 8, thighRight: 8, lowerLegLeft: 5.5, lowerLegRight: 5.5, footLeft: 3.5, footRight: 3.5 },
+  ten: { label: "10–14 y", head: 11, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 8.5, thighRight: 8.5, lowerLegLeft: 6, lowerLegRight: 6, footLeft: 3.5, footRight: 3.5 },
+  fifteen: { label: "15 y", head: 9, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 9, thighRight: 9, lowerLegLeft: 6.5, lowerLegRight: 6.5, footLeft: 3.5, footRight: 3.5 },
+  adult: { label: "Adult 16+", head: 7, neck: 2, trunkFront: 13, trunkBack: 13, buttocks: 5, genitalia: 1, armLeft: 9.5, armRight: 9.5, thighLeft: 9.5, thighRight: 9.5, lowerLegLeft: 7, lowerLegRight: 7, footLeft: 3.5, footRight: 3.5 },
+} as const;
+
+const LUND_REGIONS: LundRegion[] = [
+  { key: "head", label: "Head" },
+  { key: "neck", label: "Neck" },
+  { key: "trunkFront", label: "Anterior trunk" },
+  { key: "trunkBack", label: "Posterior trunk" },
+  { key: "buttocks", label: "Both buttocks" },
+  { key: "genitalia", label: "Genitalia" },
+  { key: "armLeft", label: "Left arm" },
+  { key: "armRight", label: "Right arm" },
+  { key: "thighLeft", label: "Left thigh" },
+  { key: "thighRight", label: "Right thigh" },
+  { key: "lowerLegLeft", label: "Left lower leg" },
+  { key: "lowerLegRight", label: "Right lower leg" },
+  { key: "footLeft", label: "Left foot" },
+  { key: "footRight", label: "Right foot" },
+];
+
+function ParklandVisual({ values, onBurnChange }: { values: Record<string, number>; onBurnChange: (value: number) => void }) {
+  const [ageKey, setAgeKey] = useState<LundAgeKey>("birth");
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
+  const age = LUND_BROWDER[ageKey];
   const burn = Math.max(0, Math.min(100, values.burn ?? 0));
+  const fullRegionTotal = [...selectedRegions].reduce((sum, key) => sum + Number(age[key as keyof typeof age] ?? 0), 0);
+  const toggleRegion = (key: string) => {
+    const next = new Set(selectedRegions);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setSelectedRegions(next);
+    onBurnChange(Math.round([...next].reduce((sum, region) => sum + Number(age[region as keyof typeof age] ?? 0), 0) * 10) / 10);
+  };
+  const changeAge = (nextAge: LundAgeKey) => {
+    setAgeKey(nextAge);
+    const nextTotal = [...selectedRegions].reduce((sum, key) => sum + Number(LUND_BROWDER[nextAge][key as keyof typeof LUND_BROWDER[LundAgeKey]] ?? 0), 0);
+    if (selectedRegions.size) onBurnChange(Math.round(nextTotal * 10) / 10);
+  };
   return (
-    <VisualFrame title="Paediatric TBSA burn-orientation map" subtitle="Use an age-specific Lund–Browder chart for the clinical estimate. This labeled body map and percentage meter are a visual aid only; do not use the schematic as a diagnostic substitute.">
-      <div className="grid items-center gap-3 md:grid-cols-[1fr_190px]">
-        <svg viewBox="0 0 430 150" className="visual-svg h-36 w-full" role="img" aria-label="Front and back body regions for total body surface area burn estimation">
-          <text x="86" y="14" textAnchor="middle" className="visual-svg-text">FRONT</text>
-          <text x="254" y="14" textAnchor="middle" className="visual-svg-text">BACK</text>
-          <circle className="burn-head" cx="86" cy="34" r="13" /><circle className="burn-head" cx="254" cy="34" r="13" />
-          <rect className="burn-region head" x="74" y="49" width="24" height="15" rx="6" /><rect className="burn-region head" x="242" y="49" width="24" height="15" rx="6" />
-          <path className="burn-region trunk" d="M65 50h42l8 54H57zM233 50h42l8 54h-58z" />
-          <path className="burn-region limb" d="M59 54L38 61 27 98l9 3 18-25 8-15zM113 54l21 7 11 37-9 3-18-25-8-15zM227 54l-21 7-11 37 9 3 18-25 8-15zM281 54l21 7 11 37-9 3-18-25-8-15z" />
-          <path className="burn-region leg" d="M63 103l17 0-2 34-12 0zM92 103h17l2 34-12 0zM231 103h17l-2 34h-12zM260 103h17l2 34h-12z" />
-          <text x="86" y="146" textAnchor="middle" className="visual-svg-text">head · trunk · limbs</text>
-          <text x="254" y="146" textAnchor="middle" className="visual-svg-text">compare front / back</text>
-        </svg>
+    <VisualFrame title="Age-adjusted Lund–Browder TBSA guide" subtitle="The American Burn Association recommends age-appropriate assessment for children. Tap complete regions to add their chart values; enter partial regions manually or use the patient's palm (approximately 1% TBSA). This aid does not replace a formal burn chart or burn-team assessment.">
+      <div className="grid items-start gap-3 xl:grid-cols-[1fr_250px]">
+        <div>
+          <svg viewBox="0 0 430 150" className="visual-svg h-36 w-full" role="img" aria-label="Front and back body regions for age-adjusted total body surface area burn estimation">
+            <text x="86" y="14" textAnchor="middle" className="visual-svg-text">FRONT</text>
+            <text x="254" y="14" textAnchor="middle" className="visual-svg-text">BACK</text>
+            <circle className={`burn-head ${selectedRegions.has("head") ? "selected" : ""}`} cx="86" cy="34" r="13" /><circle className={`burn-head ${selectedRegions.has("head") ? "selected" : ""}`} cx="254" cy="34" r="13" />
+            <rect className={`burn-region head ${selectedRegions.has("neck") ? "selected" : ""}`} x="74" y="49" width="24" height="15" rx="6" /><rect className={`burn-region head ${selectedRegions.has("neck") ? "selected" : ""}`} x="242" y="49" width="24" height="15" rx="6" />
+            <path className={`burn-region trunk ${selectedRegions.has("trunkFront") ? "selected" : ""}`} d="M65 50h42l8 54H57z" /><path className={`burn-region trunk ${selectedRegions.has("trunkBack") ? "selected" : ""}`} d="M233 50h42l8 54h-58z" />
+            <path className={`burn-region limb ${selectedRegions.has("armLeft") || selectedRegions.has("armRight") ? "selected" : ""}`} d="M59 54L38 61 27 98l9 3 18-25 8-15zM113 54l21 7 11 37-9 3-18-25-8-15zM227 54l-21 7-11 37 9 3 18-25 8-15zM281 54l21 7 11 37-9 3-18-25-8-15z" />
+            <path className={`burn-region leg ${selectedRegions.has("thighLeft") || selectedRegions.has("thighRight") || selectedRegions.has("lowerLegLeft") || selectedRegions.has("lowerLegRight") || selectedRegions.has("footLeft") || selectedRegions.has("footRight") ? "selected" : ""}`} d="M63 103l17 0-2 34-12 0zM92 103h17l2 34-12 0zM231 103h17l-2 34h-12zM260 103h17l2 34h-12z" />
+            <text x="86" y="146" textAnchor="middle" className="visual-svg-text">age-adjusted body regions</text>
+            <text x="254" y="146" textAnchor="middle" className="visual-svg-text">front + back</text>
+          </svg>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label className="burn-age-select"><span>Chart age</span><select value={ageKey} onChange={(event) => changeAge(event.target.value as LundAgeKey)}>{(Object.entries(LUND_BROWDER) as [LundAgeKey, typeof LUND_BROWDER[LundAgeKey]][]).map(([key, band]) => <option key={key} value={key}>{band.label}</option>)}</select></label>
+            <span className="text-[10px] font-bold text-slate-500">Full region buttons use the selected age band.</span>
+          </div>
+          <div className="burn-region-grid mt-2" aria-label="Lund-Browder region selector">
+            {LUND_REGIONS.map((region) => {
+              const percentage = Number(age[region.key as keyof typeof age] ?? 0);
+              const active = selectedRegions.has(region.key);
+              return <button key={region.key} type="button" className={`burn-region-chip ${active ? "active" : ""}`} aria-pressed={active} onClick={() => toggleRegion(region.key)}><span>{region.label}</span><b>{percentage}%</b></button>;
+            })}
+          </div>
+          {selectedRegions.size > 0 && <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-bold text-cyan-100"><span>{selectedRegions.size} full region{selectedRegions.size === 1 ? "" : "s"} selected</span><b>{Math.round(fullRegionTotal * 10) / 10}% TBSA written to the input</b></div>}
+        </div>
         <div className="space-y-2">
-          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Entered TBSA</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">TBSA input</div>
           <div className="tbsa-number">{burn}<small>%</small></div>
           <div className="tbsa-track"><i style={{ width: `${burn}%` }} /></div>
           <div className="flex justify-between text-[9px] font-bold text-slate-500"><span>0%</span><span>50%</span><span>100%</span></div>
-          <div className="flex flex-wrap gap-1.5 text-[10px] font-bold"><span className="visual-pill">head / neck</span><span className="visual-pill">trunk</span><span className="visual-pill">limbs</span></div>
+          <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[10px] leading-relaxed text-amber-100">Count partial-thickness and full-thickness burns only. Do not count simple erythema. Reassess depth and TBSA with the burn team.</div>
         </div>
       </div>
     </VisualFrame>

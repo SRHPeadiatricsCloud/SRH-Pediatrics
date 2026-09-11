@@ -2007,3 +2007,171 @@ html.light .bed-dial-item-selected {
   color: #075985 !important;
   text-shadow: none;
 }
+
+/* Source-backed Lund–Browder interaction controls. */
+.burn-age-select {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+.burn-age-select span {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 800;
+}
+.burn-age-select select {
+  background: var(--card-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+.burn-region-grid {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.burn-region-chip {
+  align-items: center;
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 8px;
+  color: var(--text-2);
+  display: flex;
+  font-size: 9px;
+  font-weight: 800;
+  gap: 5px;
+  justify-content: space-between;
+  min-height: 31px;
+  padding: 5px 7px;
+  text-align: left;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.burn-region-chip:hover {
+  border-color: rgba(34, 211, 238, .55);
+  transform: translateY(-1px);
+}
+.burn-region-chip b {
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.burn-region-chip.active {
+  background: rgba(34, 211, 238, .14);
+  border-color: rgba(103, 232, 249, .7);
+  color: #a5f3fc;
+}
+.burn-region-chip.active b {
+  color: #fbbf24;
+}
+.burn-region.selected,
+.burn-head.selected {
+  fill: rgba(251, 191, 36, .48);
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6));
+}
+html.light .burn-age-select select {
+  background: #fff;
+  border-color: #a8bed8;
+  color: #0b1526;
+}
+html.light .burn-region-chip {
+  background: #f2f6fb;
+  border-color: #cbd9ec;
+  color: #334155;
+}
+html.light .burn-region-chip b {
+  color: #47597a;
+}
+html.light .burn-region-chip.active {
+  background: #dff5fb;
+  border-color: #58b9d5;
+  color: #075985;
+}
+html.light .burn-region-chip.active b {
+  color: #a2550a;
+}
+
+.scale-summary-meter {
+  align-items: center;
+  background: conic-gradient(#22d3ee var(--meter), rgba(148, 163, 184, .14) 0);
+  border-radius: 50%;
+  display: grid;
+  height: 116px;
+  justify-self: center;
+  place-items: center;
+  position: relative;
+  width: 116px;
+}
+.scale-summary-meter::after {
+  background: var(--card-solid);
+  border-radius: 50%;
+  content: "";
+  inset: 8px;
+  position: absolute;
+}
+.scale-summary-meter > div {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+.scale-summary-meter b {
+  color: #a5f3fc;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+.scale-summary-meter span {
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-align: center;
+}
+.scale-summary-bars {
+  display: grid;
+  gap: 7px;
+}
+.scale-summary-row {
+  align-items: center;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: minmax(90px, 1fr) minmax(80px, 1.3fr) 22px;
+}
+.scale-summary-row span,
+.scale-summary-row em {
+  color: var(--text-2);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+.scale-summary-row em {
+  color: #a5f3fc;
+  text-align: right;
+}
+.scale-summary-row i {
+  background: rgba(148, 163, 184, .15);
+  border-radius: 999px;
+  display: block;
+  height: 7px;
+  overflow: hidden;
+}
+.scale-summary-row i b {
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+html.light .scale-summary-meter::after {
+  background: #fff;
+}
+html.light .scale-summary-meter b,
+html.light .scale-summary-row em {
+  color: #075985;
+}
+html.light .scale-summary-row span {
+  color: #47597a;
+}

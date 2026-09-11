@@ -30,6 +30,7 @@ function scale(
   items: readonly (ScaleItem | F)[],
   interpret: (...args: any[]) => R,
   maxOverride?: number,
+  scoreOf?: (values: Record<string, number>) => number,
 ): Calculator {
   const optsOf = (i: unknown) =>
     Array.isArray((i as { options?: unknown }).options)
@@ -49,7 +50,7 @@ function scale(
     id, name, category, citation, fields,
     compute: (v) => {
       const numeric = Object.values(v).filter((x) => typeof x === "number") as number[];
-      const total = numeric.reduce((n, x) => n + x, 0);
+      const total = scoreOf ? scoreOf(v) : numeric.reduce((n, x) => n + x, 0);
       return out(`${Math.round(total * 100) / 100}`, interpret(total, v));
     },
   };
@@ -94,15 +95,21 @@ export const CALCULATORS: Calculator[] = [
     (t) => band(t, [[0, "good", "No respiratory distress."], [3, "warn", "Mild–moderate distress."], [6, "warn", "Moderate–severe distress."], [10, "crit", "Severe — impending respiratory failure."]])),
 
   scale("downes", "Downes Score", "neonatal",
-    "Downes JJ et al. Pediatr Clin North Am 1966;13:779–91",
+    "Downes JJ, Vidyasagar D, Boggs TR Jr, Morrow GM. Clin Pediatr (Phila). 1970;9:325–31; modified Downes score evidence in neonatal respiratory distress",
     [
       { key: "rr", label: "Respiratory rate (/min)", options: [[0, "< 60"], [1, "60–80"], [2, "> 80"]] },
-      { key: "cyanosis", label: "Cyanosis", options: [[0, "None in FiO₂ 0.21"], [1, "In FiO₂ 0.21"], [2, "In FiO₂ 0.40"]] },
+      { key: "cyanosis", label: "Cyanosis / oxygen requirement", options: [[0, "None in FiO₂ 0.21"], [1, "In FiO₂ 0.21"], [2, "In FiO₂ 0.40"]] },
       { key: "retraction", label: "Retractions", options: [[0, "None"], [1, "Mild"], [2, "Marked"]] },
       { key: "grunting", label: "Grunting", options: [[0, "None"], [1, "With stethoscope"], [2, "Audible without"]] },
       { key: "airEntry", label: "Air entry", options: [[0, "Clear"], [1, "Delayed / harsh"], [2, "Very poor"]] },
     ],
-    (t) => band(t, [[3, "good", "Mild distress — observe."], [4, "warn", "Moderate — consider O₂ / support."], [10, "crit", "Severe — escalate support."]])),
+    (t) => t === 0
+      ? { severity: "good", interpretation: "No clinical respiratory distress by this score." }
+      : t <= 4
+        ? { severity: "warn", interpretation: "Mild respiratory distress (1–4). Reassess serially and correlate with SpO₂, FiO₂, blood gas and work of breathing." }
+        : t <= 7
+          ? { severity: "warn", interpretation: "Moderate respiratory distress (5–7). Escalate monitoring and consider respiratory support according to the clinical picture." }
+          : { severity: "crit", interpretation: "Severe distress / impending respiratory failure (8–10). Urgent senior neonatal review and respiratory support; do not use the score alone to delay airway care." }),
 
   scale("nips", "NIPS (Neonatal Infant Pain Scale)", "neonatal",
     "Lawrence J et al. 1993 (NIPS)",
@@ -180,25 +187,41 @@ export const CALCULATORS: Calculator[] = [
     4),
 
   scale("rop", "ROP Zone / Stage Classification", "neonatal",
-    "ICROP 3rd ed 2021 (Ophthalmology); AAP ROP 2022",
+    "International Classification of ROP, 3rd ed (ICROP3, 2021); AAP/AAO screening and treatment guidance",
     [
-      { key: "zone", label: "Zone", options: [[1, "Zone I"], [2, "Zone II"], [3, "Zone III"]] },
-      { key: "stage", label: "Stage", options: [[0, "Stage 0 — immature"], [1, "Stage 1 — demarcation line"], [2, "Stage 2 — ridge"], [3, "Stage 3 — extraretinal proliferation"], [4, "Stage 4A/4B — partial detachment"], [5, "Stage 5 — total detachment"]] },
-      { key: "plus", label: "Plus disease", options: [[0, "Absent"], [1, "Present"]] },
+      { key: "zone", label: "Zone", options: [[1, "Zone I — posterior circle centred on optic disc"], [2, "Zone II — to nasal ora serrata"], [3, "Zone III — remaining temporal crescent"]] },
+      { key: "stage", label: "Stage", options: [[0, "Stage 0 — immature vascularisation"], [1, "Stage 1 — demarcation line"], [2, "Stage 2 — ridge"], [3, "Stage 3 — extraretinal fibrovascular proliferation"], [4, "Stage 4A/4B — partial retinal detachment"], [5, "Stage 5 — total retinal detachment"]] },
+      { key: "plus", label: "Posterior vascular status", options: [[0, "No plus disease"], [1, "Pre-plus disease"], [2, "Plus disease"]] },
       { key: "aprop", label: "Aggressive posterior ROP (AP-ROP)", options: [[0, "Absent"], [1, "Present"]] },
     ],
-    (t, max, v) => {
-      const stage = v.stage ?? 0;
-      const zone = v.zone ?? 2;
-      const plus = (v.plus ?? 0) === 1;
-      const aprop = (v.aprop ?? 0) === 1;
-      const treat = aprop || plus || (stage >= 3 && zone === 1) || (stage === 3 && zone === 2 && plus) || stage >= 4;
-      return {
-        severity: stage >= 4 ? "crit" : treat ? "crit" : stage >= 2 ? "warn" : "good",
-        interpretation: treat
-          ? "TREATMENT-REQUIRING ROP — laser therapy or anti-VEGF per AAP / ICROP. Urgent ophthalmology."
-          : stage >= 2 ? "Monitor closely per ROP screening schedule." : "Continue routine ROP screening.",
-      };
+    (t, v) => {
+      const stage = v?.stage ?? 0;
+      const zone = v?.zone ?? 2;
+      const vascular = v?.plus ?? 0;
+      const plus = vascular === 2;
+      const aprop = (v?.aprop ?? 0) === 1;
+      const type1 = aprop
+        || (zone === 1 && (plus || stage === 3))
+        || (zone === 2 && plus && (stage === 2 || stage === 3));
+      if (stage >= 4) {
+        return { severity: "crit", interpretation: "Stage 4–5 ROP — retinal detachment is present or total. Urgent vitreoretinal ophthalmology referral; this screen does not choose surgical treatment." };
+      }
+      if (type1) {
+        return { severity: "crit", interpretation: "Type 1 / treatment-requiring ROP or AP-ROP — urgent ophthalmology. Laser or anti-VEGF decision must be made by the treating ophthalmologist; treatment is generally performed promptly." };
+      }
+      if (zone === 1 && stage >= 1) {
+        return { severity: "warn", interpretation: "Zone I ROP without the selected Type 1 criteria — high-risk disease requiring very close ophthalmology follow-up." };
+      }
+      if (zone === 2 && stage === 3 && !plus) {
+        return { severity: "warn", interpretation: "Type 2 pattern: Zone II stage 3 without plus disease — close, usually weekly ophthalmology follow-up; treat if progression or plus develops." };
+      }
+      if (plus) {
+        return { severity: "warn", interpretation: "Plus disease is present but the selected zone/stage combination is outside the Type 1 pattern — urgent specialist review and close follow-up are still required." };
+      }
+      if (vascular === 1) {
+        return { severity: "warn", interpretation: "Pre-plus vascular abnormality — follow closely and correlate with the retinal examination; pre-plus is not equivalent to plus disease." };
+      }
+      return { severity: stage >= 2 ? "warn" : "good", interpretation: stage >= 2 ? "Active ROP without selected Type 1 criteria — follow the ophthalmologist's zone/stage schedule." : "No treatment threshold selected; continue the prescribed ROP screening schedule." };
     }),
 
   {
@@ -262,28 +285,33 @@ export const CALCULATORS: Calculator[] = [
   },
 
   scale("ballard", "New Ballard Score (gestational age)", "neonatal",
-    "Ballard JL et al. J Pediatr 1991;119:417–23 (GA 20–44 wk)",
+    "Ballard JL et al. J Pediatr 1991;119:417–23; official New Ballard Score sheet (20–44 weeks)",
     [
-      { key: "posture", label: "Posture", options: [[-1, "Arms/legs extended"], [0, "Slight flexion"], [1, "Beginning flexion"], [2, "Well flexed"], [3, "Full flexion"]] },
+      { key: "posture", label: "Posture", options: [[-1, "Arms and legs extended"], [0, "Slight flexion"], [1, "Beginning flexion"], [2, "Well flexed"], [3, "Full flexion"]] },
       { key: "sw", label: "Square window (wrist)", options: [[-1, "> 90°"], [0, "90°"], [1, "60°"], [2, "45°"], [3, "< 45°"], [4, "0°"]] },
-      { key: "ar", label: "Arm recoil", options: [[-1, "180°"], [0, "140–180°"], [1, "110–140°"], [2, "90–110°"], [3, "< 90°"], [4, "Full recoil"]] },
+      { key: "ar", label: "Arm recoil", options: [[-1, "180° / no recoil"], [0, "140–180°"], [1, "110–140°"], [2, "90–110°"], [3, "< 90°"], [4, "Full recoil"]] },
       { key: "pa", label: "Popliteal angle", options: [[-1, "180°"], [0, "160°"], [1, "140°"], [2, "120°"], [3, "100°"], [4, "90°"], [5, "< 90°"]] },
-      { key: "sc", label: "Scarf sign", options: [[-1, "Full crossing"], [0, "Opposite axilla"], [1, "Contralateral axilla"], [2, "At chin"], [3, "At nipple"], [4, "Between nipple & umbilicus"]] },
-      { key: "he", label: "Heel to ear", options: [[-1, "Ear to whole leg"], [0, "Heel near ear"], [1, "Heel between ear & nipple"], [2, "Heel at nipple"], [3, "Heel above nipple"], [4, "Heel below nipple"]] },
-      { key: "skin", label: "Skin", options: [[-1, "Sticky / friable"], [0, "Gelatinous"], [1, "Smooth, thin"], [2, "Superficial peeling / rash"], [3, "Cracking, pale areas"], [4, "Parchment, deep cracking"]] },
+      { key: "sc", label: "Scarf sign", options: [[-1, "Full crossing"], [0, "Opposite axilla"], [1, "Contralateral axilla"], [2, "At chin"], [3, "At nipple"], [4, "Between nipple and umbilicus"]] },
+      { key: "he", label: "Heel to ear", options: [[-1, "Heel to whole leg / ear"], [0, "Heel near ear"], [1, "Heel between ear and nipple"], [2, "Heel at nipple"], [3, "Heel above nipple"], [4, "Heel below nipple"]] },
+      { key: "skin", label: "Skin", options: [[-1, "Sticky, friable, transparent"], [0, "Gelatinous, red, translucent"], [1, "Smooth pink, visible veins"], [2, "Superficial peeling or rash"], [3, "Cracking, pale areas"], [4, "Parchment, deep cracking"], [5, "Leathery, cracked, wrinkled"]] },
       { key: "lanugo", label: "Lanugo", options: [[-1, "None"], [0, "Sparse"], [1, "Abundant"], [2, "Thinning"], [3, "Bald areas"], [4, "Mostly bald"]] },
-      { key: "plantar", label: "Plantar surface", options: [[-2, "Heel-toe 40–50 mm"], [-1, "< 40 mm"], [0, "No crease"], [1, "Faint creases"], [2, "Anterior transverse crease"], [3, "Creases over entire sole"]] },
-      { key: "breast", label: "Breast", options: [[0, "Barely perceptible"], [1, "Flat areola, no bud"], [2, "Stippled areola, 1–2 mm bud"], [3, "Raised areola, 3–4 mm bud"], [4, "Full areola, 5–10 mm bud"]] },
-      { key: "eyeear", label: "Eye / ear", options: [[-1, "Lids fused loosely"], [0, "Lids open, pinna flat"], [1, "Pinna slightly curved, soft"], [2, "Pinna well curved, soft but recoil"], [3, "Pinna formed, firm, instant recoil"]] },
-      { key: "genM", label: "Genitalia (male)", options: [[-1, "Scrotum empty, no rugae"], [0, "Empty, faint rugae"], [1, "Testes in upper canal, rare rugae"], [2, "Testes descending, few rugae"], [3, "Testes down, good rugae"], [4, "Testes pendulous, deep rugae"]] },
-      { key: "genF", label: "Genitalia (female)", options: [[-1, "Clitoris prominent, labia flat"], [0, "Prominent clitoris, small labia minora"], [1, "Prominent clitoris, enlarging minora"], [2, "Majora/minora equally prominent"], [3, "Majora large, minora small"], [4, "Clitoris & minora completely covered"]] },
+      { key: "plantar", label: "Plantar surface", options: [[-2, "Heel-toe length < 40 mm"], [-1, "Heel-toe length 40–50 mm"], [0, "> 50 mm, no crease"], [1, "Faint red marks"], [2, "Anterior transverse crease only"], [3, "Creases over anterior two-thirds"], [4, "Creases over entire sole"]] },
+      { key: "breast", label: "Breast", options: [[-1, "Imperceptible"], [0, "Barely perceptible"], [1, "Flat areola, no bud"], [2, "Stippled areola, 1–2 mm bud"], [3, "Raised areola, 3–4 mm bud"], [4, "Full areola, 5–10 mm bud"]] },
+      { key: "eyeear", label: "Eye / ear", options: [[-1, "Lids fused loosely"], [0, "Lids open, pinna flat; stays folded"], [1, "Slightly curved, soft; slow recoil"], [2, "Well curved, soft; ready recoil"], [3, "Formed and firm; instant recoil"], [4, "Thick cartilage; ear stiff"]] },
+      { key: "genitalia", label: "Genitalia (select sex-appropriate description)", options: [[-1, "Male: scrotum flat and smooth · Female: clitoris prominent, labia flat"], [0, "Male: scrotum empty, faint rugae · Female: prominent clitoris, small labia minora"], [1, "Male: testes upper canal, rare rugae · Female: prominent clitoris, enlarging minora"], [2, "Male: testes descending, few rugae · Female: majora and minora equally prominent"], [3, "Male: testes down, good rugae · Female: majora large, minora small"], [4, "Male: testes pendulous, deep rugae · Female: majora cover clitoris and minora"]] },
+      { key: "sex", label: "Genitalia row used", options: [[0, "Male"], [1, "Female"]] },
     ],
-    (t, max, v) => {
-      const ga = (t + 200) / 5;
-      if (ga < 20) return { severity: "warn", interpretation: `Calculated GA ${ga.toFixed(1)} wk is below the validated range (20–44 wk).` };
-      if (ga > 44) return { severity: "warn", interpretation: `Calculated GA ${ga.toFixed(1)} wk exceeds the validated range (20–44 wk).` };
-      return { severity: ga < 32 ? "crit" : ga < 37 ? "warn" : "info", note: `Estimated gestational age ${ga.toFixed(1)} weeks (${Math.floor(ga)} w ${Math.round((ga % 1) * 7)} d).` };
-    }),
+    (t) => {
+      const ga = 24 + (t * 0.4);
+      if (t < -10 || t > 50) return { severity: "warn", interpretation: `Total maturity score ${t} is outside the validated New Ballard range (−10 to 50).` };
+      const completedWeeks = Math.floor(ga);
+      return {
+        severity: completedWeeks < 32 ? "crit" : completedWeeks < 37 ? "warn" : "info",
+        interpretation: `Estimated gestational age ${completedWeeks} completed weeks (maturity score ${t}). Use the official conversion table and correlate with reliable early ultrasound or menstrual dates; clinical estimates are typically only accurate within about 2 weeks.`,
+      };
+    },
+    undefined,
+    (v) => Object.entries(v).reduce((total, [key, value]) => key === "sex" ? total : total + value, 0)),
 
   /* ================= Critical Care Severity & Mortality ================= */
   {
@@ -371,7 +399,7 @@ export const CALCULATORS: Calculator[] = [
       sel("origin", "Origin of oedema", [[1, "Not fully explained by cardiac failure or fluid overload"], [0, "Other"]]),
       sel("oi", "Severity (OI or OSI)", [[0, "Mild — OI 4–8 / OSI 5–7"], [1, "Moderate — OI 8–16 / OSI 7.6–12.3"], [2, "Severe — OI > 16 / OSI > 12.3"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const allMet = (v.timing ?? 0) && (v.chest ?? 0) && (v.origin ?? 0);
       const sev = v.oi ?? 0;
       if (!allMet) return { severity: "info", note: "Timing, imaging or oedema-origin criterion not met." };
@@ -443,7 +471,7 @@ export const CALCULATORS: Calculator[] = [
         [3, "+3 Very agitated, unsafe (risk of injury)"],
       ]},
     ],
-    (t, max, v) => {
+    (t, v) => {
       const s = v.sbs ?? 0;
       return {
         severity: s >= 2 ? "crit" : s === 1 ? "warn" : s <= -3 ? "warn" : "good",
@@ -662,7 +690,7 @@ export const CALCULATORS: Calculator[] = [
         [6, "Category 6 — single ventricle palliation"],
       ]},
     ],
-    (t, max, v) => {
+    (t, v) => {
       const cat = v.cat ?? 0;
       const map: Record<number, { sev: Sev; note: string }> = {
         1: { sev: "good", note: "Lowest mortality risk (~0.5–1%)." },
@@ -724,18 +752,26 @@ export const CALCULATORS: Calculator[] = [
   },
 
   {
-    id: "parkland", name: "Parkland Formula (paediatric burns)", category: "fluid",
-    citation: "Baxter CR & Shires T, Ann NY Acad Sci 1968 (Parkland); ABA burn guidelines",
-    fields: [f("wt", "Body weight", 3, 120, "kg"), f("burn", "Total burned BSA", 0, 100, "%")],
+    id: "parkland", name: "Paediatric Burn Resuscitation (Parkland / modified Parkland)", category: "fluid",
+    citation: "Baxter CR & Shires T, Ann NY Acad Sci 1968 (classic Parkland); American Burn Association / paediatric burn protocols",
+    fields: [
+      f("wt", "Body weight", 3, 120, "kg"),
+      f("burn", "Partial/full-thickness TBSA", 0, 100, "%"),
+      sel("coef", "Resuscitation coefficient", [[3, "Modified paediatric Parkland · 3 ml/kg/%TBSA"], [4, "Classic Parkland · 4 ml/kg/%TBSA"]]),
+    ],
     compute: (v) => {
-      const w = v.wt ?? 0, b = v.burn ?? 0;
-      if (w <= 0 || b <= 0) return out("—", { severity: "info", note: "Enter weight and % BSA burned." });
-      const total = 4 * w * b;
+      const w = v.wt ?? 0, b = v.burn ?? 0, coefficient = v.coef ?? 0;
+      if (w <= 0 || b <= 0 || coefficient <= 0) return out("—", { severity: "info", note: "Enter weight, partial/full-thickness %TBSA, and the local burn-team coefficient." });
+      const total = coefficient * w * b;
       const first8 = Math.round(total / 2);
       const next16 = Math.round(total - first8);
-      return out(`${total} ml / 24 h`, {
-        severity: b > 30 ? "crit" : "warn",
-        interpretation: `First 8 h: ${first8} ml. Next 16 h: ${next16} ml. Add maintenance fluids in children. Titrate to urine output ≥ 1 ml/kg/h.`,
+      const first8Rate = Math.round(first8 / 8);
+      const next16Rate = Math.round(next16 / 16);
+      const maintenance = w <= 10 ? w * 4 : w <= 20 ? 40 + (w - 10) * 2 : 60 + (w - 20);
+      return out(`${Math.round(total)} ml LR / 24 h`, {
+        severity: b >= 20 ? "crit" : "warn",
+        interpretation: `Estimated crystalloid replacement: ${Math.round(total)} ml in 24 h. Give ${first8} ml over the first 8 h from the time of injury (starting rate ≈ ${first8Rate} ml/h), then ${next16} ml over the next 16 h (≈ ${next16Rate} ml/h). Add paediatric maintenance ≈ ${Math.round(maintenance)} ml/h separately; subtract fluids already given and titrate hourly to urine output about 1 ml/kg/h. Use only partial- and full-thickness burn area; superficial erythema is not counted.`,
+        note: "This is a starting estimate, not a prescription. Follow the local burn service protocol and monitor for both under-resuscitation and fluid overload.",
       });
     },
   },
@@ -943,7 +979,7 @@ export const CALCULATORS: Calculator[] = [
       { key: "bands", label: "Band forms", options: [[0, "≥ 1.5 ×10⁹/L"], [1, "< 1.5 ×10⁹/L"]] },
       f("urine", "Urine WBC (×10⁹/L)", 0, 100),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const meets = (v.well ?? 0) === 1 && v.temp === 1 && (v.wbc ?? 0) >= 5 && (v.wbc ?? 0) <= 15 && (v.bands ?? 0) === 1 && (v.urine ?? 99) < 10;
       return out(meets ? "Low risk (meets criteria)" : "Does not meet criteria", {
         severity: meets ? "good" : "warn",
@@ -963,7 +999,7 @@ export const CALCULATORS: Calculator[] = [
       f("urine", "Urine WBC (×10⁹/L)", 0, 100),
       f("stool", "Stool WBC (if diarrhoea)", 0, 100),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const meets = (v.well ?? 0) === 1 && (v.temp ?? 0) === 0 && (v.wbc ?? 0) < 15 && (v.bands ?? 0) < 1.5 && (v.urine ?? 0) < 10;
       return out(meets ? "Low risk (meets criteria)" : "Does not meet criteria", {
         severity: meets ? "good" : "warn",
@@ -984,7 +1020,7 @@ export const CALCULATORS: Calculator[] = [
       f("csf", "CSF WBC (×10⁹/L)", 0, 100),
       f("cxr", "Chest X-ray infiltrate (0/1)", 0, 1),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const meets = (v.well ?? 0) === 1 && (v.wbc ?? 0) < 20 && (v.bands ?? 0) < 1.5 && (v.urine ?? 0) < 10 && (v.csf ?? 0) < 10 && (v.cxr ?? 0) === 0;
       return out(meets ? "Low risk (meets Boston criteria)" : "Does not meet criteria", {
         severity: meets ? "good" : "warn",
@@ -1044,7 +1080,7 @@ export const CALCULATORS: Calculator[] = [
       sel("hfa", "Height-for-age (stunting)", [[0, "> 95% of expected"], [1, "90–95% — mild"], [2, "85–89% — moderate"], [3, "< 85% — severe"]]),
       sel("oedema", "Nutritional oedema", [[0, "Absent"], [1, "Present"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const wasting = v.wfh ?? 0;
       const stunting = v.hfa ?? 0;
       const oedema = (v.oedema ?? 0) === 1;
@@ -1065,7 +1101,7 @@ export const CALCULATORS: Calculator[] = [
 
   {
     id: "ponderal", name: "Ponderal Index", category: "growth",
-    citation: "Lubchenco LO et al. Pediatrics 1963; Miller HC & Hassanein K, J Pediatr 1971",
+    citation: "Neonatal ponderal index = 100 × birth weight (g) / length³ (cm); interpret with gestational-age/sex reference charts (PubMed 19041096, 9491856)",
     fields: [f("wt", "Birth weight", 300, 6000, "g"), f("ht", "Birth length", 25, 65, "cm")],
     compute: (v) => {
       const w = v.wt ?? 0, h = v.ht ?? 0;
@@ -1074,10 +1110,14 @@ export const CALCULATORS: Calculator[] = [
       // The previous implementation converted length to metres but retained a
       // g/cm³ label, producing values around 20,000–30,000 instead of 2.5–3.0.
       const pi = Math.round((w / Math.pow(h, 3)) * 100 * 100) / 100;
-      return out(`${pi.toFixed(2)} g/cm³ × 100`, {
-        severity: pi < 2.5 ? "warn" : pi > 3.0 ? "warn" : "good",
-        interpretation: pi < 2.5 ? "Low ponderal index — suggests asymmetric fetal growth restriction; correlate with gestation and growth charts."
-          : pi > 3.0 ? "High ponderal index — suggests disproportionate weight for length; correlate with gestation and maternal diabetes risk." : "Within the usual neonatal reference range (2.5–3.0 g/cm³ × 100).",
+      return out(`PI ${pi.toFixed(2)} (×100 g/cm³)`, {
+        severity: pi < 2.2 || pi > 3.0 ? "warn" : "good",
+        interpretation: pi < 2.2
+          ? "Low screening value — may indicate disproportionate fetal growth restriction; compare with gestational-age/sex-specific centiles and assess the infant clinically."
+          : pi > 3.0
+            ? "High screening value — suggests greater weight for length; correlate with gestation, maternal diabetes risk and growth references."
+            : "Within a commonly used neonatal screening band (approximately 2.2–3.0), but no single cutoff is valid for every gestation or population. Use the appropriate reference chart.",
+        note: "PI is a proportionality screen, not a diagnosis. Accurate crown–heel length is critical because length is cubed.",
       });
     },
   },
@@ -1112,7 +1152,7 @@ export const CALCULATORS: Calculator[] = [
         [2, "P — Responds to Pain"], [1, "U — Unresponsive"],
       ]},
     ],
-    (t, max, v) => {
+    (t, v) => {
       const s = v.avpu ?? 0;
       const map: Record<number, { sev: Sev; note: string }> = {
         4: { sev: "good", note: "Alert — normal conscious level." },
@@ -1150,7 +1190,7 @@ export const CALCULATORS: Calculator[] = [
       sel("altered", "Altered level of consciousness (RASS)", [[0, "No (RASS 0)"], [1, "Yes (RASS ≠ 0)"]]),
       sel("disorganised", "Disorganised thinking", [[0, "No"], [1, "Yes"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const positive = (v.acute ?? 0) === 1 && ((v.inattention ?? 0) === 1 || (v.altered ?? 0) === 1 || (v.disorganised ?? 0) === 1);
       return out(positive ? "CAM-ICU positive" : "CAM-ICU negative", {
         severity: positive ? "warn" : "good",
@@ -1170,7 +1210,7 @@ export const CALCULATORS: Calculator[] = [
       sel("alarm", "Any alarm feature (weight loss, GI bleeding, fever, IBD family history)", [[0, "No"], [1, "Yes"]]),
       sel("subtyped", "Meets IBS / functional dyspepsia / abdominal migraine / FAP-NOS sub-criteria", [[0, "No"], [1, "Yes"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const alarm = (v.alarm ?? 0) === 1;
       const positive = (v.pain ?? 0) === 1 && (v.duration ?? 0) === 1 && (v.insufficient ?? 0) === 1;
       return out(alarm ? "Alarm feature present" : positive ? "Functional abdominal pain disorder" : "Does not meet criteria", {
@@ -1213,7 +1253,7 @@ export const CALCULATORS: Calculator[] = [
       sel("lang", "Language milestone for age (babbles, words, phrases)", [[0, "Yes"], [1, "Refusal / no opportunity"], [2, "Failed"]]),
       sel("personal", "Personal–social milestone for age (smiles, feeds self, plays)", [[0, "Yes"], [1, "Refusal / no opportunity"], [2, "Failed"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const failed = ["gross", "fine", "lang", "personal"].filter((k) => (v[k] ?? 0) === 2).length;
       const refusals = ["gross", "fine", "lang", "personal"].filter((k) => (v[k] ?? 0) === 1).length;
       return out(`${failed} item(s) failed / ${refusals} refused`, {
@@ -1285,7 +1325,7 @@ export const CALCULATORS: Calculator[] = [
       sel("genital", "Genital development (male)", [[1, "G1 — prepubertal"], [2, "G2 — testes enlarge, scrotum thins"], [3, "G3 — penis lengthens"], [4, "G4 — penis broadens, glans develops"], [5, "G5 — adult size"]]),
       sel("pubicM", "Pubic hair (male)", [[1, "PH1 — none"], [2, "PH2 — sparse base of penis"], [3, "PH3 — darker, curlier"], [4, "PH4 — adult type, smaller area"], [5, "PH5 — adult, spread to thighs"]]),
     ],
-    (t, max, v) => {
+    (t, v) => {
       const values = [v.breast, v.pubicF, v.genital, v.pubicM].filter((x) => x != null) as number[];
       const mx = values.length ? Math.max(...values) : 0;
       const mn = values.length ? Math.min(...values) : 0;
@@ -1299,6 +1339,17 @@ export const CALCULATORS: Calculator[] = [
     }),
 
 ];
+
+const REPUTABLE_CALCULATOR_SOURCES: Record<string, NonNullable<Calculator["external"]>> = {
+  downes: { label: "Peer-reviewed Downes evidence", url: "https://www.nature.com/articles/s41372-024-02086-z" },
+  rop: { label: "AAP ROP screening/treatment statement", url: "https://publications.aap.org/pediatrics/article/142/6/e20183061/37478/Screening-Examination-of-Premature-Infants-for" },
+  ballard: { label: "Official New Ballard score sheet", url: "https://www.ballardscore.com/files/BallardScore_scoresheet.pdf" },
+  parkland: { label: "University pediatric Lund–Browder chart", url: "https://www.southalabama.edu/colleges/com/departments/surgery/resources/burn-initial/lund-and-browder-pediatric.pdf" },
+  ponderal: { label: "PubMed ponderal-index evidence", url: "https://pubmed.ncbi.nlm.nih.gov/9491856/" },
+};
+for (const calculator of CALCULATORS) {
+  if (REPUTABLE_CALCULATOR_SOURCES[calculator.id]) calculator.external = REPUTABLE_CALCULATOR_SOURCES[calculator.id];
+}
 
 export const CALC_BY_ID = Object.fromEntries(CALCULATORS.map((c) => [c.id, c]));
 
