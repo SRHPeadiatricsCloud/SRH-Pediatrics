@@ -2866,3 +2866,455 @@ html.light .calc-focus-kicker {
     font-size: 11px;
   }
 }
+
+/* ============================================================
+   CLINICAL READABILITY PASS — clear type over decorative effects
+   The calculator workspace is information-dense. Keep the brand colour
+   in the structure and accents, but give every label a solid surface,
+   stronger contrast and a comfortable reading size.
+   ============================================================ */
+:root {
+  --text-3: #a9bbd3;
+  --text-4: #879db9;
+}
+
+html.light {
+  --text-3: #3d5675;
+  --text-4: #5b7190;
+}
+
+body {
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* Avoid translucent blur behind clinical copy. Privacy-mode blur remains
+   untouched because it is an intentional presentation/privacy boundary. */
+.calculator-hero,
+.calc-card,
+.calc-category-nav,
+.calc-spotlight,
+.calculator-visual {
+  backdrop-filter: none;
+}
+
+.calculator-hero,
+.calc-card,
+.calc-category-nav,
+.calc-spotlight {
+  background: var(--card-solid);
+}
+
+.calculator-hero {
+  border-color: var(--border-strong);
+  padding: 24px;
+}
+
+.calculator-hero-copy h1 {
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.calculator-hero-copy p {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.calc-hero-overline {
+  font-size: 12px;
+  letter-spacing: 0.11em;
+}
+
+.calc-hero-live {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+
+.calc-hero-meta {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calculator-hero-search {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  padding: 18px;
+}
+
+.calculator-hero-search label {
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.calculator-hero-search p {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.calc-search-wrap input {
+  background: var(--card-hi);
+  border-color: var(--border-strong);
+  font-size: 15px;
+  min-height: 48px;
+  padding-left: 8px;
+}
+
+.calc-search-wrap kbd {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-howto-strip > span {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-howto-strip b {
+  font-size: 11px;
+}
+
+.calc-spotlight-heading span {
+  font-size: 13px;
+}
+
+.calc-spotlight-heading small,
+.calc-spotlight small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-spotlight b {
+  font-size: 13px;
+}
+
+.calc-spotlight {
+  min-width: 168px;
+  padding: 11px 13px;
+}
+
+.calc-filter-title {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-category-chips .chip {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.calc-focus-kicker {
+  font-size: 10px;
+}
+
+.calc-focus-banner b {
+  font-size: 16px;
+}
+
+.calc-focus-banner small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-focus-banner button {
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 8px 11px;
+}
+
+.calc-card {
+  border-color: var(--border-strong);
+}
+
+.calc-card-toggle {
+  color: var(--text);
+  padding: 15px 10px 15px 16px;
+}
+
+.calc-card-eyebrow {
+  color: var(--text-3);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.calc-card-name {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-top: 6px;
+}
+
+.calc-card-citation {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.calc-progress-pill {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.calc-card-open-label {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-card-body {
+  padding: 18px;
+}
+
+.calc-card-context-main,
+.calc-card-context a {
+  font-size: 11px;
+}
+
+.calc-citation-full {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 10px 0 16px;
+}
+
+.calc-step-kicker {
+  font-size: 10px;
+}
+
+.calc-workflow-head h3 {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.calc-workflow-count {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.calc-input-card {
+  background: color-mix(in srgb, var(--card-solid) 94%, var(--accent-soft));
+  border-color: var(--border);
+}
+
+.calc-input-filled {
+  background: color-mix(in srgb, var(--accent-soft) 68%, var(--card-solid));
+  border-color: var(--accent);
+}
+
+.calc-input-label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.calc-input-label b {
+  font-size: 10px;
+}
+
+.calc-input-card select,
+.calc-input-card input {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.calc-input-card select:focus,
+.calc-input-card input:focus,
+.calc-search-wrap input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+.calc-input-card select option {
+  background: var(--card-solid);
+  color: var(--text);
+}
+
+.calc-incomplete-note {
+  color: #f8d574;
+  font-size: 12px;
+}
+
+.calc-run-button,
+.calc-reset-button {
+  font-size: 13px;
+  min-height: 42px;
+}
+
+.calc-result-kicker,
+.calc-result-state {
+  font-size: 10px;
+}
+
+.calculator-visual {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+}
+
+.calc-visual-kicker {
+  font-size: 10px;
+}
+
+.calc-visual-badge {
+  font-size: 10px;
+}
+
+.calc-visual-subtitle {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.visual-svg-text {
+  fill: var(--text-2);
+  font-size: 10px;
+}
+
+.visual-score-row,
+.visual-total,
+.ballard-domain > div:first-child {
+  font-size: 12px;
+}
+
+.visual-score-label,
+.ballard-domain > div:first-child,
+.visual-total {
+  color: var(--text-2);
+}
+
+.visual-score-number {
+  font-size: 13px;
+}
+
+.visual-callout {
+  color: #d8f3ff;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 9px 11px;
+}
+
+html.light .calculator-hero,
+html.light .calc-card,
+html.light .calc-category-nav,
+html.light .calc-spotlight,
+html.light .calculator-visual,
+html.light .calculator-hero-search {
+  background: #ffffff;
+}
+
+html.light .calculator-hero,
+html.light .calc-card,
+html.light .calc-category-nav,
+html.light .calculator-hero-search {
+  border-color: #b9c9dc;
+}
+
+html.light .calc-card-eyebrow,
+html.light .calc-card-citation,
+html.light .calc-citation-full,
+html.light .calculator-hero-search p,
+html.light .calc-spotlight small,
+html.light .calc-spotlight-heading small {
+  color: #536987;
+}
+
+html.light .calc-card-name,
+html.light .calc-input-label,
+html.light .calc-workflow-head h3,
+html.light .calculator-hero-search label {
+  color: #152a46;
+}
+
+html.light .calc-input-card select,
+html.light .calc-input-card input,
+html.light .calc-search-wrap input {
+  background: #fdfefe;
+  border-color: #aebfd3;
+  color: #152a46;
+}
+
+html.light .calc-input-card select option {
+  background: #ffffff;
+  color: #152a46;
+}
+
+html.light .calc-incomplete-note {
+  color: #8b4b08;
+}
+
+html.light .visual-callout {
+  color: #164e70;
+}
+
+.calc-card-toggle:focus-visible,
+.calc-card-open-label:focus-visible,
+.calc-spotlight:focus-visible,
+.calc-focus-banner button:focus-visible,
+.calc-category-chips .chip:focus-visible,
+.calc-search-wrap button:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, .55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .calculator-hero {
+    padding: 18px;
+  }
+
+  .calculator-hero-copy h1 {
+    font-size: 32px;
+  }
+
+  .calculator-hero-copy p {
+    font-size: 14px;
+  }
+
+  .calc-card-name {
+    font-size: 14px;
+  }
+
+  .calc-card-citation {
+    font-size: 10px;
+  }
+
+  .calc-card-body {
+    padding: 14px;
+  }
+
+  .calc-workflow-head h3 {
+    font-size: 14px;
+  }
+}
+
+/* Keep the navigation chrome crisp as well as the workspace. */
+header.no-print {
+  background: #0b1424;
+  backdrop-filter: none;
+}
+
+header.no-print nav {
+  background: #08111f;
+}
+
+header.no-print a,
+header.no-print button {
+  text-shadow: none;
+}
+
+html.light header.no-print {
+  background: #ffffff;
+}
+
+html.light header.no-print nav {
+  background: #f7faff;
+}

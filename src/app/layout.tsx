@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body style={fontVars} className="text-slate-100 antialiased">
+      <body style={fontVars} className="text-slate-100">
         <LockBanner />
         {children}
         <footer className="no-print border-t border-white/5 py-5 text-center">
