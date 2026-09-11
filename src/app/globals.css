@@ -4185,3 +4185,210 @@ html.light .calc-stage-status {
   outline: 3px solid rgba(34, 211, 238, .55);
   outline-offset: 2px;
 }
+
+/* ============================================================
+   CLINICAL AREA COLOUR SYSTEM — high-contrast dark-mode library
+   Each area has one stable accent for scanning the rail without making
+   severity colours look like clinical results.
+   ============================================================ */
+.calc-mark-neonatal,
+.calc-area-neonatal,
+.calc-group-neonatal,
+.calc-stage-neonatal { --area-accent: #22d3ee; --area-soft: rgba(34, 211, 238, .14); }
+.calc-mark-critical,
+.calc-area-critical,
+.calc-group-critical,
+.calc-stage-critical { --area-accent: #fb7185; --area-soft: rgba(251, 113, 133, .14); }
+.calc-mark-pain,
+.calc-area-pain,
+.calc-group-pain,
+.calc-stage-pain { --area-accent: #f472b6; --area-soft: rgba(244, 114, 182, .14); }
+.calc-mark-warning,
+.calc-area-warning,
+.calc-group-warning,
+.calc-stage-warning { --area-accent: #fbbf24; --area-soft: rgba(251, 191, 36, .14); }
+.calc-mark-respiratory,
+.calc-area-respiratory,
+.calc-group-respiratory,
+.calc-stage-respiratory { --area-accent: #60a5fa; --area-soft: rgba(96, 165, 250, .14); }
+.calc-mark-cardio,
+.calc-area-cardio,
+.calc-group-cardio,
+.calc-stage-cardio { --area-accent: #f87171; --area-soft: rgba(248, 113, 113, .14); }
+.calc-mark-fluid,
+.calc-area-fluid,
+.calc-group-fluid,
+.calc-stage-fluid { --area-accent: #fb923c; --area-soft: rgba(251, 146, 60, .14); }
+.calc-mark-dosing,
+.calc-area-dosing,
+.calc-group-dosing,
+.calc-stage-dosing { --area-accent: #818cf8; --area-soft: rgba(129, 140, 248, .14); }
+.calc-mark-trauma,
+.calc-area-trauma,
+.calc-group-trauma,
+.calc-stage-trauma { --area-accent: #f59e0b; --area-soft: rgba(245, 158, 11, .14); }
+.calc-mark-sepsis,
+.calc-area-sepsis,
+.calc-group-sepsis,
+.calc-stage-sepsis { --area-accent: #34d399; --area-soft: rgba(52, 211, 153, .14); }
+.calc-mark-growth,
+.calc-area-growth,
+.calc-group-growth,
+.calc-stage-growth { --area-accent: #a78bfa; --area-soft: rgba(167, 139, 250, .14); }
+.calc-mark-neuro,
+.calc-area-neuro,
+.calc-group-neuro,
+.calc-stage-neuro { --area-accent: #c084fc; --area-soft: rgba(192, 132, 252, .14); }
+.calc-mark-gi,
+.calc-area-gi,
+.calc-group-gi,
+.calc-stage-gi { --area-accent: #2dd4bf; --area-soft: rgba(45, 212, 191, .14); }
+.calc-mark-development,
+.calc-area-development,
+.calc-group-development,
+.calc-stage-development { --area-accent: #e879f9; --area-soft: rgba(232, 121, 249, .14); }
+.calc-mark-skin,
+.calc-area-skin,
+.calc-group-skin,
+.calc-stage-skin { --area-accent: #a3e635; --area-soft: rgba(163, 230, 53, .14); }
+.calc-mark-endocrine,
+.calc-area-endocrine,
+.calc-group-endocrine,
+.calc-stage-endocrine { --area-accent: #f472b6; --area-soft: rgba(244, 114, 182, .14); }
+
+.calc-library-item {
+  border-left: 3px solid transparent;
+  color: #d8e6f8;
+}
+
+.calc-library-item.calc-area-neonatal,
+.calc-library-item.calc-area-critical,
+.calc-library-item.calc-area-pain,
+.calc-library-item.calc-area-warning,
+.calc-library-item.calc-area-respiratory,
+.calc-library-item.calc-area-cardio,
+.calc-library-item.calc-area-fluid,
+.calc-library-item.calc-area-dosing,
+.calc-library-item.calc-area-trauma,
+.calc-library-item.calc-area-sepsis,
+.calc-library-item.calc-area-growth,
+.calc-library-item.calc-area-neuro,
+.calc-library-item.calc-area-gi,
+.calc-library-item.calc-area-development,
+.calc-library-item.calc-area-skin,
+.calc-library-item.calc-area-endocrine {
+  border-left-color: color-mix(in srgb, var(--area-accent) 72%, transparent);
+}
+
+.calc-library-item.active {
+  background: linear-gradient(90deg, var(--area-soft), rgba(99, 102, 241, .08));
+  border-color: color-mix(in srgb, var(--area-accent) 58%, var(--border));
+  border-left-color: var(--area-accent);
+}
+
+.calc-library-item.active .calc-library-icon,
+.calc-library-icon {
+  background: var(--area-soft);
+  border-color: color-mix(in srgb, var(--area-accent) 62%, transparent);
+  color: var(--area-accent);
+}
+
+.calc-library-copy b {
+  color: #f4f8ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calc-library-copy small {
+  color: #a9bdd7;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.calc-library-group-title {
+  border-left: 3px solid color-mix(in srgb, var(--area-accent) 72%, transparent);
+  color: #b9cae0;
+  font-size: 10px;
+  padding-left: 8px;
+}
+
+.calc-library-group-title b {
+  color: var(--area-accent);
+}
+
+.calc-rail-heading > div span {
+  color: #f4f8ff;
+}
+
+.calc-rail-heading > div b,
+.calc-rail-results,
+.calc-rail-filter span {
+  color: #a9bdd7;
+}
+
+.calc-rail-tabs button {
+  color: #b6c9df;
+}
+
+.calc-rail-tabs button.active {
+  color: #f4f8ff;
+}
+
+.calc-rail-filter select {
+  color: #e8f1fc;
+}
+
+.calc-stage-heading {
+  border-left: 4px solid var(--area-accent, #22d3ee);
+}
+
+.calc-stage-heading .calc-stage-kicker {
+  color: var(--area-accent, #67e8f9);
+}
+
+.calc-stage-heading p {
+  color: #a9bdd7;
+}
+
+html.light .calc-library-item {
+  color: #294868;
+}
+
+html.light .calc-library-copy b {
+  color: #172f4b;
+}
+
+html.light .calc-library-copy small,
+html.light .calc-library-group-title,
+html.light .calc-rail-heading > div b,
+html.light .calc-rail-results,
+html.light .calc-rail-filter span,
+html.light .calc-stage-heading p {
+  color: #536b88;
+}
+
+html.light .calc-library-group-title b {
+  color: color-mix(in srgb, var(--area-accent) 78%, #24405f);
+}
+
+html.light .calc-library-item.active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--area-soft) 70%, white), #f5f3ff);
+}
+
+html.light .calc-rail-tabs button {
+  color: #48617d;
+}
+
+html.light .calc-rail-tabs button.active {
+  color: #172f4b;
+}
+
+@media (max-width: 760px) {
+  .calc-library-copy b {
+    font-size: 11px;
+  }
+
+  .calc-library-copy small {
+    font-size: 9px;
+  }
+}
