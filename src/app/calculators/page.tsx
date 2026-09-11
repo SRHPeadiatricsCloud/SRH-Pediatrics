@@ -8,7 +8,7 @@ import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
 import { AnthropometrySection } from "@/components/anthropometry-calculators";
 import { CALCULATORS, CATEGORIES } from "@/lib/calculators";
-import type { Calculator as CalcDef } from "@/lib/calc-types";
+import type { Calculator as CalcDef, CalcResult } from "@/lib/calc-types";
 
 const SEV_STYLE: Record<string, string> = {
   good: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
@@ -20,7 +20,7 @@ const SEV_STYLE: Record<string, string> = {
 function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: boolean }) {
   const [open, setOpen] = useState(forceOpen);
   const [values, setValues] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<null | ReturnType<CalcDef["compute"]>>(null);
+  const [result, setResult] = useState<CalcResult | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -29,12 +29,21 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [forceOpen]);
 
+  const complete = calc.fields.length > 0 && calc.fields.every((field) => Object.prototype.hasOwnProperty.call(values, field.key));
+  const liveResult = useMemo(() => complete ? calc.compute(values) : null, [calc, complete, values]);
+  const shownResult = liveResult ?? result;
+  const setValue = (key: string, value: number) => {
+    setValues((previous) => ({ ...previous, [key]: value }));
+    setResult(null);
+  };
+
   return (
     <div ref={ref} className="card overflow-hidden">
       <button
         type="button"
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-white/[0.03]"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
       >
         {open ? <ChevronDown size={16} className="shrink-0 text-cyan-300" /> : <ChevronRight size={16} className="shrink-0 text-slate-400" />}
         <Stethoscope size={14} className="shrink-0 text-cyan-300/70" />
@@ -57,6 +66,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                   <ExternalLink size={11} /> {calc.external.label}
                 </a>
               )}
+              <CalculatorVisual id={calc.id} values={values} result={liveResult} />
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {calc.fields.map((field) => (
                   <label key={field.key} className="calculator-field rounded-xl p-3">
@@ -65,7 +75,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                       <select
                         className="calculator-input inp text-sm"
                         value={values[field.key] ?? ""}
-                        onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
+                        onChange={(e) => setValue(field.key, Number(e.target.value))}
                       >
                         <option value="">— select —</option>
                         {field.options.map((o) => (
@@ -75,11 +85,14 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                     ) : (
                       <>
                         <input
+                          type="number"
                           className="calculator-input inp text-center text-base font-bold"
                           inputMode="decimal"
                           value={values[field.key] ?? ""}
                           placeholder={field.placeholder ?? "—"}
-                          onChange={(e) => setValues((p) => ({ ...p, [field.key]: Number(e.target.value) || 0 }))}
+                          min={field.min}
+                          max={field.max}
+                          onChange={(e) => setValue(field.key, Number(e.target.value) || 0)}
                         />
                         {field.unit && <span className="mt-1 block text-[10px] text-slate-500">{field.unit}</span>}
                       </>
@@ -87,14 +100,21 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
                   </label>
                 ))}
               </div>
-              <button className="btn-primary mt-3 !py-1.5 text-xs" onClick={() => setResult(calc.compute(values))}>
-                Calculate
-              </button>
-              {result && (
-                <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[result.severity]}`}>
-                  <div className="text-base font-black tabular-nums">{result.value}</div>
-                  <p className="mt-1 text-[11px] leading-snug">{result.interpretation ?? result.note ?? ""}</p>
-                  {result.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {result.outOfRange}</p>}
+              {calc.fields.length > 0 && !complete && Object.keys(values).length > 0 && (
+                <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-200">
+                  Complete each field to show the validated interpretation.
+                </p>
+              )}
+              {calc.fields.length > 0 && (
+                <button className="btn-primary mt-3 !py-1.5 text-xs" disabled={!complete} onClick={() => setResult(calc.compute(values))}>
+                  Calculate / update interpretation
+                </button>
+              )}
+              {shownResult && (
+                <div className={`mt-3 rounded-xl border p-3 ${SEV_STYLE[shownResult.severity]}`}>
+                  <div className="text-base font-black tabular-nums">{shownResult.value}</div>
+                  <p className="mt-1 text-[11px] leading-snug">{shownResult.interpretation ?? shownResult.note ?? ""}</p>
+                  {shownResult.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {shownResult.outOfRange}</p>}
                 </div>
               )}
             </>
@@ -102,6 +122,159 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
         </div>
       )}
     </div>
+  );
+}
+
+
+function CalculatorVisual({ id, values, result }: { id: string; values: Record<string, number>; result: CalcResult | null }) {
+  if (id === "downes") return <DownesVisual values={values} result={result} />;
+  if (id === "ballard") return <BallardVisual values={values} result={result} />;
+  if (id === "rop") return <RopVisual values={values} result={result} />;
+  if (id === "parkland") return <ParklandVisual values={values} />;
+  return null;
+}
+
+function VisualFrame({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <div className="calculator-visual mb-3" aria-label={title}>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="calc-visual-kicker">Visual guide</div>
+          <h3 className="mt-0.5 text-sm font-black">{title}</h3>
+        </div>
+        <span className="calc-visual-badge">Reference aid</span>
+      </div>
+      {children}
+      <p className="calc-visual-subtitle">{subtitle}</p>
+    </div>
+  );
+}
+
+function DownesVisual({ values, result }: { values: Record<string, number>; result: CalcResult | null }) {
+  const factors = [
+    ["rr", "Rate"], ["cyanosis", "Cyanosis"], ["retraction", "Retractions"], ["grunting", "Grunting"], ["airEntry", "Air entry"],
+  ] as const;
+  const score = factors.reduce((total, [key]) => total + (values[key] ?? 0), 0);
+  const hasSelection = Object.keys(values).length > 0;
+  return (
+    <VisualFrame title="Downes respiratory distress map" subtitle="Each domain contributes 0–2 points. The schematic highlights the bedside features to identify; use the validated score and clinical examination to guide escalation.">
+      <div className="grid items-center gap-3 md:grid-cols-[150px_1fr]">
+        <svg viewBox="0 0 150 112" className="visual-svg h-28 w-full" role="img" aria-label="Schematic lungs and airway">
+          <path className="visual-airway" d="M75 18v22M75 40L48 55M75 40l27 15" />
+          <path className="visual-lung" d="M70 44C50 39 31 53 29 78c-1 16 10 23 24 20 11-3 17-15 22-32" />
+          <path className="visual-lung" d="M80 44c20-5 39 9 41 34 1 16-10 23-24 20-11-3-17-15-22-32" />
+          <path className="visual-rib" d="M37 62c10-9 18-12 31-10M113 62c-10-9-18-12-31-10M34 73c10-7 19-9 32-7M116 73c-10-7-19-9-32-7" />
+          <circle className="visual-pulse" cx="75" cy="16" r="5" />
+          <text x="75" y="108" textAnchor="middle" className="visual-svg-text">observe work of breathing</text>
+        </svg>
+        <div className="space-y-2">
+          {factors.map(([key, label]) => {
+            const value = values[key];
+            return (
+              <div key={key} className="visual-score-row">
+                <span className="visual-score-label">{label}</span>
+                <span className="visual-score-dots" aria-label={`${label}: ${value ?? "not selected"}`}>
+                  {[0, 1, 2].map((dot) => <i key={dot} className={value != null && dot <= value ? "on" : ""} />)}
+                </span>
+                <span className="visual-score-number">{value ?? "—"}</span>
+              </div>
+            );
+          })}
+          <div className="visual-total"><span>{hasSelection ? "Current score" : "Select the five domains"}</span><b>{hasSelection ? `${score}/10` : "—"}</b></div>
+          {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
+        </div>
+      </div>
+    </VisualFrame>
+  );
+}
+
+function BallardVisual({ values, result }: { values: Record<string, number>; result: CalcResult | null }) {
+  const neuroKeys = ["posture", "sw", "ar", "pa", "sc", "he"];
+  const physicalKeys = ["skin", "lanugo", "plantar", "breast", "eyeear", "genM", "genF"];
+  const selected = Object.keys(values).length;
+  const total = Object.values(values).reduce((sum, value) => sum + value, 0);
+  const ga = selected === 13 ? (total + 200) / 5 : null;
+  return (
+    <VisualFrame title="New Ballard maturity map" subtitle="Use the actual New Ballard physical and neuromuscular examination findings. This body schematic is an identification aid, not a substitute for examining the infant or for gestational dating when reliable dates are available.">
+      <div className="grid items-center gap-3 md:grid-cols-[160px_1fr]">
+        <svg viewBox="0 0 160 156" className="visual-svg h-36 w-full" role="img" aria-label="Schematic newborn body for Ballard assessment">
+          <circle className="visual-baby" cx="80" cy="24" r="17" />
+          <path className="visual-baby" d="M61 46c5-8 33-8 38 0l7 48H54zM61 55L36 78M99 55l25 23M63 92l-12 44M97 92l12 44" />
+          <path className="visual-joint" d="M36 78l-7 19M124 78l7 19M51 136l-8 8M109 136l8 8" />
+          <circle className="visual-mark mark-physical" cx="80" cy="24" r="4" />
+          <text x="80" y="153" textAnchor="middle" className="visual-svg-text">physical + neuromuscular domains</text>
+        </svg>
+        <div className="space-y-2">
+          <div className="ballard-domain"><div><span>Neuromuscular</span><b>{neuroKeys.filter((key) => values[key] != null).length}/6 recorded</b></div><div className="domain-track"><i style={{ width: `${(neuroKeys.filter((key) => values[key] != null).length / 6) * 100}%` }} /></div></div>
+          <div className="ballard-domain"><div><span>Physical</span><b>{physicalKeys.filter((key) => values[key] != null).length}/7 recorded</b></div><div className="domain-track physical"><i style={{ width: `${(physicalKeys.filter((key) => values[key] != null).length / 7) * 100}%` }} /></div></div>
+          <div className="visual-total"><span>{ga != null ? "Estimated gestational age" : `${selected}/13 findings selected`}</span><b>{ga != null ? `${ga.toFixed(1)} wk` : "—"}</b></div>
+          {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
+        </div>
+      </div>
+    </VisualFrame>
+  );
+}
+
+function RopVisual({ values, result }: { values: Record<string, number>; result: CalcResult | null }) {
+  const zone = values.zone;
+  const stage = values.stage;
+  const plus = values.plus === 1;
+  const aprop = values.aprop === 1;
+  return (
+    <VisualFrame title="ROP zone, stage and plus-disease guide" subtitle="Schematic only: ROP classification requires a dilated retinal examination by an appropriately trained ophthalmologist. Zone, stage, plus disease and AP-ROP determine urgency together.">
+      <div className="grid items-center gap-3 md:grid-cols-[190px_1fr]">
+        <svg viewBox="0 0 190 150" className="visual-svg h-36 w-full" role="img" aria-label="Concentric schematic of retinal zones">
+          <circle className={`retina-zone zone-three ${zone === 3 ? "selected" : ""}`} cx="95" cy="72" r="54" />
+          <circle className={`retina-zone zone-two ${zone === 2 ? "selected" : ""}`} cx="95" cy="72" r="35" />
+          <circle className={`retina-zone zone-one ${zone === 1 ? "selected" : ""}`} cx="95" cy="72" r="17" />
+          <circle className="retina-disc" cx="95" cy="72" r="4" />
+          <text x="95" y="69" textAnchor="middle" className="retina-text">I</text>
+          <text x="95" y="51" textAnchor="middle" className="retina-text">II</text>
+          <text x="95" y="22" textAnchor="middle" className="retina-text">III</text>
+          <text x="95" y="142" textAnchor="middle" className="visual-svg-text">posterior → anterior</text>
+        </svg>
+        <div className="space-y-2">
+          <div className="rop-stage-strip" aria-label="ROP stage progression">
+            {[0, 1, 2, 3, 4, 5].map((item) => <span key={item} className={stage === item ? "active" : ""}>{item}</span>)}
+          </div>
+          <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+            <span className={`visual-pill ${zone ? "active" : ""}`}>Zone {zone ?? "—"}</span>
+            <span className={`visual-pill ${stage != null ? "active" : ""}`}>Stage {stage ?? "—"}</span>
+            <span className={`visual-pill ${plus ? "alert" : ""}`}>Plus {plus ? "present" : "absent / —"}</span>
+            <span className={`visual-pill ${aprop ? "alert" : ""}`}>AP-ROP {aprop ? "present" : "absent / —"}</span>
+          </div>
+          {result && <div className="visual-callout">{result.interpretation ?? result.note}</div>}
+        </div>
+      </div>
+    </VisualFrame>
+  );
+}
+
+function ParklandVisual({ values }: { values: Record<string, number> }) {
+  const burn = Math.max(0, Math.min(100, values.burn ?? 0));
+  return (
+    <VisualFrame title="Paediatric TBSA burn-orientation map" subtitle="Use an age-specific Lund–Browder chart for the clinical estimate. This labeled body map and percentage meter are a visual aid only; do not use the schematic as a diagnostic substitute.">
+      <div className="grid items-center gap-3 md:grid-cols-[1fr_190px]">
+        <svg viewBox="0 0 430 150" className="visual-svg h-36 w-full" role="img" aria-label="Front and back body regions for total body surface area burn estimation">
+          <text x="86" y="14" textAnchor="middle" className="visual-svg-text">FRONT</text>
+          <text x="254" y="14" textAnchor="middle" className="visual-svg-text">BACK</text>
+          <circle className="burn-head" cx="86" cy="34" r="13" /><circle className="burn-head" cx="254" cy="34" r="13" />
+          <rect className="burn-region head" x="74" y="49" width="24" height="15" rx="6" /><rect className="burn-region head" x="242" y="49" width="24" height="15" rx="6" />
+          <path className="burn-region trunk" d="M65 50h42l8 54H57zM233 50h42l8 54h-58z" />
+          <path className="burn-region limb" d="M59 54L38 61 27 98l9 3 18-25 8-15zM113 54l21 7 11 37-9 3-18-25-8-15zM227 54l-21 7-11 37 9 3 18-25 8-15zM281 54l21 7 11 37-9 3-18-25-8-15z" />
+          <path className="burn-region leg" d="M63 103l17 0-2 34-12 0zM92 103h17l2 34-12 0zM231 103h17l-2 34h-12zM260 103h17l2 34h-12z" />
+          <text x="86" y="146" textAnchor="middle" className="visual-svg-text">head · trunk · limbs</text>
+          <text x="254" y="146" textAnchor="middle" className="visual-svg-text">compare front / back</text>
+        </svg>
+        <div className="space-y-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Entered TBSA</div>
+          <div className="tbsa-number">{burn}<small>%</small></div>
+          <div className="tbsa-track"><i style={{ width: `${burn}%` }} /></div>
+          <div className="flex justify-between text-[9px] font-bold text-slate-500"><span>0%</span><span>50%</span><span>100%</span></div>
+          <div className="flex flex-wrap gap-1.5 text-[10px] font-bold"><span className="visual-pill">head / neck</span><span className="visual-pill">trunk</span><span className="visual-pill">limbs</span></div>
+        </div>
+      </div>
+    </VisualFrame>
   );
 }
 

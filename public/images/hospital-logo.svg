@@ -2,5 +2,5 @@
   <!-- Wrapper that keeps the legacy /images/hospital-logo.svg path working.
        The artwork itself lives in hospital-logo.png (full logo, white background). -->
   <image x="0" y="0" width="800" height="440" preserveAspectRatio="xMidYMid meet"
-         href="/images/hospital-logo.png?v=2.0.030" xlink:href="/images/hospital-logo.png?v=2.0.030" />
+         href="/images/hospital-logo.png?v=2.0.031" xlink:href="/images/hospital-logo.png?v=2.0.031" />
 </svg>

@@ -572,7 +572,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=2.0.030"
+            src="/images/hospital-logo.png?v=2.0.031"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}

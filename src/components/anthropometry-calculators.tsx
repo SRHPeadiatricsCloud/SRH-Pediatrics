@@ -43,12 +43,14 @@ type CardProps = {
   subtitle: string;
   citation: string;
   children: React.ReactNode;
-  defaultOpen?: boolean;
+  open: boolean;
+  onToggle: () => void;
 };
 
 export function AnthropometrySection({ query = "" }: { query?: string }) {
   const needle = query.trim().toLowerCase();
   const visible = CARD_DEFS.filter((c) => !needle || `${c.title} ${c.subtitle} ${c.citation} anthropometry growth fenton who iap bmi`.toLowerCase().includes(needle));
+  const [openCard, setOpenCard] = useState<CardId | null>("who");
   if (!visible.length) return null;
   return (
     <section className="space-y-3">
@@ -61,7 +63,12 @@ export function AnthropometrySection({ query = "" }: { query?: string }) {
       </div>
       <div className="grid gap-3 xl:grid-cols-2">
         {visible.map((card) => (
-          <AnthroCard key={card.id} {...card} defaultOpen={card.id === "who"}>
+          <AnthroCard
+            key={card.id}
+            {...card}
+            open={openCard === card.id}
+            onToggle={() => setOpenCard((current) => current === card.id ? null : card.id)}
+          >
             {card.id === "who" && <WhoTool />}
             {card.id === "iap" && <IapTool />}
             {card.id === "combined" && <CombinedTool />}
@@ -76,11 +83,10 @@ export function AnthropometrySection({ query = "" }: { query?: string }) {
   );
 }
 
-function AnthroCard({ title, subtitle, citation, children, defaultOpen = false }: CardProps) {
-  const [open, setOpen] = useState(defaultOpen);
+function AnthroCard({ title, subtitle, citation, children, open, onToggle }: CardProps) {
   return (
     <article className="card overflow-hidden">
-      <button type="button" className="flex min-h-[78px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03]" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+      <button type="button" className="flex min-h-[78px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03]" onClick={onToggle} aria-expanded={open}>
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${open ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" : "border-white/10 bg-white/5 text-slate-400"}`}><Ruler size={17} /></span>
         <span className="min-w-0 flex-1"><span className="block text-sm font-black text-white">{title}</span><span className="mt-1 block text-[11px] leading-snug text-slate-400">{subtitle}</span></span>
         <span className="hidden shrink-0 text-[10px] font-bold text-slate-500 sm:block">{open ? "Collapse" : "Open"}</span>

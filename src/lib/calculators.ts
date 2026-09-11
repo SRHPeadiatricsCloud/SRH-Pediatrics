@@ -1070,11 +1070,14 @@ export const CALCULATORS: Calculator[] = [
     compute: (v) => {
       const w = v.wt ?? 0, h = v.ht ?? 0;
       if (w <= 0 || h <= 0) return out("—", { severity: "info", note: "Enter birth weight and length." });
-      const pi = Math.round((w / Math.pow(h / 100, 3)) * 10) / 10;
-      return out(`${pi} g/cm³`, {
-        severity: pi < 20 ? "warn" : pi > 30 ? "warn" : "good",
-        note: pi < 20 ? "Asymmetric growth restriction / growth retarded (normal 20–30 g/cm³)."
-          : pi > 30 ? "Macrosomia / LGA — consider maternal diabetes." : "Normal proportionate growth.",
+      // Neonatal Ponderal (Rohrer) Index = weight (g) / length³ (cm) × 100.
+      // The previous implementation converted length to metres but retained a
+      // g/cm³ label, producing values around 20,000–30,000 instead of 2.5–3.0.
+      const pi = Math.round((w / Math.pow(h, 3)) * 100 * 100) / 100;
+      return out(`${pi.toFixed(2)} g/cm³ × 100`, {
+        severity: pi < 2.5 ? "warn" : pi > 3.0 ? "warn" : "good",
+        interpretation: pi < 2.5 ? "Low ponderal index — suggests asymmetric fetal growth restriction; correlate with gestation and growth charts."
+          : pi > 3.0 ? "High ponderal index — suggests disproportionate weight for length; correlate with gestation and maternal diabetes risk." : "Within the usual neonatal reference range (2.5–3.0 g/cm³ × 100).",
       });
     },
   },

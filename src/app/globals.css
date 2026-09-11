@@ -1632,3 +1632,378 @@ html.light .anthro-callout-title {
 html.light .anthro-callout-value {
   fill: #17233d !important;
 }
+
+/* ============================================================
+   CALCULATOR VISUAL GUIDES
+   Schematic aids are deliberately labeled as non-diagnostic. They
+   improve recognition of the domains without replacing examination,
+   validated charts, or clinician judgment.
+   ============================================================ */
+.calculator-visual {
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 16px;
+  padding: 13px;
+  background: linear-gradient(135deg, rgba(15, 31, 52, 0.86), rgba(20, 24, 48, 0.72));
+  color: var(--text);
+}
+.calc-visual-kicker {
+  color: #67e8f9;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.calc-visual-badge {
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 999px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .08);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+.calc-visual-subtitle {
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+.visual-svg {
+  overflow: visible;
+}
+.visual-svg-text {
+  fill: #8ba1bf;
+  font-size: 8px;
+  font-weight: 700;
+}
+.visual-airway,
+.visual-rib {
+  fill: none;
+  stroke: #67e8f9;
+  stroke-linecap: round;
+  stroke-width: 3;
+  opacity: .7;
+}
+.visual-lung {
+  fill: rgba(34, 211, 238, .13);
+  stroke: #22d3ee;
+  stroke-width: 2;
+}
+.visual-pulse {
+  fill: #fb7185;
+  filter: drop-shadow(0 0 5px rgba(251, 113, 133, .8));
+}
+.visual-score-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(72px, 1fr) auto 20px;
+  font-size: 10px;
+}
+.visual-score-label {
+  color: var(--text-2);
+  font-weight: 700;
+}
+.visual-score-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.visual-score-dots i {
+  background: rgba(148, 163, 184, .22);
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+.visual-score-dots i.on {
+  background: #22d3ee;
+  border-color: #67e8f9;
+  box-shadow: 0 0 7px rgba(34, 211, 238, .4);
+}
+.visual-score-number {
+  color: #a5f3fc;
+  font-weight: 900;
+  text-align: right;
+}
+.visual-total {
+  align-items: center;
+  border-top: 1px solid rgba(148, 163, 184, .18);
+  color: var(--text-3);
+  display: flex;
+  font-size: 10px;
+  font-weight: 700;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.visual-total b {
+  color: #fbbf24;
+  font-size: 15px;
+}
+.visual-callout {
+  background: rgba(14, 165, 233, .08);
+  border: 1px solid rgba(14, 165, 233, .24);
+  border-radius: 9px;
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 8px;
+  padding: 7px 9px;
+}
+.visual-baby {
+  fill: rgba(168, 85, 247, .14);
+  stroke: #c084fc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+.visual-joint {
+  fill: none;
+  stroke: #f0abfc;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.visual-mark {
+  fill: #f0abfc;
+}
+.ballard-domain > div:first-child {
+  align-items: center;
+  color: var(--text-2);
+  display: flex;
+  font-size: 10px;
+  font-weight: 800;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.ballard-domain b {
+  color: #c4b5fd;
+  font-size: 9px;
+}
+.domain-track,
+.tbsa-track {
+  background: rgba(148, 163, 184, .15);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+.domain-track i,
+.tbsa-track i {
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width .2s ease;
+}
+.domain-track.physical i {
+  background: linear-gradient(90deg, #fb923c, #f472b6);
+}
+.retina-zone {
+  fill: rgba(34, 211, 238, .04);
+  stroke: rgba(103, 232, 249, .5);
+  stroke-width: 1.5;
+}
+.retina-zone.zone-two {
+  fill: rgba(167, 139, 250, .07);
+  stroke: rgba(196, 181, 253, .65);
+}
+.retina-zone.zone-one {
+  fill: rgba(251, 113, 133, .1);
+  stroke: rgba(251, 113, 133, .8);
+}
+.retina-zone.selected {
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, .7));
+  stroke: #fbbf24;
+  stroke-width: 3;
+}
+.retina-disc {
+  fill: #f8fafc;
+  opacity: .85;
+}
+.retina-text {
+  fill: #e0f2fe;
+  font-size: 9px;
+  font-weight: 900;
+}
+.rop-stage-strip {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+.rop-stage-strip span {
+  align-items: center;
+  background: rgba(148, 163, 184, .12);
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 8px;
+  color: var(--text-3);
+  display: flex;
+  font-size: 10px;
+  font-weight: 900;
+  height: 25px;
+  justify-content: center;
+  width: 25px;
+}
+.rop-stage-strip span.active {
+  background: #f59e0b;
+  border-color: #fcd34d;
+  color: #241000;
+}
+.visual-pill {
+  background: rgba(148, 163, 184, .1);
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 999px;
+  color: var(--text-3);
+  padding: 4px 7px;
+}
+.visual-pill.active {
+  background: rgba(34, 211, 238, .12);
+  border-color: rgba(103, 232, 249, .4);
+  color: #a5f3fc;
+}
+.visual-pill.alert {
+  background: rgba(251, 113, 133, .14);
+  border-color: rgba(251, 113, 133, .45);
+  color: #fecdd3;
+}
+.burn-head,
+.burn-region {
+  stroke: rgba(251, 191, 36, .65);
+  stroke-width: 1.4;
+}
+.burn-head,
+.burn-region.head {
+  fill: rgba(251, 191, 36, .2);
+}
+.burn-region.trunk {
+  fill: rgba(244, 114, 182, .18);
+}
+.burn-region.limb {
+  fill: rgba(96, 165, 250, .18);
+}
+.burn-region.leg {
+  fill: rgba(167, 139, 250, .2);
+}
+.tbsa-number {
+  color: #fbbf24;
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1;
+}
+.tbsa-number small {
+  color: #fcd34d;
+  font-size: 13px;
+  margin-left: 2px;
+}
+
+html.light .calculator-visual {
+  background: linear-gradient(135deg, #f5fbff, #f7f5ff);
+  border-color: #a8dceb;
+}
+html.light .calc-visual-kicker,
+html.light .calc-visual-badge,
+html.light .visual-score-number,
+html.light .visual-pill.active {
+  color: #075985;
+}
+html.light .calc-visual-badge {
+  background: #e0f5fb;
+  border-color: #9bd8e8;
+}
+html.light .visual-svg-text,
+html.light .calc-visual-subtitle,
+html.light .visual-score-label,
+html.light .visual-total,
+html.light .visual-pill {
+  color: #47597a;
+}
+html.light .visual-airway,
+html.light .visual-rib {
+  stroke: #0284c7;
+}
+html.light .visual-lung {
+  fill: #d8f2fd;
+  stroke: #0284c7;
+}
+html.light .visual-baby {
+  fill: #eee5ff;
+  stroke: #7c3aed;
+}
+html.light .visual-callout {
+  background: #e7f5fd;
+  border-color: #a6d7ee;
+  color: #075985;
+}
+html.light .visual-total b,
+html.light .tbsa-number {
+  color: #b45309;
+}
+html.light .tbsa-number small {
+  color: #a2550a;
+}
+html.light .retina-text {
+  fill: #334155;
+}
+html.light .retina-zone {
+  fill: #e6f5fb;
+}
+html.light .retina-zone.zone-two {
+  fill: #f0eaff;
+}
+html.light .retina-zone.zone-one {
+  fill: #ffe4ea;
+}
+html.light .retina-disc {
+  fill: #334155;
+}
+html.light .rop-stage-strip span {
+  background: #eef4fb;
+  border-color: #cbd9ec;
+  color: #47597a;
+}
+html.light .visual-pill.alert {
+  color: #be123c;
+}
+html.light .burn-head,
+html.light .burn-region.head {
+  fill: #fff0c7;
+}
+html.light .burn-region.trunk {
+  fill: #ffe4f0;
+}
+html.light .burn-region.limb {
+  fill: #e0efff;
+}
+html.light .burn-region.leg {
+  fill: #eee8ff;
+}
+
+/* New Admission rolling warmer/bed dial: keep the labels readable in both themes. */
+.bed-dial-surface {
+  color: #dbeafe;
+}
+.bed-dial-item {
+  color: #94a3b8;
+}
+.bed-dial-item-selected {
+  color: #a5f3fc;
+  text-shadow: 0 0 12px rgba(34, 211, 238, .28);
+}
+html.light .bed-dial-surface {
+  background: #f8fbff !important;
+  border-color: #b6c9e0 !important;
+  color: #0b1526;
+}
+html.light .bed-dial-fade {
+  background: linear-gradient(to bottom, rgba(248, 251, 255, .98), rgba(248, 251, 255, 0)) !important;
+}
+html.light .bed-dial-surface .bed-dial-fade:nth-child(2) {
+  background: linear-gradient(to top, rgba(248, 251, 255, .98), rgba(248, 251, 255, 0)) !important;
+}
+html.light .bed-dial-item {
+  color: #47597a !important;
+}
+html.light .bed-dial-item-selected {
+  color: #075985 !important;
+  text-shadow: none;
+}
