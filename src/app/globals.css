@@ -4899,3 +4899,692 @@ html.light .dose-empty-search {
     max-height: 214px;
   }
 }
+
+/* ============================================================
+   PAEDIATRIC DOSE NAVIGATOR — focused, progressive bedside workflow
+   ============================================================ */
+.dose-hero-innovative {
+  background:
+    radial-gradient(620px 220px at 0% 0%, rgba(34, 211, 238, .14), transparent 68%),
+    radial-gradient(470px 240px at 100% 100%, rgba(217, 70, 239, .11), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+.dose-hero-innovative h1 {
+  max-width: 680px;
+}
+.dose-hero-badge {
+  display: inline-flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  gap: 8px;
+  border: 1px solid rgba(251, 146, 60, .34);
+  border-radius: 12px;
+  padding: 9px 11px;
+  color: #fed7aa;
+  background: rgba(234, 88, 12, .1);
+}
+.dose-hero-badge svg {
+  flex: 0 0 auto;
+  color: #fb923c;
+  margin-top: 1px;
+}
+.dose-hero-badge span,
+.dose-hero-badge b,
+.dose-hero-badge small {
+  display: block;
+}
+.dose-hero-badge b {
+  font-size: 10px;
+  font-weight: 950;
+}
+.dose-hero-badge small {
+  margin-top: 3px;
+  color: #f2bd8d;
+  font-size: 9px;
+  line-height: 1.3;
+}
+.dose-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(125, 150, 190, .2);
+  border-radius: 15px;
+  padding: 7px;
+  background: rgba(9, 19, 36, .78);
+}
+.dose-progress-step {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #9bb1cb;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.dose-progress-step:hover:not(:disabled) {
+  border-color: rgba(103, 232, 249, .35);
+  color: #e8fbff;
+}
+.dose-progress-step:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+.dose-progress-step > b {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(139, 163, 197, .32);
+  border-radius: 50%;
+  color: #a1b5cd;
+  font-size: 11px;
+  font-weight: 950;
+}
+.dose-progress-step > span,
+.dose-progress-step strong,
+.dose-progress-step small {
+  display: block;
+  min-width: 0;
+}
+.dose-progress-step strong,
+.dose-progress-step small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-progress-step strong {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+.dose-progress-step small {
+  max-width: 170px;
+  margin-top: 2px;
+  color: #8098b4;
+  font-size: 9px;
+}
+.dose-progress-step.active {
+  border-color: rgba(103, 232, 249, .54);
+  color: #effcff;
+  background: linear-gradient(135deg, rgba(8, 145, 178, .25), rgba(99, 102, 241, .18));
+}
+.dose-progress-step.active > b,
+.dose-progress-step.complete > b {
+  border-color: rgba(103, 232, 249, .65);
+  color: #082133;
+  background: #67e8f9;
+}
+.dose-progress-step.complete {
+  color: #c4f4f5;
+}
+.dose-progress-arrow {
+  color: #59728f;
+}
+.dose-navigator-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+  gap: 14px;
+  align-items: start;
+}
+.dose-wizard-panel,
+.dose-live-rail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.dose-step-panel {
+  min-height: 405px;
+  padding: 18px;
+}
+.dose-step-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dose-step-heading > div:first-child > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.dose-step-heading h2 {
+  margin: 4px 0 0;
+  color: #f4faff;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+.dose-step-heading p {
+  max-width: 560px;
+  margin: 5px 0 0;
+  color: #9cb1c9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.dose-step-number {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(103, 232, 249, .35);
+  border-radius: 12px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .1);
+  font-size: 17px;
+  font-weight: 950;
+}
+.dose-step-panel .dose-picker-grid {
+  margin-top: 24px;
+}
+.dose-next-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dose-next-row > span {
+  min-width: 0;
+  overflow: hidden;
+  color: #8fa6bf;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-next-row > span b {
+  color: #e5f7ff;
+}
+.dose-next-button,
+.dose-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 39px;
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.dose-next-button {
+  border: 1px solid rgba(103, 232, 249, .5);
+  color: #052030;
+  background: linear-gradient(135deg, #67e8f9, #a78bfa);
+  box-shadow: 0 9px 20px -14px #67e8f9;
+}
+.dose-next-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.dose-back-button {
+  border: 1px solid rgba(139, 163, 197, .28);
+  color: #b5c8dc;
+  background: rgba(5, 13, 27, .48);
+}
+.dose-back-button:hover {
+  border-color: rgba(103, 232, 249, .4);
+  color: #effcff;
+}
+.dose-selected-medicine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 22px;
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 11px;
+  padding: 9px 10px;
+  background: linear-gradient(135deg, rgba(8, 145, 178, .13), rgba(99, 102, 241, .09));
+}
+.dose-selected-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  color: #082133;
+  background: #67e8f9;
+  font-size: 15px;
+  font-weight: 950;
+}
+.dose-selected-medicine > div {
+  min-width: 0;
+  flex: 1;
+}
+.dose-selected-medicine small,
+.dose-selected-medicine b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-selected-medicine small {
+  color: #85a0bb;
+  font-size: 9px;
+}
+.dose-selected-medicine b {
+  margin-top: 2px;
+  color: #effaff;
+  font-size: 13px;
+  font-weight: 900;
+}
+.dose-selected-medicine button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(139, 163, 197, .26);
+  border-radius: 7px;
+  padding: 6px 7px;
+  color: #b8cadf;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.dose-selected-medicine button:hover {
+  border-color: rgba(103, 232, 249, .45);
+  color: #effcff;
+}
+.dose-row-select {
+  margin-top: 13px;
+}
+.dose-row-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 11px;
+  border-left: 3px solid #67e8f9;
+  border-radius: 0 9px 9px 0;
+  padding: 9px 11px;
+  background: rgba(34, 211, 238, .08);
+}
+.dose-row-preview small,
+.dose-row-preview b {
+  display: block;
+}
+.dose-row-preview small {
+  color: #86a3bd;
+  font-size: 9px;
+}
+.dose-row-preview b {
+  margin-top: 2px;
+  color: #dffaff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.dose-row-preview > span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(52, 211, 153, .34);
+  border-radius: 999px;
+  padding: 4px 6px;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, .1);
+  font-size: 8px;
+  font-weight: 900;
+}
+.dose-patient-grid {
+  margin-top: 20px;
+}
+.dose-strength-field span em {
+  margin-left: 4px;
+  color: #8199b5;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+.dose-live-card {
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 16px;
+  padding: 16px;
+  background:
+    radial-gradient(390px 180px at 0% 0%, rgba(34, 211, 238, .14), transparent 70%),
+    linear-gradient(145deg, rgba(18, 35, 61, .92), rgba(10, 21, 40, .86));
+  box-shadow: 0 16px 32px -26px rgba(34, 211, 238, .7);
+}
+.dose-live-card.has-result {
+  border-color: rgba(52, 211, 153, .42);
+  background:
+    radial-gradient(390px 180px at 0% 0%, rgba(52, 211, 153, .15), transparent 70%),
+    linear-gradient(145deg, rgba(18, 42, 57, .94), rgba(10, 29, 39, .9));
+}
+.dose-live-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #82ddec;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(139, 163, 197, .28);
+  border-radius: 999px;
+  padding: 4px 6px;
+  color: #9cb2ca;
+  font-size: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dose-live-status.ready {
+  border-color: rgba(52, 211, 153, .38);
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, .1);
+}
+.dose-live-card h2 {
+  margin: 9px 0 0;
+  color: #f5fbff;
+  font-size: 23px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.dose-live-row {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: #9cb4ce;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-live-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  border: 1px dashed rgba(125, 150, 190, .28);
+  border-radius: 10px;
+  padding: 12px;
+  color: #9eb2c9;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.dose-live-empty svg {
+  flex: 0 0 auto;
+  color: #67e8f9;
+}
+.dose-live-amount {
+  display: grid;
+  gap: 3px;
+  margin-top: 16px;
+  border: 1px solid rgba(52, 211, 153, .3);
+  border-radius: 12px;
+  padding: 13px;
+  background: rgba(16, 185, 129, .1);
+}
+.dose-live-amount small,
+.dose-live-facts small {
+  color: #8ec2b2;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.dose-live-amount strong {
+  color: #e1fff1;
+  font-size: 25px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+.dose-live-amount span {
+  color: #a8d6c4;
+  font-size: 10px;
+}
+.dose-live-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 8px;
+}
+.dose-live-facts > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 9px;
+  padding: 8px;
+  background: rgba(5, 13, 27, .28);
+}
+.dose-live-facts b {
+  color: #d8f1ff;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.dose-live-volume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid rgba(251, 146, 60, .35);
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: #f7cda5;
+  background: rgba(234, 88, 12, .1);
+  font-size: 10px;
+  font-weight: 850;
+}
+.dose-live-volume b {
+  color: #fff0dc;
+  font-size: 15px;
+}
+.dose-live-safety {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(125, 150, 190, .16);
+  padding-top: 10px;
+  color: #f2c99f;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.dose-live-safety svg {
+  flex: 0 0 auto;
+  color: #fb923c;
+}
+.dose-reference-drawer {
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(10, 21, 40, .7);
+}
+.dose-reference-drawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: #e6f6ff;
+  font-size: 12px;
+  font-weight: 900;
+  list-style: none;
+}
+.dose-reference-drawer summary::-webkit-details-marker {
+  display: none;
+}
+.dose-reference-drawer summary::after {
+  content: "–";
+  color: #67e8f9;
+  font-size: 17px;
+  font-weight: 400;
+}
+.dose-reference-drawer:not([open]) summary::after {
+  content: "+";
+}
+.dose-reference-drawer summary span {
+  margin-left: auto;
+  margin-right: 8px;
+  color: #8ea6c0;
+  font-size: 9px;
+  font-weight: 750;
+}
+.dose-reference-drawer .dose-reference-table-wrap {
+  margin-top: 10px;
+}
+html.light .dose-hero-innovative,
+html.light .dose-live-card,
+html.light .dose-reference-drawer {
+  border-color: rgba(54, 80, 116, .2);
+  background: #fff;
+}
+html.light .dose-hero-badge {
+  border-color: #efc080;
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-hero-badge small {
+  color: #a6672b;
+}
+html.light .dose-progress {
+  border-color: rgba(54, 80, 116, .2);
+  background: #eef4fb;
+}
+html.light .dose-progress-step {
+  color: #526c89;
+}
+html.light .dose-progress-step.active {
+  border-color: #83c8df;
+  color: #173557;
+  background: linear-gradient(135deg, #e5f8fc, #f0edff);
+}
+html.light .dose-progress-step > b {
+  border-color: #a8bed4;
+  color: #526c89;
+}
+html.light .dose-progress-step.active > b,
+html.light .dose-progress-step.complete > b {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-step-heading h2,
+html.light .dose-selected-medicine b,
+html.light .dose-live-card h2,
+html.light .dose-reference-drawer summary {
+  color: #173557;
+}
+html.light .dose-step-heading p,
+html.light .dose-progress-step small,
+html.light .dose-selected-medicine small,
+html.light .dose-live-row {
+  color: #637a94;
+}
+html.light .dose-selected-medicine {
+  border-color: #9ed2e2;
+  background: linear-gradient(135deg, #eaf9fc, #f4f0ff);
+}
+html.light .dose-selected-mark {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-selected-medicine button,
+html.light .dose-back-button {
+  border-color: #b6c7d8;
+  color: #46617c;
+  background: #fff;
+}
+html.light .dose-row-preview {
+  background: #eaf8fc;
+}
+html.light .dose-row-preview small,
+html.light .dose-row-preview b {
+  color: #24506d;
+}
+html.light .dose-live-card.has-result {
+  border-color: #8bd5b3;
+  background: linear-gradient(145deg, #f7fffb, #fff);
+}
+html.light .dose-live-heading {
+  color: #0878b5;
+}
+html.light .dose-live-amount {
+  border-color: #8bd5b3;
+  background: #e8f8ef;
+}
+html.light .dose-live-amount small,
+html.light .dose-live-facts small {
+  color: #287456;
+}
+html.light .dose-live-amount strong,
+html.light .dose-live-facts b {
+  color: #14543c;
+}
+html.light .dose-live-amount span,
+html.light .dose-live-row {
+  color: #527d6a;
+}
+html.light .dose-live-facts > div {
+  border-color: #d2dfeb;
+  background: #f8fbff;
+}
+html.light .dose-live-volume {
+  border-color: #efc080;
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-live-volume b {
+  color: #7b491d;
+}
+html.light .dose-live-safety {
+  color: #8b5b2e;
+  border-color: #dce3eb;
+}
+html.light .dose-reference-drawer summary span {
+  color: #637a94;
+}
+@media (max-width: 920px) {
+  .dose-navigator-layout {
+    grid-template-columns: 1fr;
+  }
+  .dose-live-rail {
+    grid-row: 1;
+  }
+}
+@media (max-width: 680px) {
+  .dose-progress {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .dose-progress-arrow {
+    display: none;
+  }
+  .dose-progress-step {
+    padding: 9px 10px;
+  }
+  .dose-step-panel {
+    min-height: 0;
+    padding: 14px;
+  }
+  .dose-step-heading h2 {
+    font-size: 20px;
+  }
+  .dose-next-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .dose-next-row .dose-next-button,
+  .dose-next-row .dose-back-button,
+  .dose-next-row .dose-clear {
+    width: 100%;
+  }
+  .dose-selected-medicine button {
+    padding: 6px;
+  }
+}
