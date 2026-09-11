@@ -3258,7 +3258,9 @@ html.light .visual-callout {
 
 .calc-card-toggle:focus-visible,
 .calc-card-open-label:focus-visible,
+.calc-save-button:focus-visible,
 .calc-spotlight:focus-visible,
+.calc-recent-list button:focus-visible,
 .calc-focus-banner button:focus-visible,
 .calc-category-chips .chip:focus-visible,
 .calc-search-wrap button:focus-visible {
@@ -3317,4 +3319,180 @@ html.light header.no-print {
 
 html.light header.no-print nav {
   background: #f7faff;
+}
+
+/* Library controls: favourites and recents keep repeated bedside work short. */
+.calc-search-wrap kbd {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.calc-save-button {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  transition: color .16s ease, border-color .16s ease, background .16s ease, transform .16s ease;
+  width: 30px;
+}
+
+.calc-save-button:hover,
+.calc-save-button.saved {
+  background: rgba(251, 191, 36, .1);
+  border-color: rgba(251, 191, 36, .5);
+  color: #fbbf24;
+}
+
+.calc-save-button:active {
+  transform: scale(.94);
+}
+
+.calc-recent-row {
+  align-items: center;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  overflow: auto hidden;
+  padding: 9px 12px;
+  scrollbar-width: none;
+}
+
+.calc-recent-row::-webkit-scrollbar {
+  display: none;
+}
+
+.calc-recent-heading {
+  align-items: center;
+  color: var(--text-2);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 850;
+  gap: 5px;
+}
+
+.calc-recent-heading svg {
+  color: #67e8f9;
+}
+
+.calc-recent-list {
+  display: flex;
+  gap: 6px;
+  min-width: max-content;
+}
+
+.calc-recent-list button {
+  align-items: center;
+  background: var(--card-hi);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 750;
+  gap: 6px;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.calc-recent-list button > svg:first-child {
+  color: #a78bfa;
+}
+
+.calc-recent-list button > svg:last-child {
+  color: var(--text-4);
+}
+
+.calc-recent-list button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.calc-saved-filter {
+  align-items: center;
+  display: inline-flex;
+}
+
+.calc-empty-state {
+  align-items: center;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 42px 18px;
+  text-align: center;
+}
+
+.calc-empty-state > svg {
+  color: #67e8f9;
+  margin-bottom: 3px;
+}
+
+.calc-empty-state b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.calc-empty-state span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.calc-input-error {
+  border-color: #fb7185 !important;
+  background: rgba(251, 113, 133, .07);
+}
+
+.calc-input-error .calc-input-label {
+  color: #fecdd3;
+}
+
+.calc-field-error {
+  color: #fda4af;
+  display: block;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.3;
+  margin-top: 5px;
+}
+
+html.light .calc-save-button:hover,
+html.light .calc-save-button.saved {
+  background: #fff7df;
+  border-color: #e4b64d;
+  color: #9a6700;
+}
+
+html.light .calc-recent-row,
+html.light .calc-recent-list button {
+  background: #ffffff;
+  border-color: #c3d1e0;
+}
+
+html.light .calc-recent-list button {
+  color: #304c6b;
+}
+
+html.light .calc-input-error {
+  background: #fff5f6;
+  border-color: #e27a8a !important;
+}
+
+html.light .calc-input-error .calc-input-label,
+html.light .calc-field-error {
+  color: #a51d35;
+}
+
+@media (max-width: 760px) {
+  .calc-recent-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
 }

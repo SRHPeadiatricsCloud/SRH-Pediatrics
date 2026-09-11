@@ -31,3 +31,15 @@ Updated 11 September 2026 for release 2.0.032. These references support the calc
 
 - The implementation is `100 × birth weight (g) / length³ (cm)`, avoiding the previous metre/centimetre unit mismatch that produced values around 20,000–30,000. Formula evidence: [PubMed 9491856](https://pubmed.ncbi.nlm.nih.gov/9491856/).
 - The displayed 2.2–3.0 band is labelled only as a commonly used screening band. Ponderal index is proportionality screening, not a diagnosis, and should be compared with gestational-age/sex-specific references because there is no universal cutoff for every population or gestation.
+
+## Clinical calculator UX review
+
+Reviewed 11 September 2026 against representative point-of-care tools and human-factors guidance. This was a targeted review of authoritative and widely used resources, not a claim that every calculator on the internet was exhaustively audited.
+
+- [MDCalc](https://www.mdcalc.com/calc/43/creatinine-clearance-cockcroft-gault-equation) separates instructions, required versus optional inputs, the result, next steps, evidence, creator context, and pitfalls. SRH now keeps the result visually prominent while retaining the citation and safety context in the same workflow.
+- [PediTools AAP 2022 bilirubin](https://peditools.org/bili2022/) demonstrates newborn-centric plots, multiple measurements for trend review, rate-of-rise, post-discharge follow-up, and explicit TcB-to-TSB confirmation flags. These are the design targets for future bilirubin iterations; local phototherapy charts remain visibly separate from the AAP tool.
+- [PediTools usability redesign notes](https://www.incidentalfindings.org/posts/2022-09-04_improving-bili-2022-usability/) support showing the patient-specific gestational-age curve and multiple action thresholds together rather than forcing bedside users to switch between plots.
+- [Calculate by QxMD](https://play.google.com/store/apps/details?id=com.qxmd.calculate&hl=en) emphasizes specialty discovery, question-flow entry, SI/conventional units, and linked references. SRH adopts the useful parts—search, clinical-area navigation, saved tools, recent tools, guided entry, and source links—without requiring an account or hiding the calculation behind advertising.
+- [AHRQ Electronic Health Record Usability: Interface Design Considerations](https://digital.ahrq.gov/sites/default/files/docs/citation/09-10-0091-2-EF.pdf) and [NIST Technical Basis for User Interface Design of Health IT](https://nvlpubs.nist.gov/nistpubs/gcr/2015/NIST.GCR.15-996.pdf) reinforce task-focused layouts, readable information hierarchy, error prevention, and evaluation against clinical cognitive workload. The calculator workflow now validates numeric ranges before enabling interpretation, gives field-level errors, supports keyboard search, and keeps privacy behavior intact.
+
+These UX sources inform presentation only. They do not override the primary clinical source or local policy for any calculator. Where a threshold, score, reference population, or management recommendation varies, the interface must expose that limitation rather than silently choosing a universal rule.

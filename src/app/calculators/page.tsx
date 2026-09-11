@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Check, ChevronDown, ChevronRight, ClipboardCheck, ExternalLink, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Stethoscope, Target, X } from "lucide-react";
+import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, ClipboardCheck, Clock3, ExternalLink, History, Keyboard, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Star, Stethoscope, Target, X } from "lucide-react";
 import { Calculator as CalculatorIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BloodGasInterpreter } from "@/components/blood-gas-interpreter";
@@ -29,16 +29,40 @@ function categoryLabel(category: CalcDef["category"]): string {
   return CATEGORIES.find((item) => item.key === category)?.label ?? category;
 }
 
-function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: boolean }) {
+function CalcCard({
+  calc,
+  forceOpen = false,
+  saved = false,
+  onToggleSaved,
+  onOpen,
+}: {
+  calc: CalcDef;
+  forceOpen?: boolean;
+  saved?: boolean;
+  onToggleSaved?: (id: string) => void;
+  onOpen?: (id: string) => void;
+}) {
   const [open, setOpen] = useState(forceOpen);
   const [values, setValues] = useState<Record<string, number>>({});
   const [result, setResult] = useState<CalcResult | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
   const enteredCount = calc.fields.filter((field) => Object.prototype.hasOwnProperty.call(values, field.key)).length;
-  const complete = calc.fields.length > 0 && enteredCount === calc.fields.length;
+  const invalidFields = calc.fields.filter((field) => {
+    if (field.type !== "number" || values[field.key] == null) return false;
+    const value = values[field.key];
+    return !Number.isFinite(value) || (field.min != null && value < field.min) || (field.max != null && value > field.max);
+  });
+  const complete = calc.fields.length > 0 && enteredCount === calc.fields.length && invalidFields.length === 0;
   const progress = calc.fields.length ? Math.round((enteredCount / calc.fields.length) * 100) : 0;
   const liveResult = useMemo(() => complete ? calc.compute(values) : null, [calc, complete, values]);
   const shownResult = liveResult ?? result;
+
+  const openCard = () => {
+    setOpen((value) => {
+      if (!value) onOpen?.(calc.id);
+      return !value;
+    });
+  };
 
   useEffect(() => {
     if (!forceOpen) return;
@@ -49,9 +73,22 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
     return () => window.cancelAnimationFrame(frame);
   }, [forceOpen]);
 
-  const setValue = (key: string, value: number) => {
-    setValues((previous) => ({ ...previous, [key]: value }));
+  const setValue = (key: string, value: number | undefined) => {
+    setValues((previous) => {
+      const next = { ...previous };
+      if (value == null || !Number.isFinite(value)) delete next[key];
+      else next[key] = value;
+      return next;
+    });
     setResult(null);
+  };
+  const fieldError = (field: CalcDef["fields"][number]) => {
+    if (field.type !== "number" || values[field.key] == null) return "";
+    const value = values[field.key];
+    if (!Number.isFinite(value)) return "Enter a valid number";
+    if (field.min != null && value < field.min) return `Minimum ${field.min}${field.unit ? ` ${field.unit}` : ""}`;
+    if (field.max != null && value > field.max) return `Maximum ${field.max}${field.unit ? ` ${field.unit}` : ""}`;
+    return "";
   };
   const reset = () => {
     setValues({});
@@ -61,7 +98,7 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
   return (
     <div ref={ref} className={`card calc-card overflow-hidden ${open ? "calc-card-open" : ""}`}>
       <div className="calc-card-header">
-        <button type="button" className="calc-card-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <button type="button" className="calc-card-toggle" onClick={openCard} aria-expanded={open}>
           <span className="calc-card-chevron">{open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}</span>
           <span className={`calc-card-mark calc-mark-${calc.category}`}><Stethoscope size={15} /></span>
           <span className="min-w-0 flex-1">
@@ -72,14 +109,15 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
         </button>
         <div className="calc-card-actions">
           {calc.fields.length > 0 && <span className={`calc-progress-pill ${complete ? "done" : ""}`} title={`${enteredCount} of ${calc.fields.length} fields complete`}><span>{complete ? <Check size={11} /> : `${enteredCount}/${calc.fields.length}`}</span>{complete ? "Ready" : "Fields"}</span>}
-          <button type="button" className="calc-card-open-label" onClick={() => setOpen((value) => !value)} aria-label={`${open ? "Collapse" : "Open"} ${calc.name}`}>{open ? "Close" : "Open"}</button>
+          {onToggleSaved && <button type="button" className={`calc-save-button ${saved ? "saved" : ""}`} onClick={() => onToggleSaved(calc.id)} aria-pressed={saved} aria-label={`${saved ? "Remove" : "Save"} ${calc.name}`} title={`${saved ? "Remove from" : "Save to"} favourites`}><Star size={15} fill={saved ? "currentColor" : "none"} /></button>}
+          <button type="button" className="calc-card-open-label" onClick={openCard} aria-label={`${open ? "Collapse" : "Open"} ${calc.name}`}>{open ? "Close" : "Open"}</button>
         </div>
       </div>
 
       {open && (
         <div className="calc-card-body">
           <div className="calc-card-context">
-            <div className="calc-card-context-main"><ShieldCheck size={14} /><span>Validated decision support</span><i>·</i><span>Not a diagnosis</span></div>
+            <div className="calc-card-context-main"><ShieldCheck size={14} /><span>{calc.external ? "Primary source linked" : "Citation included"}</span><i>·</i><span>Not a diagnosis</span></div>
             {calc.external && <a href={calc.external.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={11} /> {calc.external.label}</a>}
           </div>
           <p className="calc-citation-full">{calc.citation}</p>
@@ -98,27 +136,30 @@ function CalcCard({ calc, forceOpen = false }: { calc: CalcDef; forceOpen?: bool
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {calc.fields.map((field, index) => {
                   const fieldId = `calc-${calc.id}-${field.key}`;
+                  const errorId = `${fieldId}-error`;
                   const filled = Object.prototype.hasOwnProperty.call(values, field.key);
+                  const error = fieldError(field);
                   return (
-                    <label key={field.key} htmlFor={fieldId} className={`calculator-field calc-input-card rounded-xl p-3 ${filled ? "calc-input-filled" : ""}`}>
-                      <span className="calc-input-label"><span><b>{String(index + 1).padStart(2, "0")}</b>{field.label}</span>{filled && <Check size={12} />}</span>
+                    <label key={field.key} htmlFor={fieldId} className={`calculator-field calc-input-card rounded-xl p-3 ${filled ? "calc-input-filled" : ""} ${error ? "calc-input-error" : ""}`}>
+                      <span className="calc-input-label"><span><b>{String(index + 1).padStart(2, "0")}</b>{field.label}</span>{filled && !error && <Check size={12} />}</span>
                       {field.type === "select" ? (
-                        <select id={fieldId} className="calculator-input inp text-sm" value={values[field.key] ?? ""} onChange={(event) => setValue(field.key, Number(event.target.value))}>
+                        <select id={fieldId} className="calculator-input inp text-sm" value={values[field.key] ?? ""} aria-invalid={!!error} aria-describedby={error ? errorId : undefined} onChange={(event) => setValue(field.key, event.target.value === "" ? undefined : Number(event.target.value))}>
                           <option value="">Choose an option…</option>
                           {field.options.map((option) => <option key={`${field.key}-${option.value}`} value={option.value}>({option.value}) {option.label}</option>)}
                         </select>
                       ) : (
                         <>
-                          <input id={fieldId} type="number" className="calculator-input inp text-center text-base font-bold" inputMode="decimal" value={values[field.key] ?? ""} placeholder={field.placeholder ?? "Enter value"} min={field.min} max={field.max} onChange={(event) => setValue(field.key, Number(event.target.value) || 0)} />
+                          <input id={fieldId} type="number" className="calculator-input inp text-center text-base font-bold" inputMode="decimal" value={values[field.key] ?? ""} placeholder={field.placeholder ?? "Enter value"} min={field.min} max={field.max} aria-invalid={!!error} aria-describedby={error ? errorId : undefined} onChange={(event) => setValue(field.key, event.target.value === "" ? undefined : Number(event.target.value))} />
                           {field.unit && <span className="mt-1 block text-[10px] text-slate-500">{field.unit}{field.min != null && field.max != null ? ` · ${field.min}–${field.max}` : ""}</span>}
                         </>
                       )}
+                      {error && <span id={errorId} className="calc-field-error">{error}</span>}
                     </label>
                   );
                 })}
               </div>
-              {calc.fields.length > 0 && !complete && enteredCount > 0 && <p className="calc-incomplete-note"><Target size={13} /> Complete the remaining fields to unlock the validated interpretation.</p>}
-              {calc.fields.length > 0 && <div className="calc-action-row"><button type="button" className="btn-primary calc-run-button" disabled={!complete} onClick={() => setResult(calc.compute(values))}>{complete ? "Run interpretation" : "Complete fields first"}<ArrowUpRight size={14} /></button><button type="button" className="btn-ghost calc-reset-button" disabled={!enteredCount} onClick={reset}><RotateCcw size={13} /> Reset</button></div>}
+              {calc.fields.length > 0 && !complete && enteredCount > 0 && <p className="calc-incomplete-note"><Target size={13} /> {invalidFields.length ? "Correct the highlighted values before interpreting this tool." : "Complete the remaining fields to unlock the interpretation."}</p>}
+              {calc.fields.length > 0 && <div className="calc-action-row"><button type="button" className="btn-primary calc-run-button" disabled={!complete} onClick={() => setResult(calc.compute(values))}>{complete ? "Run interpretation" : invalidFields.length ? "Fix highlighted values" : "Complete fields first"}<ArrowUpRight size={14} /></button><button type="button" className="btn-ghost calc-reset-button" disabled={!enteredCount} onClick={reset}><RotateCcw size={13} /> Reset</button></div>}
               {shownResult && <div className={`calc-result-panel mt-3 rounded-xl border p-3 ${SEV_STYLE[shownResult.severity]}`} aria-live="polite"><div className="calc-result-topline"><span className="calc-result-kicker">Interpretation</span><span className="calc-result-state">{liveResult ? "Live" : "Saved"}</span></div><div className="text-base font-black tabular-nums">{shownResult.value}</div><p className="mt-1 text-[11px] leading-snug">{shownResult.interpretation ?? shownResult.note ?? ""}</p>{shownResult.interpretation && shownResult.note && <p className="mt-2 border-t border-current/15 pt-2 text-[10px] leading-snug opacity-80">{shownResult.note}</p>}{shownResult.outOfRange && <p className="mt-1 text-[10px] font-bold text-rose-300">⚠ {shownResult.outOfRange}</p>}</div>}
             </>
           )}
@@ -375,7 +416,59 @@ export default function CalculatorsPage() {
   const focusedCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const [view, setView] = useState<"all" | "saved">("all");
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   const anthropometryQueryHit = !q.trim() || /anthrop|who|iap|fenton|bmi|height|weight|growth|mid-parental|mph|preterm/i.test(q);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem("srh_calculator_favourites") ?? "[]");
+        const recent = JSON.parse(window.localStorage.getItem("srh_calculator_recent") ?? "[]");
+        if (Array.isArray(saved)) setSavedIds(saved.filter((id): id is string => typeof id === "string" && CALCULATORS.some((calc) => calc.id === id)));
+        if (Array.isArray(recent)) setRecentIds(recent.filter((id): id is string => typeof id === "string" && CALCULATORS.some((calc) => calc.id === id)));
+      } catch {
+        // Ignore unavailable or malformed local storage; calculators remain usable.
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, []);
+
+  const rememberCalculator = (id: string) => {
+    setRecentIds((current) => {
+      const next = [id, ...current.filter((item) => item !== id)].slice(0, 4);
+      window.localStorage.setItem("srh_calculator_recent", JSON.stringify(next));
+      return next;
+    });
+  };
+  const launchCalculator = (id: string) => {
+    rememberCalculator(id);
+    setFocusCalc(id);
+    setCat("all");
+    setView("all");
+    setQ("");
+  };
+  const toggleSaved = (id: string) => {
+    setSavedIds((current) => {
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current];
+      window.localStorage.setItem("srh_calculator_favourites", JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -387,12 +480,15 @@ export default function CalculatorsPage() {
     if (focusedCalc) return [focusedCalc];
     const needle = q.trim().toLowerCase();
     return CALCULATORS.filter((c) => {
+      if (view === "saved" && !savedIds.includes(c.id)) return false;
       if (cat !== "all" && c.category !== cat) return false;
       if (!needle) return true;
       const fieldSearch = c.fields.map((field) => field.type === "select" ? `${field.label} ${field.options.map((option) => option.label).join(" ")}` : `${field.label} ${field.unit ?? ""}`).join(" ");
       return `${c.name} ${c.citation} ${c.category} ${fieldSearch}`.toLowerCase().includes(needle);
     });
-  }, [q, cat, focusedCalc]);
+  }, [q, cat, focusedCalc, savedIds, view]);
+
+  const recentCalculators = recentIds.map((id) => CALCULATORS.find((calc) => calc.id === id)).filter((calc): calc is CalcDef => Boolean(calc));
 
   const grouped = useMemo(() => {
     const map: Record<string, CalcDef[]> = {};
@@ -411,11 +507,11 @@ export default function CalculatorsPage() {
               <div className="calc-hero-overline"><span className="calc-hero-icon"><CalculatorIcon size={17} /></span><span>SRH clinical tools</span><span className="calc-hero-live"><i /> Evidence-aware workspace</span></div>
               <h1>Calculator cockpit</h1>
               <p>Fast, guided clinical scoring with clear inputs, transparent interpretation and visual bedside references.</p>
-              <div className="calc-hero-meta"><span><ClipboardCheck size={13} /> {CALCULATORS.length} validated tools</span><span><ShieldCheck size={13} /> Source-linked</span><span><Sparkles size={13} /> Live interpretation</span></div>
+              <div className="calc-hero-meta"><span><ClipboardCheck size={13} /> {CALCULATORS.length} curated clinical tools</span><span><ShieldCheck size={13} /> Sources and limitations shown</span><span><Sparkles size={13} /> Live interpretation</span></div>
             </div>
             <div className="calculator-hero-search">
               <label htmlFor="calculator-search">Find a tool, domain or clinical feature</label>
-              <div className="calc-search-wrap"><Search size={17} /><input id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd>⌘ K</kbd>{focusedCalc && <button type="button" onClick={() => setFocusCalc("")} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
+              <div className="calc-search-wrap"><Search size={17} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Try “ROP”, “respiratory distress”, “birth weight”…" value={focusedCalc ? focusedCalc.name : q} onChange={(event) => setQ(event.target.value)} disabled={!!focusedCalc} /><kbd><Keyboard size={11} />⌘K</kbd>{focusedCalc && <button type="button" onClick={() => setFocusCalc("")} aria-label="Clear focused calculator"><X size={14} /></button>}</div>
               <p>{focusedCalc ? "Focused tool loaded · clear focus to search the full library" : `${filtered.length} tool${filtered.length === 1 ? "" : "s"} currently visible`}</p>
             </div>
           </div>
@@ -424,12 +520,14 @@ export default function CalculatorsPage() {
 
         <section className="calc-spotlight-row mb-4" aria-label="Featured clinical tools">
           <div className="calc-spotlight-heading"><span>Start with a guided tool</span><small>high-use bedside workflows</small></div>
-          <div className="calc-spotlights">{SPOTLIGHTS.map((spotlight) => <button key={spotlight.id} type="button" className={`calc-spotlight calc-spotlight-${spotlight.accent}`} onClick={() => { setFocusCalc(spotlight.id); setCat("all"); setQ(""); }}><span><b>{spotlight.label}</b><small>{spotlight.detail}</small></span><ArrowUpRight size={15} /></button>)}</div>
+          <div className="calc-spotlights">{SPOTLIGHTS.map((spotlight) => <button key={spotlight.id} type="button" className={`calc-spotlight calc-spotlight-${spotlight.accent}`} onClick={() => launchCalculator(spotlight.id)}><span><b>{spotlight.label}</b><small>{spotlight.detail}</small></span><ArrowUpRight size={15} /></button>)}</div>
         </section>
 
+        {recentCalculators.length > 0 && <section className="calc-recent-row mb-4" aria-label="Recently opened calculators"><div className="calc-recent-heading"><History size={14} /><span>Recent</span></div><div className="calc-recent-list">{recentCalculators.map((calc) => <button key={calc.id} type="button" onClick={() => launchCalculator(calc.id)}><Clock3 size={13} /><span>{calc.name}</span><ArrowUpRight size={12} /></button>)}</div></section>}
+
         <div className="card calc-category-nav mb-4">
-          <div className="calc-filter-title"><SlidersHorizontal size={14} /> Browse by clinical area</div>
-          <div className="calc-category-chips"><button className={`chip ${cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setCat("all"); setFocusCalc(""); }}>All tools</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setCat(category.key); setFocusCalc(""); }}>{category.label}</button>)}</div>
+          <div className="calc-filter-title"><SlidersHorizontal size={14} /> Browse the library</div>
+          <div className="calc-category-chips"><button className={`chip ${view === "all" && cat === "all" ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat("all"); setFocusCalc(""); }}>All tools</button><button className={`chip calc-saved-filter ${view === "saved" ? "chip-on" : "chip-off"}`} onClick={() => { setView("saved"); setCat("all"); setFocusCalc(""); }}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved {savedIds.length}</button>{CATEGORIES.map((category) => <button key={category.key} className={`chip ${view === "all" && cat === category.key ? "chip-on" : "chip-off"}`} onClick={() => { setView("all"); setCat(category.key); setFocusCalc(""); }}>{category.label}</button>)}</div>
         </div>
 
         {focusedCalc && (
@@ -438,7 +536,7 @@ export default function CalculatorsPage() {
 
         {!focusedCalc && (cat === "all" || cat === "growth") && <AnthropometrySection query={q} />}
 
-        {grouped.length === 0 && (!anthropometryQueryHit || focusedCalc) && <p className="card p-8 text-center text-sm text-slate-400">No calculator matches “{q}”.</p>}
+        {grouped.length === 0 && (!anthropometryQueryHit || focusedCalc || view === "saved") && <div className="card calc-empty-state"><BookOpen size={22} /><b>{view === "saved" ? "No saved calculators yet" : `No calculator matches “${q}”`}</b><span>{view === "saved" ? "Use the star on any tool to build a personal bedside shortlist." : "Try a calculator name, category, field label, unit or clinical feature."}</span></div>}
 
         <div className="space-y-4">
           {grouped.map((group) => (
@@ -448,7 +546,7 @@ export default function CalculatorsPage() {
                 <span className="text-[10px] font-semibold text-slate-500">({group.items.length})</span>
               </h2>
               <div className="space-y-2">
-                {group.items.map((c) => <CalcCard key={c.id} calc={c} forceOpen={c.id === focusCalc} />)}
+                {group.items.map((c) => <CalcCard key={c.id} calc={c} forceOpen={c.id === focusCalc} saved={savedIds.includes(c.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} />)}
               </div>
             </section>
           ))}
