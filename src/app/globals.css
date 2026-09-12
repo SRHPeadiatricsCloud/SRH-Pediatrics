@@ -6354,3 +6354,44 @@ html.light .dose-redesign-safety { color: #8b5b2e; border-color: #dce3eb; }
   .dose-redesign-result-facts { grid-template-columns: 1fr 1fr; }
   .dose-redesign-result-facts > div:last-child { grid-column: 1 / -1; }
 }
+
+/* Slider-style clinical inputs matching the New Admission steppers. */
+.dose-slider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.dose-slider-grid > div {
+  min-width: 0;
+}
+.dose-slider-grid input[type="range"] {
+  accent-color: #22d3ee;
+  cursor: pointer;
+}
+.dose-slider-grid button {
+  transition: background .15s ease, color .15s ease, transform .12s ease;
+}
+.dose-slider-grid button:hover {
+  background: rgba(34, 211, 238, .14);
+  color: #a5f3fc;
+}
+html.light .dose-slider-grid input[type="range"] {
+  accent-color: #0878b5;
+}
+@media (max-width: 680px) {
+  .dose-slider-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dose-slider-grid > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 450px) {
+  .dose-slider-grid {
+    grid-template-columns: 1fr;
+  }
+  .dose-slider-grid > div:last-child {
+    grid-column: auto;
+  }
+}

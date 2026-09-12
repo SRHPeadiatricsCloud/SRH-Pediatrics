@@ -2,6 +2,7 @@
 
 import { Check, Info, Search, ShieldAlert } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Stepper } from "@/components/ui";
 import {
   calculatePediatricDose,
   getPediatricDrug,
@@ -13,10 +14,6 @@ import {
 
 type MobileView = "library" | "calculator";
 
-function NumericField({ label, value, onChange, unit, min, max, step = 1, hint }: { label: string; value: string; onChange: (value: string) => void; unit: string; min: number; max: number; step?: number; hint?: string }) {
-  return <label className="dose-field dose-redesign-field"><span>{label}</span><div><input type="number" inputMode="decimal" min={min} max={max} step={step} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Enter" /><b>{unit}</b></div><small>{hint ?? `${min}–${max}`}</small></label>;
-}
-
 function PediatricReferenceTable({ drug }: { drug: PediatricDrug }) {
   return <div className="dose-reference-table-wrap"><table className="dose-reference-table"><caption>{drug.name} · paediatric chart reference</caption><thead><tr><th>Condition / age</th><th>Dose and schedule</th></tr></thead><tbody>{drug.regimens.map((row) => <tr key={`${row.condition}-${row.regimen}`}><th>{row.condition}</th><td>{row.regimen}</td></tr>)}</tbody></table></div>;
 }
@@ -27,21 +24,18 @@ export function PediatricDrugDoses() {
   const [drugQuery, setDrugQuery] = useState("");
   const [mobileView, setMobileView] = useState<MobileView>("library");
   const [regimenIndex, setRegimenIndex] = useState(0);
-  const [weight, setWeight] = useState("");
-  const [age, setAge] = useState("");
-  const [height, setHeight] = useState("");
+  const [weightKg, setWeightKg] = useState<number | undefined>(undefined);
+  const [ageYears, setAgeYears] = useState<number | undefined>(undefined);
+  const [heightCm, setHeightCm] = useState<number | undefined>(undefined);
   const [strength, setStrength] = useState("");
 
   const drug = getPediatricDrug(drugId);
   const visibleDrugs = PEDIATRIC_DRUGS.filter((item) => item.group === group);
   const filteredDrugs = visibleDrugs.filter((item) => item.name.toLowerCase().includes(drugQuery.trim().toLowerCase()));
-  const weightKg = Number(weight);
-  const ageYears = Number(age);
-  const heightCm = Number(height);
   const strengthValue = Number(strength);
-  const canCalculate = weightKg > 0 && age !== "";
+  const canCalculate = Boolean(weightKg && weightKg > 0 && ageYears !== undefined);
   const result = useMemo(
-    () => canCalculate ? calculatePediatricDose(drug, { weightKg, ageYears, heightCm: heightCm > 0 ? heightCm : undefined, strength: strengthValue > 0 ? strengthValue : undefined }, regimenIndex) : null,
+    () => canCalculate ? calculatePediatricDose(drug, { weightKg: weightKg ?? 0, ageYears: ageYears ?? 0, heightCm: heightCm && heightCm > 0 ? heightCm : undefined, strength: strengthValue > 0 ? strengthValue : undefined }, regimenIndex) : null,
     [ageYears, canCalculate, drug, heightCm, regimenIndex, strengthValue, weightKg],
   );
   const selectedRow = drug.regimens[regimenIndex] ?? drug.regimens[0];
@@ -65,9 +59,9 @@ export function PediatricDrugDoses() {
     }
   };
   const clearPatient = () => {
-    setWeight("");
-    setAge("");
-    setHeight("");
+    setWeightKg(undefined);
+    setAgeYears(undefined);
+    setHeightCm(undefined);
     setStrength(drug.defaultStrength?.toString() ?? "");
   };
 
@@ -88,7 +82,7 @@ export function PediatricDrugDoses() {
       <main className={`dose-calculator-panel ${mobileView === "calculator" ? "mobile-visible" : ""}`}>
         <div className="dose-calculator-top"><div><span> dose calculator</span><h2>{drug.name}</h2><p>{selectedRow.condition}</p></div><button type="button" className="dose-change-link" onClick={() => setMobileView("library")}><Search size={14} /> Change</button></div>
         <section className="dose-redesign-card"><div className="dose-redesign-card-title"><span>1</span><div><h3>Choose the chart row</h3><p>Match the indication and age band before entering measurements.</p></div></div><label className="dose-select-field dose-row-select"><span>Clinical indication / age row</span><select value={regimenIndex} onChange={(event) => setRegimenIndex(Number(event.target.value))}>{drug.regimens.map((item, index) => <option value={index} key={`${item.condition}-${index}`}>{item.condition} — {item.regimen}</option>)}</select><small>Never use the first row automatically. Confirm route and maximum dose.</small></label><div className="dose-row-preview"><div><small>Selected chart regimen</small><b>{selectedRow.regimen}</b></div><span>{selectedRow.rule ? "Calculable" : "Manual verification"}</span></div></section>
-        <section className="dose-redesign-card"><div className="dose-redesign-card-title"><span>2</span><div><h3>Enter patient details</h3><p>Current dosing weight is required. Height is used only for mg/m² rows.</p></div></div><div className="dose-input-grid dose-redesign-inputs"><NumericField label="Current weight" value={weight} onChange={setWeight} unit="kg" min={0.4} max={200} step={0.01} hint="Required · current dosing weight" /><NumericField label="Age" value={age} onChange={setAge} unit="years" min={0} max={18} step={0.1} hint="Required · 0.5 = 6 months" /><NumericField label="Height" value={height} onChange={setHeight} unit="cm" min={30} max={220} step={0.1} hint="Only for mg/m² rows" /></div><label className="dose-strength-field"><span>Product strength <em>optional: calculates volume</em></span><div><input type="number" inputMode="decimal" min={0} step="any" value={strength} onChange={(event) => setStrength(event.target.value)} placeholder="Read from product label" /><b>{drug.strengthUnit ?? "product-specific"}</b></div><small>Use the exact vial, ampoule or bottle concentration. Do not assume the chart strength.</small></label><button type="button" className="dose-clear dose-redesign-clear" onClick={clearPatient}>Clear patient details</button></section>
+        <section className="dose-redesign-card"><div className="dose-redesign-card-title"><span>2</span><div><h3>Enter patient details</h3><p>Current dosing weight is required. Height is used only for mg/m² rows.</p></div></div><div className="dose-slider-grid dose-redesign-inputs"><Stepper label="Current weight" value={weightKg} onChange={setWeightKg} min={0.4} max={200} step={0.1} unit="kg" decimals={1} /><Stepper label="Age" value={ageYears} onChange={setAgeYears} min={0} max={18} step={0.1} unit="years" decimals={1} /><Stepper label="Height" value={heightCm} onChange={setHeightCm} min={30} max={220} step={0.5} unit="cm" decimals={1} /></div><label className="dose-strength-field"><span>Product strength <em>optional: calculates volume</em></span><div><input type="number" inputMode="decimal" min={0} step="any" value={strength} onChange={(event) => setStrength(event.target.value)} placeholder="Read from product label" /><b>{drug.strengthUnit ?? "product-specific"}</b></div><small>Use the exact vial, ampoule or bottle concentration. Do not assume the chart strength.</small></label><button type="button" className="dose-clear dose-redesign-clear" onClick={clearPatient}>Clear patient details</button></section>
 
         <section className={`dose-redesign-result ${result ? "ready" : ""}`}><div className="dose-result-heading"><div><span>3 · Live result</span><h3>{result ? "Review before administration" : "Your patient-specific dose will appear here"}</h3></div><b>{result ? <><Check size={13} /> Ready</> : "Waiting"}</b></div>{result ? <><div className="dose-redesign-result-main"><small>Patient-specific amount</small><strong>{result.calculatedAmount ?? result.dose}</strong><span>{result.dose}</span></div><div className="dose-redesign-result-facts"><div><small>How often</small><b>{result.frequency}</b></div><div><small>Route</small><b>{result.route ?? "Per protocol"}</b></div>{result.volume && <div><small>Draw up</small><b>{result.volume}</b></div>}</div></> : <div className="dose-result-placeholder"><Info size={18} /><p>Enter current weight and age. The calculation updates immediately as you type.</p></div>}<div className="dose-redesign-safety"><ShieldAlert size={14} /><span>{result?.caution ?? "Verify indication, age band, renal/hepatic function, maximum dose and product concentration."}</span></div></section>
 
