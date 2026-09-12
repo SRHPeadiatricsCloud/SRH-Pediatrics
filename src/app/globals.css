@@ -5629,3 +5629,432 @@ html.light .dose-release-banner {
 }
 html.light .dose-release-banner b { color: #283b59; }
 html.light .dose-release-banner small { color: #536e88; }
+
+/* ============================================================
+   PAEDIATRIC DOSE DESK — calculator and medicine picker stay together
+   The picker is an in-place modal, so users never need to scroll away from
+   the calculation to change a medicine.
+   ============================================================ */
+.dose-current-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(103, 232, 249, .3);
+  border-radius: 13px;
+  padding: 9px 11px;
+  background: linear-gradient(90deg, rgba(8, 145, 178, .14), rgba(99, 102, 241, .1));
+}
+.dose-current-drug {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.dose-current-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  color: #072333;
+  background: #67e8f9;
+  font-size: 15px;
+  font-weight: 950;
+}
+.dose-current-drug > div,
+.dose-current-drug small,
+.dose-current-drug b,
+.dose-current-drug em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-current-drug small {
+  color: #83a0ba;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.dose-current-drug b {
+  margin-top: 2px;
+  color: #f1fbff;
+  font-size: 13px;
+  font-weight: 950;
+}
+.dose-current-drug em {
+  margin-top: 1px;
+  color: #a4bdd4;
+  font-size: 9px;
+  font-style: normal;
+}
+.dose-change-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  border: 1px solid rgba(103, 232, 249, .4);
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: #dffaff;
+  background: rgba(34, 211, 238, .1);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.dose-change-button:hover {
+  border-color: #67e8f9;
+  background: rgba(34, 211, 238, .18);
+}
+.dose-desk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(330px, .88fr);
+  gap: 14px;
+  align-items: start;
+}
+.dose-calculator-shell {
+  min-width: 0;
+  padding: 17px;
+}
+.dose-calculator-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dose-calculator-title > div > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-calculator-title h2 {
+  margin: 4px 0 0;
+  color: #f2f9ff;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+.dose-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.dose-section-label > b {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  color: #062234;
+  background: #67e8f9;
+  font-size: 11px;
+  font-weight: 950;
+}
+.dose-section-label > span,
+.dose-section-label strong,
+.dose-section-label small {
+  display: block;
+}
+.dose-section-label strong {
+  color: #e8f6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+.dose-section-label small {
+  margin-top: 2px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-section-label-spaced {
+  margin-top: 20px;
+}
+.dose-calculator-shell .dose-row-select {
+  margin-top: 9px;
+}
+.dose-calculator-shell .dose-patient-grid {
+  margin-top: 9px;
+}
+.dose-calculator-shell .dose-strength-field {
+  margin-top: 9px;
+}
+.dose-calculator-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 8px;
+}
+.dose-calculator-actions > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-calculator-actions > span svg {
+  color: #67e8f9;
+}
+.dose-result-sticky {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+}
+.dose-safety-checklist {
+  border: 1px solid rgba(251, 146, 60, .25);
+  border-radius: 13px;
+  padding: 12px 14px;
+  color: #eec49b;
+  background: rgba(124, 45, 18, .12);
+}
+.dose-safety-checklist h3 {
+  margin: 0;
+  color: #ffe0bb;
+  font-size: 12px;
+  font-weight: 950;
+}
+.dose-safety-checklist p {
+  margin: 3px 0 8px;
+  color: #cba77f;
+  font-size: 9px;
+}
+.dose-safety-checklist ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dose-safety-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #f1d4b3;
+  font-size: 9px;
+}
+.dose-check-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(251, 146, 60, .4);
+  border-radius: 50%;
+  color: #fb923c;
+  font-size: 9px;
+  font-weight: 950;
+}
+.dose-reference-inline {
+  margin-top: 16px;
+}
+.dose-medicine-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.dose-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(2, 6, 23, .76);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+.dose-medicine-modal {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(720px, 90vh);
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, .38);
+  border-radius: 18px;
+  padding: 18px;
+  background: linear-gradient(145deg, #142844, #0a1528);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, .55);
+}
+.dose-medicine-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dose-medicine-modal-heading > div > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-medicine-modal-heading h2 {
+  margin: 4px 0 0;
+  color: #f3fbff;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.dose-medicine-modal-heading p {
+  margin: 4px 0 0;
+  color: #9db4cb;
+  font-size: 11px;
+}
+.dose-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(139, 163, 197, .3);
+  border-radius: 8px;
+  color: #c1d2e5;
+  background: rgba(255,255,255,.05);
+  cursor: pointer;
+}
+.dose-modal-close:hover {
+  border-color: #67e8f9;
+  color: #fff;
+}
+.dose-medicine-modal .dose-picker-grid {
+  margin-top: 18px;
+}
+.dose-medicine-modal .dose-select-field,
+.dose-medicine-modal .dose-search-field {
+  margin-top: 0;
+}
+.dose-medicine-modal-list {
+  max-height: 350px;
+  margin-top: 12px;
+  padding-right: 3px;
+}
+.dose-modal-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-modal-tip svg {
+  color: #67e8f9;
+}
+html.light .dose-current-bar,
+html.light .dose-calculator-shell,
+html.light .dose-safety-checklist,
+html.light .dose-medicine-modal {
+  border-color: rgba(54, 80, 116, .2);
+}
+html.light .dose-current-bar {
+  background: linear-gradient(90deg, #eaf9fc, #f2efff);
+}
+html.light .dose-current-icon {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-current-drug small,
+html.light .dose-current-drug em,
+html.light .dose-section-label small,
+html.light .dose-calculator-actions > span {
+  color: #637a94;
+}
+html.light .dose-current-drug b,
+html.light .dose-section-label strong,
+html.light .dose-calculator-title h2 {
+  color: #173557;
+}
+html.light .dose-change-button {
+  border-color: #83c8df;
+  color: #175577;
+  background: #e5f7fb;
+}
+html.light .dose-safety-checklist {
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-safety-checklist h3,
+html.light .dose-safety-checklist li {
+  color: #7b491d;
+}
+html.light .dose-safety-checklist p {
+  color: #a6672b;
+}
+html.light .dose-check-icon {
+  border-color: #efc080;
+  color: #b45309;
+}
+html.light .dose-medicine-modal {
+  background: #fff;
+  box-shadow: 0 25px 70px rgba(15, 40, 90, .25);
+}
+html.light .dose-medicine-modal-heading h2 {
+  color: #173557;
+}
+html.light .dose-medicine-modal-heading p,
+html.light .dose-modal-tip {
+  color: #637a94;
+}
+html.light .dose-modal-close {
+  border-color: #b6c7d8;
+  color: #46617c;
+  background: #f4f8fc;
+}
+@media (max-width: 920px) {
+  .dose-desk-grid {
+    grid-template-columns: 1fr;
+  }
+  .dose-result-sticky {
+    position: static;
+    grid-row: 1;
+  }
+  .dose-calculator-shell {
+    grid-row: 2;
+  }
+}
+@media (max-width: 600px) {
+  .dose-current-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .dose-change-button {
+    width: 100%;
+    justify-content: center;
+  }
+  .dose-calculator-title {
+    display: grid;
+  }
+  .dose-calculator-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .dose-calculator-actions > span {
+    justify-content: center;
+  }
+  .dose-medicine-overlay {
+    align-items: end;
+    padding: 0;
+  }
+  .dose-medicine-modal {
+    max-height: 90vh;
+    border-radius: 18px 18px 0 0;
+    padding: 15px;
+  }
+  .dose-medicine-modal-list {
+    max-height: 270px;
+  }
+}
