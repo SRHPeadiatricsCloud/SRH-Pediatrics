@@ -6707,3 +6707,81 @@ html.light .dose-simple-safety { color: #8b5b2e; border-color: #dce3eb; }
   .dose-simple-result-facts > div { width: 100%; }
   .dose-simple-result-main strong { overflow-wrap: anywhere; font-size: clamp(22px, 8vw, 28px); }
 }
+
+/* Mobile viewport guard for the reference workspace and shared header. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+@media (max-width: 760px) {
+  header.no-print,
+  header.no-print > div,
+  header.no-print nav,
+  main.drugs-page {
+    max-width: 100%;
+    width: 100%;
+  }
+  header.no-print > div:first-child {
+    align-items: flex-start;
+    display: grid;
+    gap: 9px;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    overflow: hidden;
+  }
+  header.no-print > div:first-child > a {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  header.no-print > div:first-child > .ml-auto {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-left: 0;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  header.no-print > div:first-child > .ml-auto::-webkit-scrollbar {
+    display: none;
+  }
+  header.no-print > div:first-child > .ml-auto > * {
+    flex: 0 0 auto;
+  }
+  header.no-print nav > div {
+    max-width: 100%;
+    min-width: 0;
+  }
+  main.drugs-page > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .drugs-page .dose-workspace,
+  .drugs-page .dose-main-grid,
+  .drugs-page .dose-card,
+  .drugs-page .dose-hero,
+  .drugs-page .dose-group-tabs {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .drugs-page .dose-workspace {
+    overflow-x: clip;
+  }
+  .drugs-page .dose-card,
+  .drugs-page .dose-hero {
+    overflow-wrap: anywhere;
+  }
+  .drugs-page select,
+  .drugs-page input {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .drugs-page .dose-reference-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
