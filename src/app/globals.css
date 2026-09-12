@@ -5588,3 +5588,44 @@ html.light .dose-reference-drawer summary span {
     padding: 6px;
   }
 }
+
+/* Major release marker: keep substantial clinical reference updates visible. */
+.dose-release-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(237, 22, 148, .28);
+  border-radius: 11px;
+  padding: 7px 10px;
+  color: #f7d5ed;
+  background: linear-gradient(90deg, rgba(116, 49, 147, .18), rgba(35, 160, 220, .12));
+  font-size: 10px;
+}
+.dose-release-banner span {
+  border-radius: 999px;
+  padding: 3px 6px;
+  color: #fff;
+  background: linear-gradient(135deg, #ed1694, #743193);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.dose-release-banner b {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 950;
+}
+.dose-release-banner small {
+  color: #a9c8de;
+  font-size: 9px;
+}
+html.light .dose-release-banner {
+  border-color: #d9add1;
+  color: #334d6a;
+  background: linear-gradient(90deg, #fbf0fa, #eaf7fc);
+}
+html.light .dose-release-banner b { color: #283b59; }
+html.light .dose-release-banner small { color: #536e88; }

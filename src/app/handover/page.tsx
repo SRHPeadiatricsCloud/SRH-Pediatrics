@@ -56,7 +56,7 @@ function Sheet() {
             <div>
               <div className="flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/icon-512.png?v=2.0.032" alt="" className="h-8 w-8 rounded-md bg-white p-0.5" />
+                <img src="/icons/icon-512.png?v=3.0.000" alt="" className="h-8 w-8 rounded-md bg-white p-0.5" />
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-300">
                     Sri Ramakrishna Hospital · Department of Pediatrics

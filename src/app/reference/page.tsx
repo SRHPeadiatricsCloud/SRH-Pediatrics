@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TopBar } from "@/components/ui";
+import { APP_VERSION } from "@/lib/backup-schema";
 import { NicuDrugDoses } from "@/components/nicu-drug-doses";
 import { PediatricDrugDoses } from "@/components/pediatric-drug-doses";
 
@@ -11,6 +12,7 @@ export default function ReferencePage() {
     <main className="drugs-page min-h-screen pb-20">
       <TopBar />
       <div className="mx-auto max-w-[1440px] px-4 py-5">
+        <div className="dose-release-banner" role="status"><span>Major update</span><b>SRH Pediatrics v{APP_VERSION}</b><small>Safer bedside references · improved paediatric dose navigator</small></div>
         <div className="dose-scope-switch" role="tablist" aria-label="Dose reference population">
           <button type="button" role="tab" aria-selected={scope === "pediatrics"} className={scope === "pediatrics" ? "active" : ""} onClick={() => setScope("pediatrics")}><b>Paediatric doses</b><small>Department of Clinical Pharmacy 2025</small></button>
           <button type="button" role="tab" aria-selected={scope === "nicu"} className={scope === "nicu" ? "active" : ""} onClick={() => setScope("nicu")}><b>NICU doses</b><small>Neonatal timing and weight bands</small></button>

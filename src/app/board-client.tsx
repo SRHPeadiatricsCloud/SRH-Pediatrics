@@ -127,7 +127,7 @@ export default function BoardClient() {
                 <HeartPulse size={32} strokeWidth={2.2} aria-label="PICU" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/icons/icon-512.png?v=2.0.032" alt="" className="h-full w-full object-contain" />
+                <img src="/icons/icon-512.png?v=3.0.000" alt="" className="h-full w-full object-contain" />
               )}
             </div>
             <div className="min-w-0">
