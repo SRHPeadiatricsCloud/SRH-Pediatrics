@@ -402,7 +402,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const day = s.plan?.day ?? 1;
   const todayLabel = s.plan?.holdToday ? "Held at previous target" : `Day ${day} target`;
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-3">
       <Section
         title="Fluids, TPN & nutrition"
         right={<button className="btn-primary" onClick={save}>Save 24-hour plan</button>}
