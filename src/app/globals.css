@@ -6395,3 +6395,93 @@ html.light .dose-slider-grid input[type="range"] {
     grid-column: auto;
   }
 }
+
+/* Mobile fit pass: the dose desk must never create a page-width scrollbar. */
+.pediatric-dose-workspace,
+.pediatric-dose-workspace .dose-redesign-layout,
+.pediatric-dose-workspace .dose-calculator-panel,
+.pediatric-dose-workspace .dose-library-panel,
+.pediatric-dose-workspace .dose-redesign-card,
+.pediatric-dose-workspace .dose-redesign-result {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 680px) {
+  .pediatric-dose-workspace {
+    width: 100%;
+    overflow-x: clip;
+  }
+  .pediatric-dose-workspace .dose-hero,
+  .pediatric-dose-workspace .dose-mobile-tabs,
+  .pediatric-dose-workspace .dose-redesign-layout,
+  .pediatric-dose-workspace .dose-calculator-panel,
+  .pediatric-dose-workspace .dose-library-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-calculator-panel {
+    padding: 10px;
+  }
+  .pediatric-dose-workspace .dose-redesign-card,
+  .pediatric-dose-workspace .dose-redesign-result {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 10px;
+  }
+  .pediatric-dose-workspace .dose-calculator-top {
+    min-width: 0;
+    width: 100%;
+  }
+  .pediatric-dose-workspace .dose-calculator-top h2,
+  .pediatric-dose-workspace .dose-calculator-top p,
+  .pediatric-dose-workspace .dose-redesign-card-title h3,
+  .pediatric-dose-workspace .dose-redesign-card-title p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .pediatric-dose-workspace .dose-redesign-card select,
+  .pediatric-dose-workspace .dose-redesign-card input,
+  .pediatric-dose-workspace .dose-strength-field,
+  .pediatric-dose-workspace .dose-strength-field > div {
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-redesign-card select {
+    min-width: 0;
+    font-size: 11px;
+  }
+  .pediatric-dose-workspace .dose-slider-grid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: 1fr;
+  }
+  .pediatric-dose-workspace .dose-slider-grid > div,
+  .pediatric-dose-workspace .dose-slider-grid > div:last-child {
+    grid-column: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-main strong {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: clamp(21px, 8vw, 27px);
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts {
+    grid-template-columns: 1fr;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts > div,
+  .pediatric-dose-workspace .dose-redesign-result-facts > div:last-child {
+    grid-column: auto;
+    min-width: 0;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts b,
+  .pediatric-dose-workspace .dose-redesign-safety span {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .pediatric-dose-workspace .dose-reference-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
