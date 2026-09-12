@@ -6698,10 +6698,44 @@ html.light .dose-simple-safety { color: #8b5b2e; border-color: #dce3eb; }
   .dose-simple-result { padding: 11px; }
   .dose-simple-medicine-controls { grid-template-columns: 1fr; gap: 0; }
   .dose-simple-medicine-controls .dose-search-field { margin-top: 9px; }
-  .dose-simple-slider-grid { grid-template-columns: 1fr; }
-  .dose-simple-slider-grid > div { width: 100%; min-width: 0; }
-  .dose-simple-input-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
-  .dose-simple-input-heading small { text-align: left; }
+  .dose-simple-slider-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .dose-simple-slider-grid > div {
+    width: 100%;
+    min-width: 0;
+  }
+  .dose-simple-slider-grid > div.rounded-xl {
+    border-radius: 10px;
+    padding: 6px;
+  }
+  .dose-simple-slider-grid .lbl {
+    font-size: 9px;
+    line-height: 1.15;
+  }
+  .dose-simple-slider-grid .flex.items-center.gap-1 {
+    gap: 2px;
+  }
+  .dose-simple-slider-grid button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    font-size: 14px;
+  }
+  .dose-simple-slider-grid input:not([type="range"]) {
+    padding-block: 3px;
+    font-size: 12px;
+  }
+  .dose-simple-slider-grid input[type="range"] {
+    height: 4px;
+    margin-top: 3px;
+  }
+  .dose-simple-slider-grid span.text-\[10px\] {
+    font-size: 8px;
+  }
+  .dose-simple-input-heading { align-items: baseline; flex-direction: row; gap: 5px; }
+  .dose-simple-input-heading small { text-align: right; }
   .dose-simple-result-heading { align-items: flex-start; flex-direction: column; }
   .dose-simple-result-facts { grid-template-columns: 1fr; }
   .dose-simple-result-facts > div { width: 100%; }
