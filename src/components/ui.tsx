@@ -193,6 +193,51 @@ export function DialWithOther({
   );
 }
 
+/** Repeated tap/press-and-hold interaction for bedside numeric controls. */
+function usePressAndHold(action: () => void) {
+  const actionRef = useRef(action);
+  const timeoutRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const suppressClick = useRef(false);
+
+  useEffect(() => {
+    actionRef.current = action;
+  }, [action]);
+  useEffect(() => () => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+  }, []);
+
+  const stop = () => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    timeoutRef.current = null;
+    intervalRef.current = null;
+  };
+  const start = () => {
+    suppressClick.current = true;
+    stop();
+    actionRef.current();
+    timeoutRef.current = window.setTimeout(() => {
+      intervalRef.current = window.setInterval(() => actionRef.current(), 90);
+    }, 400);
+  };
+  const click = () => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    actionRef.current();
+  };
+  return {
+    onPointerDown: start,
+    onPointerUp: stop,
+    onPointerLeave: stop,
+    onPointerCancel: stop,
+    onClick: click,
+  };
+}
+
 export function Stepper({
   label,
   value,
@@ -233,14 +278,16 @@ export function Stepper({
       onChange(clamp(n));
     }
   };
+  const decrement = usePressAndHold(() => set(v - step));
+  const increment = usePressAndHold(() => set(v + step));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
       <div className="lbl mb-1 truncate">{label}</div>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => set(v - step)}
-          className="h-8 w-8 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...decrement}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           −
         </button>
@@ -279,8 +326,8 @@ export function Stepper({
         </div>
         <button
           type="button"
-          onClick={() => set(v + step)}
-          className="h-8 w-8 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...increment}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           +
         </button>
@@ -339,14 +386,16 @@ export function NumField({
     onChange(Math.min(max, Math.max(min, Number(next.toPrecision(12)))));
     setDraft(null);
   };
+  const decrement = usePressAndHold(() => nudge(-step));
+  const increment = usePressAndHold(() => nudge(step));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
       <div className="lbl mb-1 truncate">{label}</div>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => nudge(-step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...decrement}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           −
         </button>
@@ -383,8 +432,8 @@ export function NumField({
         <span className="shrink-0 text-[10px] text-slate-400">{unit}</span>
         <button
           type="button"
-          onClick={() => nudge(step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...increment}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           +
         </button>

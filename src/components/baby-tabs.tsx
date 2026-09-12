@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, CheckCircle2, ChevronDown, Circle, Clock, User, X } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Circle, Clock, Info, User, X } from "lucide-react";
 import { WeightInput } from "@/components/weight-input";
 import { Chip, ChipGroup, DialWithOther, NumField, Section, Stepper, api, useTempUnit } from "@/components/ui";
-import { FlagsList, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
-import { interpretVitals, type Flag, type VitalsInput } from "@/lib/interpret";
+import { GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
+import { interpretVitals, neonatalDayFluidRange, type Flag, type VitalsInput } from "@/lib/interpret";
 import { PainScoreCalculator } from "@/components/pain-scores";
 import { EditableListField } from "@/components/editable-list";
 import {
@@ -67,6 +67,195 @@ function localDateTimeValue(value?: string) {
   if (Number.isNaN(date.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+type MetricStatus = "safe" | "warn" | "crit" | "neutral";
+type TrendKey = "fluids" | "kcal" | "gir";
+type TrendPoint = { label: string; value: number };
+
+const METRIC_RING: Record<MetricStatus, string> = {
+  safe: "border-emerald-400 bg-emerald-400/10 text-emerald-100",
+  warn: "border-amber-400 bg-amber-400/10 text-amber-100",
+  crit: "border-rose-400 bg-rose-400/10 text-rose-100",
+  neutral: "border-slate-500 bg-white/5 text-slate-100",
+};
+
+function rangeStatus(value: number, low: number, high: number): MetricStatus {
+  if (!Number.isFinite(value) || value <= 0) return "neutral";
+  if (value < low * 0.8 || value > high * 1.2) return "crit";
+  if (value < low || value > high) return "warn";
+  return "safe";
+}
+
+function trendFor(
+  entries: NonNullable<Clinical["growth"]>,
+  key: "fluids" | "kcal",
+  current: number,
+): TrendPoint[] {
+  const historic = entries
+    .filter((entry) => typeof entry[key] === "number" && Number.isFinite(entry[key]))
+    .slice(-6)
+    .map((entry) => ({ label: entry.at.slice(0, 10), value: Number(entry[key]) }));
+  return [...historic, { label: "Today", value: current }];
+}
+
+function Sparkline({ points, color, label, onClick }: { points: TrendPoint[]; color: string; label: string; onClick: () => void }) {
+  const values = points.map((point) => point.value).filter((value) => Number.isFinite(value));
+  const plotted = values.length === 1 ? [values[0], values[0]] : values;
+  const min = plotted.length ? Math.min(...plotted) : 0;
+  const max = plotted.length ? Math.max(...plotted) : 1;
+  const span = max - min || 1;
+  const coords = plotted.map((value, index) => {
+    const x = plotted.length === 1 ? 60 : (index / (plotted.length - 1)) * 120;
+    const y = 27 - ((value - min) / span) * 21;
+    return `${x},${y}`;
+  }).join(" ");
+  return (
+    <button type="button" onClick={onClick} className="group rounded-lg p-1 text-left" title={`Show ${label} day-by-day`} aria-label={`Show ${label} trend`}>
+      <svg viewBox="0 0 120 32" className="h-8 w-[112px] overflow-visible" role="img" aria-hidden>
+        <line x1="0" y1="28" x2="120" y2="28" stroke="rgba(148,163,184,.18)" />
+        {coords && <polyline points={coords} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+        {plotted.length === 1 && <circle cx="60" cy="27" r="3" fill={color} />}
+      </svg>
+      <span className="block text-[9px] text-slate-500 group-hover:text-slate-300">tap trend</span>
+    </button>
+  );
+}
+
+function FormulaValue({ children, onOpen, className = "" }: { children: React.ReactNode; onOpen: () => void; className?: string }) {
+  const timer = useRef<number | null>(null);
+  const clear = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const start = () => {
+    clear();
+    timer.current = window.setTimeout(onOpen, 550);
+  };
+  return (
+    <button
+      type="button"
+      className={`cursor-help rounded px-0.5 text-left underline decoration-dotted underline-offset-2 hover:bg-white/10 ${className}`}
+      onPointerDown={start}
+      onPointerUp={clear}
+      onPointerLeave={clear}
+      onPointerCancel={clear}
+      onClick={() => { clear(); onOpen(); }}
+      title="Tap or hold to see the formula"
+    >
+      {children}
+    </button>
+  );
+}
+
+function CompactPicker({
+  label,
+  value,
+  options,
+  onChange,
+  otherPlaceholder,
+}: {
+  label: string;
+  value?: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  otherPlaceholder: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [other, setOther] = useState("");
+  const select = (next: string) => {
+    onChange(next);
+    setOther("");
+    setExpanded(false);
+  };
+  const addOther = () => {
+    const next = other.trim();
+    if (next) select(next);
+  };
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-900/40">
+      <button
+        type="button"
+        className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+      >
+        <span className="min-w-0 truncate text-xs font-bold text-slate-200">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}: </span>
+          <span className="text-cyan-100">{value || "Select"}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-cyan-300 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="border-t border-white/10 p-2">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => select(option)}
+                className={`min-h-10 rounded-lg border px-2 py-1.5 text-left text-[11px] font-semibold transition ${value === option ? "border-cyan-400/70 bg-cyan-400/15 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-cyan-400/40"}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            <input
+              className="inp min-h-10 flex-1 text-xs"
+              value={other}
+              onChange={(event) => setOther(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") addOther(); }}
+              placeholder={otherPlaceholder}
+              aria-label={`${label} other value`}
+            />
+            <button type="button" className="btn-ghost min-h-10 shrink-0" onClick={addOther} disabled={!other.trim()}>Use other</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  unit,
+  status,
+  trend,
+  trendKey,
+  onTrend,
+  formula,
+  onFormula,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  status: MetricStatus;
+  trend: TrendPoint[];
+  trendKey: TrendKey;
+  onTrend: (key: TrendKey) => void;
+  formula: string;
+  onFormula: (title: string, formula: string) => void;
+}) {
+  const ring = METRIC_RING[status];
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-3 shadow-lg shadow-black/10">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</span>
+        <span className={`h-3 w-3 shrink-0 rounded-full border-2 ${ring}`} aria-label={`${status} status`} />
+      </div>
+      <div className="flex items-end justify-between gap-1">
+        <div className="min-w-0">
+          <FormulaValue onOpen={() => onFormula(label, formula)} className="block text-2xl font-black tabular-nums leading-none text-white sm:text-3xl">
+            {value > 0 ? showFluid(value) : "—"}
+          </FormulaValue>
+          <span className="mt-1 block text-[10px] text-slate-500">{unit}</span>
+        </div>
+        <Sparkline points={trend} color={status === "warn" ? "#fbbf24" : status === "crit" ? "#fb7185" : "#34d399"} label={label} onClick={() => onTrend(trendKey)} />
+      </div>
+    </div>
+  );
 }
 
 function isoFromDateTimeInput(value: string) {
@@ -454,6 +643,9 @@ export function RespTab({
 export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
   const f = d.baby.clinical?.fluids ?? {};
   const [s, setS] = useState<FluidValues>({ ...f });
+  const [configOpen, setConfigOpen] = useState(false);
+  const [trendMetric, setTrendMetric] = useState<TrendKey | null>(null);
+  const [formula, setFormula] = useState<{ title: string; text: string } | null>(null);
   const weightKg = Math.max(0, d.baby.currentWeight / 1000);
   const dailyMode = s.plan?.mode === "daily";
   const snapshot = calculateFluidPlan(s, weightKg);
@@ -464,16 +656,28 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     totalMlKgDay: snapshot.totalMlKgDay,
   };
   const nutrition = calcNutrition({ fluids: nutritionFluids });
-  const nutritionFlags: Flag[] = [
-    nutrition.totalKcal < 110
-      ? { key: "kcal", label: `Energy ${nutrition.totalKcal} kcal/kg/d below target 110–135`, sev: "warn" }
-      : nutrition.totalKcal <= 135
-        ? { key: "kcal", label: `Energy ${nutrition.totalKcal} kcal/kg/d within target`, sev: "info" }
-        : { key: "kcal", label: `Energy ${nutrition.totalKcal} kcal/kg/d above target`, sev: "warn" },
-    nutrition.totalProtein < 3.5
-      ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d below 3.5–4`, sev: "warn" }
-      : { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate`, sev: "info" },
-  ];
+  const totalFluid = snapshot.totalMlKgDay ?? s.totalMlKgDay ?? 0;
+  const fluidRange = neonatalDayFluidRange(d.baby);
+  const fluidStatus = rangeStatus(totalFluid, fluidRange[0], fluidRange[1]);
+  const kcalStatus = rangeStatus(nutrition.totalKcal, nutrition.kcalTarget[0], nutrition.kcalTarget[1]);
+  const girStatus = rangeStatus(nutrition.gir, 4, 12);
+  const growthEntries = d.baby.clinical?.growth ?? [];
+  const trends: Record<TrendKey, { label: string; unit: string; points: TrendPoint[] }> = {
+    fluids: { label: "Total fluids", unit: "ml/kg/day", points: trendFor(growthEntries, "fluids", totalFluid) },
+    kcal: { label: "Energy", unit: "kcal/kg/day", points: trendFor(growthEntries, "kcal", nutrition.totalKcal) },
+    // GIR is not part of the existing growth snapshot data model. Show today's
+    // value honestly until a prior GIR snapshot exists rather than inventing data.
+    gir: { label: "GIR", unit: "mg/kg/min", points: [{ label: "Today", value: nutrition.gir }] },
+  };
+  const warnings: string[] = [];
+  if (totalFluid <= 0) warnings.push("Total fluids has no entered target yet.");
+  else if (fluidStatus !== "safe") warnings.push(`Total fluids ${showFluid(totalFluid)} ml/kg/day is ${totalFluid < fluidRange[0] ? "below" : "above"} the ${fluidRange[0]}–${fluidRange[1]} target.`);
+  if (nutrition.totalKcal <= 0) warnings.push("Energy is not yet calculated from feed and TPN inputs.");
+  else if (kcalStatus !== "safe") warnings.push(`Energy ${showFluid(nutrition.totalKcal)} kcal/kg/day is ${nutrition.totalKcal < nutrition.kcalTarget[0] ? "below" : "above"} the ${nutrition.kcalTarget[0]}–${nutrition.kcalTarget[1]} target.`);
+  if (nutrition.gir <= 0) warnings.push("GIR has no entered target yet.");
+  else if (girStatus !== "safe") warnings.push(`GIR ${showFluid(nutrition.gir)} mg/kg/min is outside the 4–12 target range.`);
+  if (nutrition.totalProtein > 0 && nutrition.totalProtein < nutrition.proteinTarget[0]) warnings.push(`Protein ${showFluid(nutrition.totalProtein)} g/kg/day is below the ${nutrition.proteinTarget[0]}–${nutrition.proteinTarget[1]} target.`);
+  const statusIsCritical = [fluidStatus, kcalStatus, girStatus].includes("crit");
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
   const setPlanNumber = (section: "enteral" | "iv", key: keyof DailyFluidPlan) => (n: number) =>
     setS((p) => ({
@@ -527,6 +731,12 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   }, [s]);
   const day = s.plan?.day ?? 1;
   const todayLabel = s.plan?.holdToday ? "Held at previous target" : `Day ${day} target`;
+  const totalFluidFormula = dailyMode
+    ? `Total fluids = enteral target + IV target = ${showFluid(snapshot.enteralMlKgDay)} + ${showFluid(snapshot.ivMlKgDay)} = ${showFluid(totalFluid)} ml/kg/day.`
+    : `Total fluids = the entered totalMlKgDay value (${showFluid(s.totalMlKgDay)} ml/kg/day).`;
+  const kcalFormula = `Energy = enteral volume × ${nutrition.density} kcal/ml + GIR contribution + amino-acid contribution + lipid contribution = ${showFluid(nutrition.totalKcal)} kcal/kg/day.`;
+  const girFormula = `GIR is the entered prescription value (${showFluid(nutrition.gir)} mg/kg/min); the existing record stores GIR directly and does not infer it from a new dextrose-rate field.`;
+  const selectedTrend = trendMetric ? trends[trendMetric] : null;
   return (
     <div className="grid gap-3">
       <Section
@@ -538,99 +748,106 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         }
       >
-        <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <div className="lbl">24-hour prescription</div>
-              <p className="mt-1 text-[11px] text-slate-400">Use a fixed target or calculate today&apos;s target from a signed daily change.</p>
+        <div className="sticky top-2 z-20 -mx-1 rounded-2xl bg-slate-950/95 p-1 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80">
+          <div className="mb-2 flex w-full rounded-xl border border-cyan-400/30 bg-slate-900 p-1" role="tablist" aria-label="Fluid prescription mode">
+            <button type="button" role="tab" aria-selected={!dailyMode} onClick={() => setMode("fixed")} className={`min-h-11 flex-1 rounded-lg px-3 text-xs font-black transition ${!dailyMode ? "bg-cyan-400 text-slate-950" : "text-slate-400 hover:text-slate-100"}`}>Fixed target</button>
+            <button type="button" role="tab" aria-selected={dailyMode} onClick={() => setMode("daily")} className={`min-h-11 flex-1 rounded-lg px-3 text-xs font-black transition ${dailyMode ? "bg-cyan-400 text-slate-950" : "text-slate-400 hover:text-slate-100"}`}>Advance daily</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <MetricCard label="Total fluids" value={totalFluid} unit="ml/kg/day" status={fluidStatus} trend={trends.fluids.points} trendKey="fluids" onTrend={setTrendMetric} formula={totalFluidFormula} onFormula={(title, text) => setFormula({ title, text })} />
+            <MetricCard label="Energy" value={nutrition.totalKcal} unit="kcal/kg/day" status={kcalStatus} trend={trends.kcal.points} trendKey="kcal" onTrend={setTrendMetric} formula={kcalFormula} onFormula={(title, text) => setFormula({ title, text })} />
+            <div className="col-span-2 md:col-span-1">
+              <MetricCard label="GIR" value={nutrition.gir} unit="mg/kg/min" status={girStatus} trend={trends.gir.points} trendKey="gir" onTrend={setTrendMetric} formula={girFormula} onFormula={(title, text) => setFormula({ title, text })} />
             </div>
-            <div className="flex rounded-lg border border-white/10 bg-slate-950/40 p-0.5" role="tablist" aria-label="Fluid prescription mode">
-              <button type="button" role="tab" aria-selected={!dailyMode} className={`rounded-md px-2 py-1 text-[10px] font-bold ${!dailyMode ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400"}`} onClick={() => setMode("fixed")}>Fixed target</button>
-              <button type="button" role="tab" aria-selected={dailyMode} className={`rounded-md px-2 py-1 text-[10px] font-bold ${dailyMode ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400"}`} onClick={() => setMode("daily")}>Advance daily</button>
+          </div>
+          <div className={`mt-2 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] font-semibold ${warnings.length ? statusIsCritical ? "border-rose-400/50 bg-rose-500/15 text-rose-100" : "border-amber-400/50 bg-amber-400/15 text-amber-100" : "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"}`} role="status">
+            {warnings.length ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+            {warnings.length ? <ul className="space-y-0.5">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : <span>All values within target range.</span>}
+          </div>
+          {formula && (
+            <div className="mt-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3 text-[11px] text-cyan-50" role="dialog" aria-label={`${formula.title} formula`}>
+              <div className="flex items-center justify-between gap-2"><b>{formula.title} formula</b><button type="button" className="text-cyan-200" onClick={() => setFormula(null)}>Close</button></div>
+              <p className="mt-1 leading-relaxed">{formula.text}</p>
             </div>
+          )}
+        </div>
+
+        {selectedTrend && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2"><div><b className="text-xs text-slate-100">{selectedTrend.label} trend</b><span className="ml-2 text-[10px] text-slate-500">last {selectedTrend.points.length} recorded points · {selectedTrend.unit}</span></div><button type="button" className="text-[10px] text-slate-400 hover:text-white" onClick={() => setTrendMetric(null)}>Close</button></div>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-7">
+              {selectedTrend.points.map((point, index) => <div key={`${point.label}-${index}`} className="rounded-lg bg-slate-900/60 p-1.5 text-center"><span className="block truncate text-[9px] text-slate-500">{point.label}</span><b className="block text-[11px] tabular-nums text-slate-100">{showFluid(point.value)}</b></div>)}
+            </div>
+            {selectedTrend.points.length === 1 && <p className="mt-2 flex items-center gap-1 text-[10px] text-slate-500"><Info size={11} /> No prior snapshot is stored for this metric yet.</p>}
+          </div>
+        )}
+
+        {dailyMode && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-2">
+            <div className="mb-1 flex items-center justify-between gap-2"><b className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Plan metadata</b><span className="text-[9px] text-slate-500">compact context</span></div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <NumField label="Plan day" value={day} onChange={(n) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: Math.max(1, Math.round(n)) } }))} min={1} max={365} step={1} placeholder="1" />
+              <label className="block rounded-lg border border-white/10 bg-slate-900/40 p-2"><span className="lbl mb-1 block">Plan starts</span><input className="inp !min-h-10 !py-1 text-sm" type="date" value={s.plan?.startDate ?? localDateIso()} onChange={(event) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", startDate: event.target.value } }))} /></label>
+              <div className="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-center"><span className="lbl block">Dosing weight</span><b className="mt-1 block text-sm text-slate-100">{weightKg ? `${showFluid(weightKg)} kg` : "Missing"}</b><small className="text-[9px] text-slate-500">from baby card</small></div>
+            </div>
+          </div>
+        )}
+
+        {dailyMode ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
+              <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">Enteral feeds</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <NumField label="Start" value={s.plan?.enteral?.startMlKgDay} onChange={setPlanNumber("enteral", "startMlKgDay")} min={0} max={300} step={1} placeholder="20" />
+                <NumField label="Change /24h" value={s.plan?.enteral?.changePer24h} onChange={setPlanNumber("enteral", "changePer24h")} min={-300} max={300} step={1} placeholder="+20" />
+                <NumField label="Maximum" value={s.plan?.enteral?.maximumMlKgDay} onChange={setPlanNumber("enteral", "maximumMlKgDay")} min={0} max={300} step={1} placeholder="160" />
+              </div>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "Enteral target", text: `Enteral target = start ${showFluid(s.plan?.enteral?.startMlKgDay)} + change ${showFluid(s.plan?.enteral?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.enteralMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "Enteral volume", text: `Enteral ml/day = enteral ml/kg/day × dosing weight = ${showFluid(snapshot.enteralMlKgDay)} × ${showFluid(weightKg)}.` })}>{showFluid(snapshot.enteralMlDay)}</FormulaValue> ml/day</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
+              <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">IV / TPN</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <NumField label="Start" value={s.plan?.iv?.startMlKgDay} onChange={setPlanNumber("iv", "startMlKgDay")} min={0} max={300} step={1} placeholder="80" />
+                <NumField label="Change /24h" value={s.plan?.iv?.changePer24h} onChange={setPlanNumber("iv", "changePer24h")} min={-300} max={300} step={1} placeholder="−10" />
+                <NumField label="Minimum" value={s.plan?.iv?.minimumMlKgDay} onChange={setPlanNumber("iv", "minimumMlKgDay")} min={0} max={300} step={1} placeholder="40" />
+              </div>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "IV target", text: `IV target = start ${showFluid(s.plan?.iv?.startMlKgDay)} + change ${showFluid(s.plan?.iv?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.ivMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "IV volume", text: `IV ml/day = IV ml/kg/day × dosing weight = ${showFluid(snapshot.ivMlKgDay)} × ${showFluid(weightKg)}.` })}>{showFluid(snapshot.ivMlDay)}</FormulaValue> ml/day</div>
+            </div>
+            <div className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/35 p-2 text-[11px] text-slate-200"><div className="mb-1 flex items-center justify-between"><b>Today&apos;s 24-hour plan</b><span className="text-[9px] text-slate-500">enteral + IV/TPN</span></div><div className="grid grid-cols-3 gap-2 text-center"><div><span className="block text-[9px] text-slate-500">Enteral</span><FormulaValue onOpen={() => setFormula({ title: "Enteral target", text: "Calculated from the advance-daily enteral start, change, day, and limits." })}>{showFluid(snapshot.enteralMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.enteralMlDay)} ml/day</small></div><div><span className="block text-[9px] text-slate-500">IV / TPN</span><FormulaValue onOpen={() => setFormula({ title: "IV target", text: "Calculated from the advance-daily IV start, change, day, and limits." })}>{showFluid(snapshot.ivMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.ivMlDay)} ml/day</small></div><div><span className="block text-[9px] text-slate-500">Total</span><FormulaValue onOpen={() => setFormula({ title: "Total fluids", text: totalFluidFormula })}>{showFluid(snapshot.totalMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.totalMlDay)} ml/day</small></div></div><p className="mt-2 text-[10px] text-slate-500">{snapshot.feedMl !== undefined ? `${showFluid(snapshot.feedMl)} ml/feed at ${s.feedFreq}.` : snapshot.feedMlPerHour !== undefined ? `${showFluid(snapshot.feedMlPerHour)} ml/hour continuously.` : "Select a fixed hourly frequency to calculate volume per feed."}</p></div>
+            <div className="md:col-span-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary min-h-10" onClick={advanceDay}>Advance 24 h</button><button type="button" className={`btn-secondary min-h-10 ${s.plan?.holdToday ? "border-amber-300/50 text-amber-200" : ""}`} onClick={holdToday}>{s.plan?.holdToday ? "Release hold" : "Hold today"}</button><button type="button" className="btn-secondary min-h-10" onClick={resetDay}>Reset to day 1</button></div>
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+            <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
+            <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
+          </div>
+        )}
+
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">Nutrition detail</b><span className="text-[9px] text-slate-500">calculated from current prescription</span></div>
+          <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+            <div><span className="block text-slate-500">Enteral energy</span><FormulaValue onOpen={() => setFormula({ title: "Enteral energy", text: `Enteral energy = ${showFluid(nutrition.enteralMl)} ml/kg/day × ${nutrition.density} kcal/ml.` })}>{showFluid(nutrition.enteralKcal)}</FormulaValue> kcal/kg/d</div>
+            <div><span className="block text-slate-500">IV / TPN energy</span><FormulaValue onOpen={() => setFormula({ title: "IV / TPN energy", text: `IV energy combines dextrose (${showFluid(nutrition.dextroseKcal)}), amino acid (${showFluid(nutrition.aaKcal)}), and lipid (${showFluid(nutrition.lipidKcal)}) kcal/kg/day.` })}>{showFluid(nutrition.ivKcal)}</FormulaValue> kcal/kg/d</div>
+            <div><span className="block text-slate-500">Protein</span><FormulaValue onOpen={() => setFormula({ title: "Protein", text: `Protein = enteral protein (${showFluid(nutrition.enteralProtein)}) + amino acid (${showFluid(nutrition.aaG)}) g/kg/day.` })}>{showFluid(nutrition.totalProtein)}</FormulaValue> g/kg/d</div>
+            <div><span className="block text-slate-500">Dextrose</span><FormulaValue onOpen={() => setFormula({ title: "Dextrose", text: `Dextrose grams = GIR × 1.44 = ${showFluid(nutrition.gir)} × 1.44.` })}>{showFluid(nutrition.dextroseG)}</FormulaValue> g/kg/d</div>
           </div>
         </div>
 
-        {dailyMode ? (
-          <>
-            <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-              <NumField label="Plan day" value={day} onChange={(n) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: Math.max(1, Math.round(n)) } }))} min={1} max={365} step={1} placeholder="1" />
-              <label className="block rounded-lg border border-white/10 bg-slate-900/40 p-2">
-                <span className="lbl mb-1 block">Plan starts</span>
-                <input className="inp !py-1 text-sm" type="date" value={s.plan?.startDate ?? localDateIso()} onChange={(event) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", startDate: event.target.value } }))} />
-              </label>
-              <div className="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-center">
-                <span className="lbl block">Dosing weight</span>
-                <b className="mt-1 block text-sm text-cyan-200">{weightKg ? `${showFluid(weightKg)} kg` : "Missing"}</b>
-                <small className="text-[9px] text-slate-500">from baby card</small>
-              </div>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
-                <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-cyan-100">Enteral feeds</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <NumField label="Start" value={s.plan?.enteral?.startMlKgDay} onChange={setPlanNumber("enteral", "startMlKgDay")} min={0} max={300} step={1} placeholder="20" />
-                  <NumField label="Change /24h" value={s.plan?.enteral?.changePer24h} onChange={setPlanNumber("enteral", "changePer24h")} min={-300} max={300} step={1} placeholder="+20" />
-                  <NumField label="Maximum" value={s.plan?.enteral?.maximumMlKgDay} onChange={setPlanNumber("enteral", "maximumMlKgDay")} min={0} max={300} step={1} placeholder="160" />
-                </div>
-                <div className="mt-2 rounded-lg bg-cyan-400/10 p-2 text-[11px] text-cyan-100"><b>{todayLabel}:</b> {showFluid(snapshot.enteralMlKgDay)} ml/kg/day · {showFluid(snapshot.enteralMlDay)} ml/day</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
-                <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-violet-100">IV / TPN</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <NumField label="Start" value={s.plan?.iv?.startMlKgDay} onChange={setPlanNumber("iv", "startMlKgDay")} min={0} max={300} step={1} placeholder="80" />
-                  <NumField label="Change /24h" value={s.plan?.iv?.changePer24h} onChange={setPlanNumber("iv", "changePer24h")} min={-300} max={300} step={1} placeholder="−10" />
-                  <NumField label="Minimum" value={s.plan?.iv?.minimumMlKgDay} onChange={setPlanNumber("iv", "minimumMlKgDay")} min={0} max={300} step={1} placeholder="40" />
-                </div>
-                <div className="mt-2 rounded-lg bg-violet-400/10 p-2 text-[11px] text-violet-100"><b>{todayLabel}:</b> {showFluid(snapshot.ivMlKgDay)} ml/kg/day · {showFluid(snapshot.ivMlDay)} ml/day</div>
-              </div>
-            </div>
-            <div className="mt-2 rounded-xl border border-emerald-400/25 bg-emerald-400/5 p-2">
-              <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-emerald-100">Today&apos;s 24-hour plan</b><span className="text-[9px] text-emerald-200/70">Enteral + IV/TPN</span></div>
-              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                <div><span className="block text-slate-500">Enteral</span><b className="text-cyan-100">{showFluid(snapshot.enteralMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.enteralMlDay)} ml/day</small></div>
-                <div><span className="block text-slate-500">IV / TPN</span><b className="text-violet-100">{showFluid(snapshot.ivMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.ivMlDay)} ml/day</small></div>
-                <div><span className="block text-slate-500">Total</span><b className="text-emerald-100">{showFluid(snapshot.totalMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.totalMlDay)} ml/day</small></div>
-              </div>
-              <p className="mt-2 text-[10px] text-slate-400">{snapshot.feedMl !== undefined ? `${showFluid(snapshot.feedMl)} ml/feed at ${s.feedFreq}.` : snapshot.feedMlPerHour !== undefined ? `${showFluid(snapshot.feedMlPerHour)} ml/hour continuously.` : "Select a fixed hourly frequency to calculate volume per feed."}</p>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary" onClick={advanceDay}>Advance 24 h</button>
-              <button type="button" className={`btn-secondary ${s.plan?.holdToday ? "border-amber-300/50 text-amber-200" : ""}`} onClick={holdToday}>{s.plan?.holdToday ? "Release hold" : "Hold today"}</button>
-              <button type="button" className="btn-secondary" onClick={resetDay}>Reset to day 1</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-              <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-              <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-              <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-              <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
-              <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-              <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-              <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
-              <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
-            </div>
-            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">Total ≈ {showFluid((s.totalMlKgDay ?? 0) * weightKg)} ml/day · Auto energy {nutrition.totalKcal} kcal/kg/day</div>
-          </>
-        )}
-        <div className="lbl mt-4 mb-1">Feed type</div>
-        <DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" />
-        <div className="lbl mt-4 mb-1">Route</div>
-        <DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" />
-        <div className="lbl mt-4 mb-1">Frequency</div>
-        <DialWithOther
-          options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]}
-          value={s.feedFreq}
-          onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))}
-          otherPlaceholder="Other frequency…"
-        />
-        <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35">
+          <button type="button" className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left" aria-expanded={configOpen} onClick={() => setConfigOpen((open) => !open)}><span><span className="block text-xs font-black text-slate-100">Prescription details</span><span className="text-[10px] text-slate-500">Feed type · route · frequency</span></span><ChevronDown className={`h-4 w-4 text-cyan-300 transition-transform ${configOpen ? "rotate-180" : ""}`} /></button>
+          {configOpen && <div className="space-y-2 border-t border-white/10 p-2"><div><div className="lbl mb-1">FEED TYPE</div><CompactPicker label="Feed type" options={FEED_TYPE} value={s.feedType} onChange={(value) => setS((p) => ({ ...p, feedType: value }))} otherPlaceholder="Other feed type…" /></div><div><div className="lbl mb-1">ROUTE</div><CompactPicker label="Route" options={FEED_ROUTE} value={s.feedRoute} onChange={(value) => setS((p) => ({ ...p, feedRoute: value }))} otherPlaceholder="Other route…" /></div><div><div className="lbl mb-1">FREQUENCY</div><CompactPicker label="Frequency" options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(value) => setS((p) => ({ ...p, feedFreq: value }))} otherPlaceholder="Other frequency…" /></div></div>}
+        </div>
       </Section>
     </div>
   );
 }
+
 export function GrowthTab({
   d,
   patch,
