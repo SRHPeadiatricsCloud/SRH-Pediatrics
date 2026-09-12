@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
+import { babies, events, handovers, keymasters, problems, tasks, vitals } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { editorOfChecked, unsigned } from "@/lib/guard";
 
@@ -37,10 +37,32 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  if (!(await editorOfChecked(req))) return unsigned();
+  const editor = await editorOfChecked(req);
+  if (!editor) return unsigned();
   const id = Number((await ctx.params).id);
   const body = await req.json();
   const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (body.clinical?.fluids) {
+    const keyRows = await db.select().from(keymasters);
+    const actor = keyRows.find((row) => row.name.toLowerCase() === editor.toLowerCase());
+    const role = actor?.role ?? req.headers.get("x-role") ?? "";
+    const kind = String(body.logEvent?.kind ?? "fluid-edit");
+    const canModifyFluids = /admin|consultant|registrar|postgraduate/i.test(role);
+    const canLogFeed = canModifyFluids || /nurse/i.test(role);
+    if (!canModifyFluids && !(canLogFeed && kind === "feed-given")) {
+      return NextResponse.json({ error: "Only a credentialed clinician may alter fluids/TPN; nurses may log feeds." }, { status: 403 });
+    }
+    if (!canModifyFluids) {
+      const [currentBaby] = await db.select().from(babies).where(eq(babies.id, id));
+      const existing = { ...(((currentBaby?.clinical as { fluids?: Record<string, unknown> } | null)?.fluids) ?? {}) };
+      const incoming = { ...(body.clinical.fluids as Record<string, unknown>) };
+      delete existing.feedsGiven;
+      delete incoming.feedsGiven;
+      if (JSON.stringify(existing) !== JSON.stringify(incoming)) {
+        return NextResponse.json({ error: "Nurses may log feeds only; fluid targets and composition require a credentialed clinician." }, { status: 403 });
+      }
+    }
+  }
   const scalar = [
     "uhid",
     "babyName",
@@ -72,6 +94,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (body.dob) patch.dob = new Date(body.dob);
   if (body.clinical) {
     const [cur] = await db.select().from(babies).where(eq(babies.id, id));
+    if (body.expectedUpdatedAt && body.clinical.fluids && cur?.updatedAt && new Date(body.expectedUpdatedAt).getTime() !== new Date(cur.updatedAt).getTime()) {
+      return NextResponse.json({ conflict: true, error: "This plan changed on the server. Reload before saving." }, { status: 409 });
+    }
     patch.clinical = { ...((cur?.clinical as object) ?? {}), ...body.clinical };
   }
   const [row] = await db.update(babies).set(patch).where(eq(babies.id, id)).returning();

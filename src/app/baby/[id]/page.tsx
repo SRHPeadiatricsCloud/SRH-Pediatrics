@@ -177,8 +177,9 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
   const b = data.baby;
   const meta = ACUITY_META[b.acuity] ?? ACUITY_META.stable;
   const patch = async (body: Record<string, unknown>) => {
-    await api(`/api/babies/${id}`, "PATCH", body);
+    const result = await api(`/api/babies/${id}`, "PATCH", body);
     reload();
+    return result;
   };
 
   return (
@@ -356,7 +357,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         {tab === "Overview" && <Overview d={data} patch={patch} user={name} />}
         {tab === "Vitals" && <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />}
         {tab === "Respiratory" && <RespTab d={data} patch={patch} user={name} />}
-        {tab === "Fluids & feeds" && <FluidsTab d={data} patch={patch} />}
+        {tab === "Fluids & feeds" && <FluidsTab d={data} patch={patch} user={name} role={role} />}
         {tab === "Growth & weight" && (
           <GrowthTab d={data} patch={patch} user={name} reload={reload} />
         )}

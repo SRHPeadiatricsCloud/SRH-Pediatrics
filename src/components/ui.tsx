@@ -246,6 +246,7 @@ export function Stepper({
   max = 300,
   step = 1,
   unit = "",
+  disabled = false,
 }: {
   label: string;
   value: number | undefined;
@@ -255,6 +256,7 @@ export function Stepper({
   step?: number;
   unit?: string;
   decimals?: number;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const v = value ?? min;
@@ -287,14 +289,16 @@ export function Stepper({
         <button
           type="button"
           {...decrement}
-          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
         <div className="flex min-w-0 flex-1 items-center rounded-lg bg-white/[0.03] px-1.5">
           <input
             inputMode="decimal"
-            className="w-full min-w-0 bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+            disabled={disabled}
+            className="w-full min-w-0 bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             value={editing ? draft : shown}
             placeholder="—"
             onFocus={() => setDraft(shown)}
@@ -327,7 +331,8 @@ export function Stepper({
         <button
           type="button"
           {...increment}
-          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           +
         </button>
@@ -339,7 +344,8 @@ export function Stepper({
         step={step}
         value={v}
         onChange={(e) => set(Number(e.target.value))}
-        className="mt-1 h-1 w-full accent-cyan-400"
+        disabled={disabled}
+        className="mt-1 h-1 w-full accent-cyan-400 disabled:opacity-40"
       />
     </div>
   );
@@ -355,6 +361,7 @@ export function NumField({
   step = 10,
   unit = "",
   placeholder = "—",
+  disabled = false,
 }: {
   label: string;
   value: number | undefined | null;
@@ -365,6 +372,7 @@ export function NumField({
   unit?: string;
   decimals?: number;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = value === undefined || value === null || Number.isNaN(value) ? "" : String(value);
@@ -395,13 +403,15 @@ export function NumField({
         <button
           type="button"
           {...decrement}
-          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
         <input
           inputMode="decimal"
-          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+          disabled={disabled}
+          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
           value={editing ? draft : shown}
           placeholder={placeholder}
           onFocus={() => setDraft(shown)}
@@ -1065,6 +1075,7 @@ export async function api(url: string, method: string, body?: unknown) {
           ? {
               "x-editor": session?.name ?? getUserName(),
               ...(session?.code ? { "x-code": session.code } : {}),
+              ...(session?.role ? { "x-role": session.role } : {}),
             }
           : {}),
       },

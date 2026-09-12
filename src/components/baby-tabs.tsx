@@ -5,7 +5,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Circle, Clock,
 import { WeightInput } from "@/components/weight-input";
 import { Chip, ChipGroup, DialWithOther, NumField, Section, Stepper, api, useTempUnit } from "@/components/ui";
 import { GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
-import { interpretVitals, neonatalDayFluidRange, type Flag, type VitalsInput } from "@/lib/interpret";
+import { girFromDextrose, interpretVitals, neonatalDayFluidRange, type Flag, type VitalsInput } from "@/lib/interpret";
 import { PainScoreCalculator } from "@/components/pain-scores";
 import { EditableListField } from "@/components/editable-list";
 import {
@@ -47,6 +47,23 @@ function shiftTag(at: string): "Day" | "Night" {
 }
 
 type FluidValues = NonNullable<Clinical["fluids"]>;
+type FluidExtras = {
+  dosingWeightKg?: number;
+  dosingWeightAt?: string;
+  dosingWeightConfirmedAt?: string;
+  fluidDriver?: "total" | "enteral" | "iv";
+  practicalIncrementMl?: number;
+  dextrosePct?: number;
+  ivHeld?: boolean;
+  feedsHeld?: boolean;
+  electrolyteUnit?: "mEq/kg/day" | "mmol/kg/day";
+  electrolytes?: { na?: number; k?: number; ca?: number; po4?: number };
+  fortifiers?: { id: string; name: string; kcalPerUnit: number; referenceVolumeMl: number; phase: number }[];
+  feedsGiven?: { at: string; volumeMl: number; intervalHours?: number }[];
+  frequencyChangedAt?: string;
+  previousFeedFreq?: string;
+};
+type FluidState = FluidValues & FluidExtras;
 type ClinicalDrug = NonNullable<Clinical["drugs"]>[number];
 
 function localDateIso() {
@@ -227,6 +244,8 @@ function MetricCard({
   onTrend,
   formula,
   onFormula,
+  secondary,
+  stateText,
 }: {
   label: string;
   value: number;
@@ -237,6 +256,8 @@ function MetricCard({
   onTrend: (key: TrendKey) => void;
   formula: string;
   onFormula: (title: string, formula: string) => void;
+  secondary?: string;
+  stateText?: string;
 }) {
   const ring = METRIC_RING[status];
   return (
@@ -247,10 +268,11 @@ function MetricCard({
       </div>
       <div className="flex items-end justify-between gap-1">
         <div className="min-w-0">
-          <FormulaValue onOpen={() => onFormula(label, formula)} className="block text-2xl font-black tabular-nums leading-none text-white sm:text-3xl">
-            {value > 0 ? showFluid(value) : "—"}
+          <FormulaValue onOpen={() => onFormula(label, formula)} className={`block font-black leading-none text-white ${stateText ? "text-[11px] leading-tight" : "text-2xl tabular-nums sm:text-3xl"}`}>
+            {stateText || (value > 0 ? showFluid(value) : "—")}
           </FormulaValue>
           <span className="mt-1 block text-[10px] text-slate-500">{unit}</span>
+          {secondary && <span className="mt-1 block text-[10px] font-semibold text-slate-400">{secondary}</span>}
         </div>
         <Sparkline points={trend} color={status === "warn" ? "#fbbf24" : status === "crit" ? "#fb7185" : "#34d399"} label={label} onClick={() => onTrend(trendKey)} />
       </div>
@@ -640,27 +662,137 @@ export function RespTab({
   );
 }
 
-export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
+export function FluidsTab({ d, patch, user = "", role = "" }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<unknown>; user?: string; role?: string }) {
   const f = d.baby.clinical?.fluids ?? {};
-  const [s, setS] = useState<FluidValues>({ ...f });
+  const initialFluid = f as FluidState;
+  const serverFluidSignature = JSON.stringify(d.baby.clinical?.fluids ?? {});
+  const latestGrowthWeight = [...(d.baby.clinical?.growth ?? [])].at(-1)?.weight;
+  const defaultDosingWeight = initialFluid.dosingWeightKg ?? (latestGrowthWeight ?? d.baby.currentWeight) / 1000;
+  const [s, setS] = useState<FluidState>({ ...initialFluid });
+  const [dosingWeightKg, setDosingWeightKg] = useState(defaultDosingWeight);
+  const [weightDraft, setWeightDraft] = useState(String(defaultDosingWeight));
+  const [weightError, setWeightError] = useState("");
+  const [weightAction, setWeightAction] = useState<"start" | "advance" | null>(initialFluid.dosingWeightKg ? null : "start");
+  const [advanceApplying, setAdvanceApplying] = useState(false);
+  const [advanceUnit, setAdvanceUnit] = useState<"per-day" | "per-feed" | null>(null);
+  const [advanceSection, setAdvanceSection] = useState<"enteral" | "iv">("enteral");
+  const [advanceDraft, setAdvanceDraft] = useState("");
+  const [dextroseDraft, setDextroseDraft] = useState(initialFluid.dextrosePct == null ? "" : String(initialFluid.dextrosePct));
+  const [dextroseError, setDextroseError] = useState("");
+  const [conflict, setConflict] = useState("");
+  const [fluidDriver, setFluidDriver] = useState<"total" | "enteral" | "iv">(initialFluid.fluidDriver ?? "total");
+  const [reconciliationNotice, setReconciliationNotice] = useState("");
   const [configOpen, setConfigOpen] = useState(false);
   const [trendMetric, setTrendMetric] = useState<TrendKey | null>(null);
   const [formula, setFormula] = useState<{ title: string; text: string } | null>(null);
-  const weightKg = Math.max(0, d.baby.currentWeight / 1000);
+  const canModify = /admin|consultant|registrar|postgraduate/i.test(role);
+  const canLogFeed = canModify || /nurse/i.test(role);
+  const expectedUpdatedAtRef = useRef(d.baby.updatedAt);
+  const patchFluid = async (body: Record<string, unknown>) => {
+    const result = await patch({ ...body, expectedUpdatedAt: expectedUpdatedAtRef.current });
+    const typed = result as { conflict?: boolean; error?: string; baby?: { updatedAt?: string } } | undefined;
+    if (typed?.conflict || typed?.error) {
+      setConflict(typed?.conflict ? "Another clinician saved a newer fluid plan. Reload it before making or applying further changes." : typed?.error || "This fluid change was not saved. Reload before retrying.");
+      return false;
+    }
+    if (typed?.baby?.updatedAt) expectedUpdatedAtRef.current = typed.baby.updatedAt;
+    if ((body.clinical as { fluids?: unknown } | undefined)?.fluids) lastServerFluidRef.current = JSON.stringify((body.clinical as { fluids: unknown }).fluids);
+    return true;
+  };
+  const dosingWeightValid = Number.isFinite(dosingWeightKg) && dosingWeightKg >= 0.3 && dosingWeightKg <= 6;
+  const dosingWeightConfirmed = dosingWeightValid && weightAction !== "start";
+  const activeWeightKg = dosingWeightConfirmed ? dosingWeightKg : 0;
   const dailyMode = s.plan?.mode === "daily";
-  const snapshot = calculateFluidPlan(s, weightKg);
-  const nutritionFluids: FluidValues = {
+  const latestWeightEntry = [...(d.baby.clinical?.growth ?? [])].at(-1);
+  const weightRecordLabel = initialFluid.dosingWeightAt ?? latestWeightEntry?.at ?? d.baby.updatedAt;
+  const advanceDayNow = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: (p.plan?.day ?? 1) + 1, holdToday: false } }));
+  const confirmDosingWeight = () => {
+    const next = Number(weightDraft);
+    if (!Number.isFinite(next) || next < 0.3 || next > 6) {
+      setWeightError("Check this weight — outside expected range for a NICU patient (0.3–6 kg).");
+      return;
+    }
+    if (!canModify) return;
+    setWeightError("");
+    setDosingWeightKg(next);
+    setS((p) => ({ ...p, dosingWeightKg: next, dosingWeightAt: new Date().toISOString(), dosingWeightConfirmedAt: new Date().toISOString() }));
+    if (weightAction === "advance") {
+      advanceDayNow();
+    }
+    setWeightAction(null);
+  };
+  const currentTotal = Number(s.totalMlKgDay ?? 0);
+  const currentEnteral = Number(s.enteralMlKgDay ?? 0);
+  const currentIv = Number(s.ivMlKgDay ?? 0);
+  const mismatch = !dailyMode && Math.abs(currentEnteral + currentIv - currentTotal) > 0.01;
+  const commitFixedFluids = (total: number, enteral: number, iv: number, driver: "total" | "enteral" | "iv") => {
+    setS((p) => ({ ...p, totalMlKgDay: total, enteralMlKgDay: enteral, ivMlKgDay: iv, fluidDriver: driver }));
+    setFluidDriver(driver);
+    setReconciliationNotice("");
+  };
+  const updateFixedFluid = (field: "total" | "enteral" | "iv", next: number) => {
+    if (!canModify || !Number.isFinite(next) || next < 0) return;
+    const total = currentTotal || currentEnteral + currentIv;
+    if (field === "total") {
+      const previousSum = currentEnteral + currentIv;
+      const ratio = previousSum > 0 ? next / previousSum : 0;
+      commitFixedFluids(next, previousSum > 0 ? currentEnteral * ratio : 0, previousSum > 0 ? currentIv * ratio : next, "total");
+    } else if (field === "enteral") {
+      if (next > total) {
+        setReconciliationNotice(`Enteral ${showFluid(next)} cannot exceed Total ${showFluid(total)} ml/kg/day.`);
+        return;
+      }
+      commitFixedFluids(total, next, total - next, "enteral");
+    } else {
+      if (next > total) {
+        setReconciliationNotice(`IV/TPN ${showFluid(next)} cannot exceed Total ${showFluid(total)} ml/kg/day.`);
+        return;
+      }
+      commitFixedFluids(total, total - next, next, "iv");
+    }
+  };
+  const autoFixReconciliation = () => {
+    const sum = currentEnteral + currentIv;
+    if (currentTotal <= 0 || sum <= 0) {
+      commitFixedFluids(Math.max(currentTotal, sum), currentEnteral, Math.max(0, currentTotal - currentEnteral), "total");
+      return;
+    }
+    const ratio = currentTotal / sum;
+    commitFixedFluids(currentTotal, currentEnteral * ratio, currentIv * ratio, "total");
+  };
+  const rawSnapshot = calculateFluidPlan(s, activeWeightKg);
+  const snapshot = activeWeightKg > 0 ? rawSnapshot : { ...rawSnapshot, enteralMlDay: undefined, ivMlDay: undefined, totalMlDay: undefined, feedMl: undefined, feedMlPerHour: undefined };
+  const dextrosePct = s.dextrosePct;
+  const dextroseValid = dextrosePct != null && Number.isFinite(dextrosePct) && dextrosePct >= 5 && dextrosePct <= 30;
+  const ivHeld = Boolean(s.ivHeld);
+  const feedsHeld = Boolean(s.feedsHeld);
+  const derivedGir = dextroseValid && !ivHeld && (snapshot.ivMlKgDay ?? 0) > 0 ? girFromDextrose(dextrosePct, snapshot.ivMlKgDay ?? 0) : 0;
+  const nutritionFluids: FluidState = {
     ...s,
-    enteralMlKgDay: snapshot.enteralMlKgDay,
+    enteralMlKgDay: feedsHeld ? 0 : snapshot.enteralMlKgDay,
     ivMlKgDay: snapshot.ivMlKgDay,
     totalMlKgDay: snapshot.totalMlKgDay,
+    gir: derivedGir,
   };
   const nutrition = calcNutrition({ fluids: nutritionFluids });
+  const fortifiers = s.fortifiers ?? [];
+  const feedIsContinuous = snapshot.feedMlPerHour !== undefined;
+  const idealFeedVolume = snapshot.feedMl ?? (feedIsContinuous ? snapshot.feedMlPerHour : s.feedVol) ?? 0;
+  const practicalIncrement = s.practicalIncrementMl ?? (activeWeightKg > 0 && activeWeightKg < 1.5 ? 0.1 : 1);
+  const practicalFeedVolume = idealFeedVolume > 0 && practicalIncrement > 0 ? Number((Math.round(idealFeedVolume / practicalIncrement) * practicalIncrement).toPrecision(12)) : 0;
+  const fortifierWarnings = fortifiers.filter((fortifier) => fortifier.referenceVolumeMl > 0 && idealFeedVolume > 0 && Math.abs(fortifier.referenceVolumeMl - idealFeedVolume) > 0.01).map((fortifier) => `${fortifier.name} dose was set for ${showFluid(fortifier.referenceVolumeMl)} ml feeds — current feed is ${showFluid(idealFeedVolume)} ml. Confirm fortifier amount is still correct.`);
+  const fortifierValidationWarnings = fortifiers.filter((fortifier) => !fortifier.name.trim() || !Number.isFinite(fortifier.kcalPerUnit) || fortifier.kcalPerUnit < 0 || !Number.isFinite(fortifier.referenceVolumeMl) || fortifier.referenceVolumeMl <= 0 || !Number.isFinite(fortifier.phase) || fortifier.phase <= 0).map((fortifier) => `${fortifier.name || "Unnamed fortifier"}: enter a valid non-negative kcal value, reference volume above 0 ml, and phase above 0.`);
+  const hasFortifierValidationError = fortifierValidationWarnings.length > 0;
+  const fortifierSummary = fortifiers.length ? `${showFluid(idealFeedVolume)} ml ${s.feedType || "milk"} + ${fortifiers.map((fortifier) => `${fortifier.name} ${fortifier.phase === 1 ? "Full" : fortifier.phase === 0.75 ? "3/4" : fortifier.phase === 0.5 ? "1/2" : fortifier.phase === 0.25 ? "1/4" : showFluid(fortifier.phase)}`).join(" + ")}` : `${showFluid(idealFeedVolume)} ml ${s.feedType || "milk"}`;
   const totalFluid = snapshot.totalMlKgDay ?? s.totalMlKgDay ?? 0;
   const fluidRange = neonatalDayFluidRange(d.baby);
   const fluidStatus = rangeStatus(totalFluid, fluidRange[0], fluidRange[1]);
   const kcalStatus = rangeStatus(nutrition.totalKcal, nutrition.kcalTarget[0], nutrition.kcalTarget[1]);
-  const girStatus = rangeStatus(nutrition.gir, 4, 12);
+  const ivNotStarted = (snapshot.ivMlKgDay ?? 0) <= 0;
+  const feedsNotStarted = (snapshot.enteralMlKgDay ?? 0) <= 0;
+  const girStatus = dextroseValid && !ivHeld && !ivNotStarted ? rangeStatus(nutrition.gir, 4, 12) : "neutral";
+  const girStateText = ivHeld ? "IV/TPN held — GIR suspended" : ivNotStarted ? "IV/TPN not yet started" : !dextroseValid ? "Add dextrose % to calculate GIR" : undefined;
+  const energyStateText = ivHeld && feedsHeld ? "IV/TPN held · feeds on hold" : ivHeld ? "IV/TPN held — GIR suspended" : feedsHeld ? "Feeds on hold — enteral calories paused" : feedsNotStarted && ivNotStarted ? "Feeds and IV/TPN not yet started" : !dextroseValid && !ivNotStarted ? "Add dextrose % for complete energy" : undefined;
   const growthEntries = d.baby.clinical?.growth ?? [];
   const trends: Record<TrendKey, { label: string; unit: string; points: TrendPoint[] }> = {
     fluids: { label: "Total fluids", unit: "ml/kg/day", points: trendFor(growthEntries, "fluids", totalFluid) },
@@ -669,17 +801,52 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     // value honestly until a prior GIR snapshot exists rather than inventing data.
     gir: { label: "GIR", unit: "mg/kg/min", points: [{ label: "Today", value: nutrition.gir }] },
   };
+  const feedsGivenToday = (s.feedsGiven ?? []).filter((feed) => feed.at.slice(0, 10) === localDateIso());
   const warnings: string[] = [];
   if (totalFluid <= 0) warnings.push("Total fluids has no entered target yet.");
   else if (fluidStatus !== "safe") warnings.push(`Total fluids ${showFluid(totalFluid)} ml/kg/day is ${totalFluid < fluidRange[0] ? "below" : "above"} the ${fluidRange[0]}–${fluidRange[1]} target.`);
-  if (nutrition.totalKcal <= 0) warnings.push("Energy is not yet calculated from feed and TPN inputs.");
+  if (energyStateText) warnings.push(energyStateText);
+  else if (nutrition.totalKcal <= 0) warnings.push("Energy is not yet calculated from feed and TPN inputs.");
   else if (kcalStatus !== "safe") warnings.push(`Energy ${showFluid(nutrition.totalKcal)} kcal/kg/day is ${nutrition.totalKcal < nutrition.kcalTarget[0] ? "below" : "above"} the ${nutrition.kcalTarget[0]}–${nutrition.kcalTarget[1]} target.`);
-  if (nutrition.gir <= 0) warnings.push("GIR has no entered target yet.");
+  if (girStateText) warnings.push(girStateText);
+  else if (nutrition.gir <= 0) warnings.push("GIR has no entered target yet.");
   else if (girStatus !== "safe") warnings.push(`GIR ${showFluid(nutrition.gir)} mg/kg/min is outside the 4–12 target range.`);
   if (nutrition.totalProtein > 0 && nutrition.totalProtein < nutrition.proteinTarget[0]) warnings.push(`Protein ${showFluid(nutrition.totalProtein)} g/kg/day is below the ${nutrition.proteinTarget[0]}–${nutrition.proteinTarget[1]} target.`);
+  warnings.push(...fortifierWarnings, ...fortifierValidationWarnings);
+  if (s.frequencyChangedAt && feedsGivenToday.length > 0) warnings.push(`New interval applies from ${s.frequencyChangedAt.slice(11, 16)} onward; ${feedsGivenToday.length} feed${feedsGivenToday.length === 1 ? "" : "s"} already given today at the previous interval.`);
   const statusIsCritical = [fluidStatus, kcalStatus, girStatus].includes("crit");
-  const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
-  const setPlanNumber = (section: "enteral" | "iv", key: keyof DailyFluidPlan) => (n: number) =>
+  const setFrequency = (value: string) => {
+    if (!canModify) return;
+    if (s.feedFreq && s.feedFreq !== value && feedsGivenToday.length > 0) {
+      setS((p) => ({ ...p, feedFreq: value, previousFeedFreq: p.feedFreq, frequencyChangedAt: new Date().toISOString() }));
+    } else {
+      setS((p) => ({ ...p, feedFreq: value }));
+    }
+  };
+  const recordFeedGiven = async () => {
+    if (!canLogFeed || idealFeedVolume <= 0) return;
+    const feed = { at: new Date().toISOString(), volumeMl: idealFeedVolume, intervalHours: snapshot.feedsPerDay ? 24 / snapshot.feedsPerDay : undefined };
+    const fluids: FluidState = { ...s, feedsGiven: [...(s.feedsGiven ?? []), feed] };
+    setS(fluids);
+    const saved = await patchFluid({ clinical: { fluids }, logEvent: { kind: "feed-given", text: `Feed given: ideal ${showFluid(idealFeedVolume)} ml (${s.feedFreq || "interval not set"})`, author: user || "Team" } });
+    if (saved) lastSavedRef.current = JSON.stringify(fluids);
+  };
+  const commitDextrose = () => {
+    const next = Number(dextroseDraft);
+    if (!Number.isFinite(next) || next < 5 || next > 30) {
+      setDextroseError("Enter dextrose 5–30% to calculate GIR.");
+      return;
+    }
+    if (!canModify) return;
+    setDextroseError("");
+    const nextGir = ivHeld ? 0 : girFromDextrose(next, snapshot.ivMlKgDay ?? 0);
+    setS((p) => ({ ...p, dextrosePct: next, gir: nextGir }));
+  };
+  const set = (k: string) => (n: number) => {
+    if (canModify) setS((p) => ({ ...p, [k]: n }));
+  };
+  const setPlanNumber = (section: "enteral" | "iv", key: keyof DailyFluidPlan) => (n: number) => {
+    if (!canModify || !Number.isFinite(n) || n < 0 && key !== "changePer24h") return;
     setS((p) => ({
       ...p,
       plan: {
@@ -688,7 +855,10 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         [section]: { ...(p.plan?.[section] ?? {}), [key]: n },
       },
     }));
+  };
   const enableDaily = () => {
+    if (!canModify) return;
+    if (!dosingWeightConfirmed) return;
     setS((p) => ({
       ...p,
       plan: {
@@ -703,23 +873,101 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     }));
   };
   const setMode = (mode: FluidPlanMode) => {
+    if (!canModify) return;
     if (mode === "daily") enableDaily();
     else setS((p) => ({ ...p, plan: { ...p.plan, mode: "fixed" } }));
   };
-  const advanceDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: (p.plan?.day ?? 1) + 1, holdToday: false } }));
-  const holdToday = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", holdToday: !p.plan?.holdToday } }));
-  const resetDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: 1, holdToday: false } }));
-  const save = useCallback(() => {
-    const resolved = calculateFluidPlan(s, weightKg);
-    const fluids: FluidValues = dailyMode
+  const advanceDay = () => {
+    if (!canModify || !dosingWeightConfirmed || mismatch || conflict) return;
+    setWeightAction("advance");
+  };
+  const holdToday = () => { if (canModify) setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", holdToday: !p.plan?.holdToday } })); };
+  const resetDay = () => { if (canModify) setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: 1, holdToday: false } })); };
+  const updateFortifier = (id: string, update: Partial<NonNullable<FluidExtras["fortifiers"]>[number]>) => {
+    if (!canModify) return;
+    setS((p) => ({ ...p, fortifiers: (p.fortifiers ?? []).map((fortifier) => fortifier.id === id ? { ...fortifier, ...update } : fortifier) }));
+  };
+  const addFortifier = () => {
+    if (!canModify) return;
+    setS((p) => ({ ...p, fortifiers: [...(p.fortifiers ?? []), { id: `${Date.now()}`, name: "New fortifier", kcalPerUnit: 0, referenceVolumeMl: idealFeedVolume || 25, phase: 1 }] }));
+  };
+  const removeFortifier = (id: string) => { if (canModify) setS((p) => ({ ...p, fortifiers: (p.fortifiers ?? []).filter((fortifier) => fortifier.id !== id) })); };
+  const advanceCurrent = advanceSection === "enteral" ? (snapshot.enteralMlKgDay ?? 0) : (snapshot.ivMlKgDay ?? 0);
+  const advancePlan = s.plan?.[advanceSection];
+  const advanceMax = advancePlan?.maximumMlKgDay ?? 300;
+  const advanceIncrement = Number(advanceDraft);
+  const advanceDelta = advanceUnit === "per-feed" ? advanceIncrement * (snapshot.feedsPerDay ?? 1) : advanceIncrement;
+  const advanceNext = advanceCurrent + (Number.isFinite(advanceDelta) ? advanceDelta : 0);
+  const advanceReason = !canModify ? "Only a credentialed resident, registrar, consultant, or admin can apply advances." : !dosingWeightConfirmed ? "Confirm a dosing weight first." : mismatch ? "Reconcile Enteral + IV/TPN with Total first." : hasFortifierValidationError ? "Fix composition validation first." : !advanceUnit ? "Choose per-day or per-feed." : !Number.isFinite(advanceIncrement) || advanceIncrement <= 0 ? "Enter a positive advance." : advanceNext > advanceMax ? `Maximum ${showFluid(advanceMax)} ml/kg/day would be exceeded.` : "";
+  const canApplyAdvance = !advanceReason && !advanceApplying;
+  const applyAdvance = async () => {
+    if (!canApplyAdvance) return;
+    setAdvanceApplying(true);
+    const nextDay = (s.plan?.day ?? 1) + 1;
+    const nextPlan = { ...(s.plan ?? {}), mode: "daily" as const, day: nextDay, [advanceSection]: { ...(s.plan?.[advanceSection] ?? {}), startMlKgDay: advanceNext - advanceDelta * (nextDay - 1), changePer24h: advanceDelta } };
+    const fluids: FluidState = { ...s, plan: nextPlan };
+    try {
+      const saved = await patchFluid({ clinical: { fluids }, logEvent: { kind: "fluid-advance", text: `Applied ${advanceSection} advance: ${showFluid(advanceCurrent)} → ${showFluid(advanceNext)} ml/kg/day; ${advanceUnit} ${showFluid(advanceIncrement)}; dosing weight ${showFluid(activeWeightKg)} kg`, author: user || "Team" } });
+      if (!saved) return;
+      setS(fluids);
+      lastSavedRef.current = JSON.stringify(fluids);
+      setAdvanceDraft("");
+      setAdvanceUnit(null);
+    } finally {
+      setAdvanceApplying(false);
+    }
+  };
+  const lastSavedRef = useRef("");
+  const lastServerFluidRef = useRef(serverFluidSignature);
+  useEffect(() => {
+    if (serverFluidSignature === lastServerFluidRef.current) return;
+    const localSignature = JSON.stringify(s);
+    if (localSignature !== lastServerFluidRef.current) {
+      setConflict("Another clinician updated this fluid plan while you had unsaved edits. Your local changes are paused and were not overwritten.");
+    } else {
+      setS({ ...(d.baby.clinical?.fluids ?? {}) } as FluidState);
+    }
+    lastServerFluidRef.current = serverFluidSignature;
+  }, [d.baby.clinical?.fluids, s, serverFluidSignature]);
+  const reloadServerPlan = () => {
+    const latest = { ...(d.baby.clinical?.fluids ?? {}) } as FluidState;
+    setS(latest);
+    if (latest.dosingWeightKg != null) {
+      setDosingWeightKg(latest.dosingWeightKg);
+      setWeightDraft(String(latest.dosingWeightKg));
+      setWeightAction(null);
+    }
+    setConflict("");
+    expectedUpdatedAtRef.current = d.baby.updatedAt;
+    // Mutable refs intentionally track the server snapshot across realtime polls.
+    // eslint-disable-next-line react-hooks/immutability
+    lastServerFluidRef.current = JSON.stringify(latest);
+  };
+  const save = () => {
+    if (!canModify || !dosingWeightConfirmed || mismatch || conflict || hasFortifierValidationError) return;
+    const resolved = calculateFluidPlan(s, activeWeightKg);
+    const fluids: FluidState = dailyMode
       ? { ...s, enteralMlKgDay: resolved.enteralMlKgDay, ivMlKgDay: resolved.ivMlKgDay, totalMlKgDay: resolved.totalMlKgDay }
       : s;
-    void patch({ clinical: { fluids } });
-  }, [dailyMode, patch, s, weightKg]);
+    const signature = JSON.stringify(fluids);
+    if (signature === lastSavedRef.current) return;
+    const previous = lastSavedRef.current || JSON.stringify(initialFluid);
+    lastSavedRef.current = signature;
+    // eslint-disable-next-line react-hooks/immutability
+    lastServerFluidRef.current = signature;
+    void patchFluid({
+      clinical: { fluids },
+      logEvent: {
+        kind: "fluid-edit",
+        text: `Fluids/TPN parameters changed by ${user || "staff"}: previous ${previous.slice(0, 180)} → new ${signature.slice(0, 180)}`,
+        author: user || "Team",
+      },
+    });
+  };
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
-  }, [save]);
+  });
   const firstFluidRender = useRef(true);
   useEffect(() => {
     if (firstFluidRender.current) {
@@ -734,9 +982,11 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const totalFluidFormula = dailyMode
     ? `Total fluids = enteral target + IV target = ${showFluid(snapshot.enteralMlKgDay)} + ${showFluid(snapshot.ivMlKgDay)} = ${showFluid(totalFluid)} ml/kg/day.`
     : `Total fluids = the entered totalMlKgDay value (${showFluid(s.totalMlKgDay)} ml/kg/day).`;
-  const kcalFormula = `Energy = enteral volume × ${nutrition.density} kcal/ml + GIR contribution + amino-acid contribution + lipid contribution = ${showFluid(nutrition.totalKcal)} kcal/kg/day.`;
-  const girFormula = `GIR is the entered prescription value (${showFluid(nutrition.gir)} mg/kg/min); the existing record stores GIR directly and does not infer it from a new dextrose-rate field.`;
+  const fortifierFormula = fortifiers.length ? ` Fortifiers: ${fortifiers.map((fortifier) => `${fortifier.name} = (${showFluid(fortifier.kcalPerUnit)} × ${showFluid(fortifier.phase)}) / ${showFluid(fortifier.referenceVolumeMl)} kcal/ml`).join("; ")}.` : "";
+  const kcalFormula = `Energy = enteral volume × (${nutrition.density} kcal/ml including base milk and fortifiers) + GIR contribution + amino-acid contribution + lipid contribution = ${showFluid(nutrition.totalKcal)} kcal/kg/day.${fortifierFormula}`;
+  const girFormula = `GIR = (dextrose % × 10 × IV ml/kg/day) / 1440 = (${showFluid(dextrosePct ?? 0)} × 10 × ${showFluid(snapshot.ivMlKgDay)} ) / 1440 = ${showFluid(nutrition.gir)} mg/kg/min.`;
   const selectedTrend = trendMetric ? trends[trendMetric] : null;
+  const fluidAuditEvents = d.events.filter((event) => ["fluid-edit", "fluid-advance", "feed-given"].includes(event.kind)).slice(0, 8);
   return (
     <div className="grid gap-3">
       <Section
@@ -744,20 +994,21 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         right={
           <div className="flex items-center gap-2">
             <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
-            <button className="btn-primary" onClick={save}>Save 24-hour plan</button>
+            <button className="btn-primary" disabled={!canModify || !dosingWeightConfirmed || mismatch || !!conflict || hasFortifierValidationError} onClick={save}>{mismatch ? "Reconcile before saving" : !dosingWeightConfirmed ? "Confirm dosing weight" : hasFortifierValidationError ? "Fix composition" : "Save 24-hour plan"}</button>
           </div>
         }
       >
         <div className="sticky top-2 z-20 -mx-1 rounded-2xl bg-slate-950/95 p-1 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80">
-          <div className="mb-2 flex w-full rounded-xl border border-cyan-400/30 bg-slate-900 p-1" role="tablist" aria-label="Fluid prescription mode">
+          {conflict && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-400/60 bg-rose-500/15 px-3 py-2 text-[11px] font-bold text-rose-100" role="alert"><span>{conflict}</span><button type="button" className="btn-secondary min-h-10 border-rose-300/50 text-rose-100" onClick={reloadServerPlan}>Reload newer plan</button></div>}
+        <div className="mb-2 flex w-full rounded-xl border border-cyan-400/30 bg-slate-900 p-1" role="tablist" aria-label="Fluid prescription mode">
             <button type="button" role="tab" aria-selected={!dailyMode} onClick={() => setMode("fixed")} className={`min-h-11 flex-1 rounded-lg px-3 text-xs font-black transition ${!dailyMode ? "bg-cyan-400 text-slate-950" : "text-slate-400 hover:text-slate-100"}`}>Fixed target</button>
             <button type="button" role="tab" aria-selected={dailyMode} onClick={() => setMode("daily")} className={`min-h-11 flex-1 rounded-lg px-3 text-xs font-black transition ${dailyMode ? "bg-cyan-400 text-slate-950" : "text-slate-400 hover:text-slate-100"}`}>Advance daily</button>
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            <MetricCard label="Total fluids" value={totalFluid} unit="ml/kg/day" status={fluidStatus} trend={trends.fluids.points} trendKey="fluids" onTrend={setTrendMetric} formula={totalFluidFormula} onFormula={(title, text) => setFormula({ title, text })} />
-            <MetricCard label="Energy" value={nutrition.totalKcal} unit="kcal/kg/day" status={kcalStatus} trend={trends.kcal.points} trendKey="kcal" onTrend={setTrendMetric} formula={kcalFormula} onFormula={(title, text) => setFormula({ title, text })} />
+            <MetricCard label="Total fluids" value={totalFluid} unit="ml/kg/day" secondary={activeWeightKg ? `= ${showFluid(totalFluid * activeWeightKg)} ml/day` : "Confirm dosing weight"} status={fluidStatus} trend={trends.fluids.points} trendKey="fluids" onTrend={setTrendMetric} formula={totalFluidFormula} onFormula={(title, text) => setFormula({ title, text: `${text} Absolute volume = ${showFluid(totalFluid)} × ${showFluid(activeWeightKg)} kg = ${showFluid(totalFluid * activeWeightKg)} ml/day.` })} />
+            <MetricCard label="Energy" value={nutrition.totalKcal} unit="kcal/kg/day" secondary={activeWeightKg ? `= ${showFluid(nutrition.totalKcal * activeWeightKg)} kcal/day` : "Confirm dosing weight"} stateText={energyStateText} status={kcalStatus} trend={trends.kcal.points} trendKey="kcal" onTrend={setTrendMetric} formula={kcalFormula} onFormula={(title, text) => setFormula({ title, text: `${text} Absolute energy = ${showFluid(nutrition.totalKcal)} × ${showFluid(activeWeightKg)} kg = ${showFluid(nutrition.totalKcal * activeWeightKg)} kcal/day.` })} />
             <div className="col-span-2 md:col-span-1">
-              <MetricCard label="GIR" value={nutrition.gir} unit="mg/kg/min" status={girStatus} trend={trends.gir.points} trendKey="gir" onTrend={setTrendMetric} formula={girFormula} onFormula={(title, text) => setFormula({ title, text })} />
+              <MetricCard label="GIR" value={nutrition.gir} unit="mg/kg/min" stateText={girStateText} status={girStatus} trend={trends.gir.points} trendKey="gir" onTrend={setTrendMetric} formula={girFormula} onFormula={(title, text) => setFormula({ title, text })} />
             </div>
           </div>
           <div className={`mt-2 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] font-semibold ${warnings.length ? statusIsCritical ? "border-rose-400/50 bg-rose-500/15 text-rose-100" : "border-amber-400/50 bg-amber-400/15 text-amber-100" : "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"}`} role="status">
@@ -782,55 +1033,90 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         )}
 
+        <div className={`mt-3 rounded-xl border p-3 ${weightAction ? "border-amber-400/50 bg-amber-400/10" : "border-white/10 bg-slate-900/35"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-black text-slate-100">Dosing weight</div>
+              <p className="mt-0.5 text-[10px] text-slate-400">Explicit weight used for every absolute ml/day and kcal/day calculation.</p>
+              <p className="text-[10px] text-slate-500">Latest recorded weight: {latestGrowthWeight != null ? `${showFluid(latestGrowthWeight / 1000)} kg` : `${showFluid(d.baby.currentWeight / 1000)} kg`} · dosing weight is never changed silently.</p>
+              {weightAction && <p className="mt-1 text-[11px] font-semibold text-amber-100">Using {showFluid(Number(weightDraft))} kg (recorded {weightRecordLabel ? weightRecordLabel.slice(0, 10) : "latest weight"}) — confirm or update.</p>}
+            </div>
+            <div className="flex items-end gap-2">
+              <label className="block"><span className="lbl mb-1 block">kg</span><input className="inp min-h-11 w-28 text-center text-sm font-black" type="number" inputMode="decimal" step="0.01" min="0.01" max="20" value={weightDraft} disabled={!canModify} onChange={(event) => setWeightDraft(event.target.value)} onBlur={() => { const next = Number(weightDraft); setWeightError(!Number.isFinite(next) || next < 0.3 || next > 6 ? "Check this weight — outside expected range for a NICU patient (0.3–6 kg)." : ""); }} /></label>
+              {weightAction && <button type="button" className="btn-primary min-h-11" disabled={!canModify} onClick={confirmDosingWeight}>Confirm weight</button>}
+            </div>
+          </div>
+          {weightError && <p className="mt-2 text-[11px] font-bold text-rose-200" role="alert">{weightError}</p>}
+          {!canModify && <p className="mt-2 text-[11px] font-semibold text-slate-400">View-only plan for {role || "this role"}. Credentialed resident, registrar, consultant, or admin action is required to change targets, TPN, composition, or dosing weight; nurses can log feeds.</p>}
+          {!dosingWeightValid && <p className="mt-2 text-[11px] font-bold text-rose-200">Calculations are paused until a dosing weight from 0.3–6 kg is confirmed.</p>}
+        </div>
+
         {dailyMode && (
           <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-2">
             <div className="mb-1 flex items-center justify-between gap-2"><b className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Plan metadata</b><span className="text-[9px] text-slate-500">compact context</span></div>
             <div className="grid grid-cols-3 gap-1.5">
-              <NumField label="Plan day" value={day} onChange={(n) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: Math.max(1, Math.round(n)) } }))} min={1} max={365} step={1} placeholder="1" />
-              <label className="block rounded-lg border border-white/10 bg-slate-900/40 p-2"><span className="lbl mb-1 block">Plan starts</span><input className="inp !min-h-10 !py-1 text-sm" type="date" value={s.plan?.startDate ?? localDateIso()} onChange={(event) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", startDate: event.target.value } }))} /></label>
-              <div className="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-center"><span className="lbl block">Dosing weight</span><b className="mt-1 block text-sm text-slate-100">{weightKg ? `${showFluid(weightKg)} kg` : "Missing"}</b><small className="text-[9px] text-slate-500">from baby card</small></div>
+              <NumField label="Plan day" value={day} onChange={(n) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: Math.max(1, Math.round(n)) } }))} min={1} max={365} step={1} disabled={!canModify} placeholder="1" />
+              <label className="block rounded-lg border border-white/10 bg-slate-900/40 p-2"><span className="lbl mb-1 block">Plan starts</span><input className="inp !min-h-10 !py-1 text-sm" type="date" disabled={!canModify} value={s.plan?.startDate ?? localDateIso()} onChange={(event) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", startDate: event.target.value } }))} /></label>
+              <div className="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-center"><span className="lbl block">Dosing weight</span><b className="mt-1 block text-sm text-slate-100">{activeWeightKg ? `${showFluid(activeWeightKg)} kg` : "Confirm"}</b><small className="text-[9px] text-slate-500">explicit plan weight</small></div>
             </div>
           </div>
         )}
+
+        {!dailyMode && (mismatch || reconciliationNotice) && <div className="mt-3 rounded-xl border border-rose-400/60 bg-rose-500/15 p-3 text-[11px] font-semibold text-rose-100" role="alert">{mismatch ? <div>Enteral + IV/TPN ({showFluid(currentEnteral + currentIv)}) doesn&apos;t match Total ({showFluid(currentTotal)}) — reconcile before this plan can be applied.</div> : <div className="text-amber-100">{reconciliationNotice}</div>}{mismatch && <button type="button" className="btn-secondary mt-2 min-h-10 border-rose-300/50 text-rose-100" disabled={!canModify} onClick={autoFixReconciliation}>Auto-fix by scaling</button>}</div>}
 
         {dailyMode ? (
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
               <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">Enteral feeds</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
               <div className="grid grid-cols-3 gap-1.5">
-                <NumField label="Start" value={s.plan?.enteral?.startMlKgDay} onChange={setPlanNumber("enteral", "startMlKgDay")} min={0} max={300} step={1} placeholder="20" />
-                <NumField label="Change /24h" value={s.plan?.enteral?.changePer24h} onChange={setPlanNumber("enteral", "changePer24h")} min={-300} max={300} step={1} placeholder="+20" />
-                <NumField label="Maximum" value={s.plan?.enteral?.maximumMlKgDay} onChange={setPlanNumber("enteral", "maximumMlKgDay")} min={0} max={300} step={1} placeholder="160" />
+                <NumField label="Start" value={s.plan?.enteral?.startMlKgDay} onChange={setPlanNumber("enteral", "startMlKgDay")} min={0} max={300} step={1} disabled={!canModify} placeholder="20" />
+                <NumField label="Change /24h" value={s.plan?.enteral?.changePer24h} onChange={setPlanNumber("enteral", "changePer24h")} min={-300} max={300} step={1} disabled={!canModify} placeholder="+20" />
+                <NumField label="Maximum" value={s.plan?.enteral?.maximumMlKgDay} onChange={setPlanNumber("enteral", "maximumMlKgDay")} min={0} max={300} step={1} disabled={!canModify} placeholder="160" />
               </div>
-              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "Enteral target", text: `Enteral target = start ${showFluid(s.plan?.enteral?.startMlKgDay)} + change ${showFluid(s.plan?.enteral?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.enteralMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "Enteral volume", text: `Enteral ml/day = enteral ml/kg/day × dosing weight = ${showFluid(snapshot.enteralMlKgDay)} × ${showFluid(weightKg)}.` })}>{showFluid(snapshot.enteralMlDay)}</FormulaValue> ml/day</div>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "Enteral target", text: `Enteral target = start ${showFluid(s.plan?.enteral?.startMlKgDay)} + change ${showFluid(s.plan?.enteral?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.enteralMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "Enteral volume", text: `Enteral ml/day = enteral ml/kg/day × dosing weight = ${showFluid(snapshot.enteralMlKgDay)} × ${showFluid(activeWeightKg)}.` })}>{showFluid(snapshot.enteralMlDay)}</FormulaValue> ml/day</div>
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
               <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">IV / TPN</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
               <div className="grid grid-cols-3 gap-1.5">
-                <NumField label="Start" value={s.plan?.iv?.startMlKgDay} onChange={setPlanNumber("iv", "startMlKgDay")} min={0} max={300} step={1} placeholder="80" />
-                <NumField label="Change /24h" value={s.plan?.iv?.changePer24h} onChange={setPlanNumber("iv", "changePer24h")} min={-300} max={300} step={1} placeholder="−10" />
-                <NumField label="Minimum" value={s.plan?.iv?.minimumMlKgDay} onChange={setPlanNumber("iv", "minimumMlKgDay")} min={0} max={300} step={1} placeholder="40" />
+                <NumField label="Start" value={s.plan?.iv?.startMlKgDay} onChange={setPlanNumber("iv", "startMlKgDay")} min={0} max={300} step={1} disabled={!canModify} placeholder="80" />
+                <NumField label="Change /24h" value={s.plan?.iv?.changePer24h} onChange={setPlanNumber("iv", "changePer24h")} min={-300} max={300} step={1} disabled={!canModify} placeholder="−10" />
+                <NumField label="Minimum" value={s.plan?.iv?.minimumMlKgDay} onChange={setPlanNumber("iv", "minimumMlKgDay")} min={0} max={300} step={1} disabled={!canModify} placeholder="40" />
               </div>
-              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "IV target", text: `IV target = start ${showFluid(s.plan?.iv?.startMlKgDay)} + change ${showFluid(s.plan?.iv?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.ivMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "IV volume", text: `IV ml/day = IV ml/kg/day × dosing weight = ${showFluid(snapshot.ivMlKgDay)} × ${showFluid(weightKg)}.` })}>{showFluid(snapshot.ivMlDay)}</FormulaValue> ml/day</div>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2 text-[11px] text-slate-200"><b>{todayLabel}:</b> <FormulaValue onOpen={() => setFormula({ title: "IV target", text: `IV target = start ${showFluid(s.plan?.iv?.startMlKgDay)} + change ${showFluid(s.plan?.iv?.changePer24h)} × (day ${day} − 1), clamped by the plan limits.` })}>{showFluid(snapshot.ivMlKgDay)}</FormulaValue> ml/kg/day · <FormulaValue onOpen={() => setFormula({ title: "IV volume", text: `IV ml/day = IV ml/kg/day × dosing weight = ${showFluid(snapshot.ivMlKgDay)} × ${showFluid(activeWeightKg)}.` })}>{showFluid(snapshot.ivMlDay)}</FormulaValue> ml/day</div>
             </div>
             <div className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/35 p-2 text-[11px] text-slate-200"><div className="mb-1 flex items-center justify-between"><b>Today&apos;s 24-hour plan</b><span className="text-[9px] text-slate-500">enteral + IV/TPN</span></div><div className="grid grid-cols-3 gap-2 text-center"><div><span className="block text-[9px] text-slate-500">Enteral</span><FormulaValue onOpen={() => setFormula({ title: "Enteral target", text: "Calculated from the advance-daily enteral start, change, day, and limits." })}>{showFluid(snapshot.enteralMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.enteralMlDay)} ml/day</small></div><div><span className="block text-[9px] text-slate-500">IV / TPN</span><FormulaValue onOpen={() => setFormula({ title: "IV target", text: "Calculated from the advance-daily IV start, change, day, and limits." })}>{showFluid(snapshot.ivMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.ivMlDay)} ml/day</small></div><div><span className="block text-[9px] text-slate-500">Total</span><FormulaValue onOpen={() => setFormula({ title: "Total fluids", text: totalFluidFormula })}>{showFluid(snapshot.totalMlKgDay)}</FormulaValue><small className="block text-[9px] text-slate-500">{showFluid(snapshot.totalMlDay)} ml/day</small></div></div><p className="mt-2 text-[10px] text-slate-500">{snapshot.feedMl !== undefined ? `${showFluid(snapshot.feedMl)} ml/feed at ${s.feedFreq}.` : snapshot.feedMlPerHour !== undefined ? `${showFluid(snapshot.feedMlPerHour)} ml/hour continuously.` : "Select a fixed hourly frequency to calculate volume per feed."}</p></div>
-            <div className="md:col-span-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary min-h-10" onClick={advanceDay}>Advance 24 h</button><button type="button" className={`btn-secondary min-h-10 ${s.plan?.holdToday ? "border-amber-300/50 text-amber-200" : ""}`} onClick={holdToday}>{s.plan?.holdToday ? "Release hold" : "Hold today"}</button><button type="button" className="btn-secondary min-h-10" onClick={resetDay}>Reset to day 1</button></div>
+            <div className="md:col-span-2 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><b className="text-xs text-cyan-100">Advance feed flow</b><p className="text-[10px] text-slate-400">Choose a unit before applying; maximum is enforced.</p></div><div className="flex rounded-lg border border-white/10 bg-slate-950/40 p-0.5"><button type="button" className={`min-h-10 rounded-md px-2 text-[10px] font-bold ${advanceSection === "enteral" ? "bg-cyan-400 text-slate-950" : "text-slate-400"}`} onClick={() => setAdvanceSection("enteral")}>Enteral</button><button type="button" className={`min-h-10 rounded-md px-2 text-[10px] font-bold ${advanceSection === "iv" ? "bg-cyan-400 text-slate-950" : "text-slate-400"}`} onClick={() => setAdvanceSection("iv")}>IV / TPN</button></div></div>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4"><button type="button" className={`min-h-10 rounded-lg border text-[10px] font-bold ${advanceUnit === "per-day" ? "border-cyan-400 bg-cyan-400/15 text-cyan-100" : "border-white/10 text-slate-400"}`} onClick={() => setAdvanceUnit("per-day")}>Per day</button><button type="button" className={`min-h-10 rounded-lg border text-[10px] font-bold ${advanceUnit === "per-feed" ? "border-cyan-400 bg-cyan-400/15 text-cyan-100" : "border-white/10 text-slate-400"}`} onClick={() => setAdvanceUnit("per-feed")}>Per feed</button>{[5, 10].map((increment) => <button key={increment} type="button" className="min-h-10 rounded-lg border border-white/10 text-[10px] font-bold text-slate-300" onClick={() => { setAdvanceUnit("per-day"); setAdvanceDraft(String(increment)); }}>+{increment} ml/kg/d</button>)}</div>
+              <div className="mt-2 flex gap-2"><input className="inp min-h-11 flex-1 text-center text-sm font-black" inputMode="decimal" type="number" min="0" step="0.1" value={advanceDraft} onChange={(event) => setAdvanceDraft(event.target.value)} placeholder="Advance amount" disabled={!canModify} /><button type="button" className="btn-primary min-h-11" disabled={!canApplyAdvance} onClick={applyAdvance}>{advanceApplying ? "Applying…" : "Apply advance"}</button></div>
+              <p className={`mt-2 text-[10px] ${advanceReason ? "font-bold text-amber-200" : "text-slate-500"}`}>{advanceReason || `Preview: ${showFluid(advanceCurrent)} → ${showFluid(advanceNext)} ml/kg/day · day ${(s.plan?.day ?? 1) + 1}`}</p>
+            </div>
+            <div className="md:col-span-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary min-h-10" disabled={!canModify || !dosingWeightConfirmed || mismatch || !!conflict} onClick={advanceDay}>Confirm dosing weight & advance day</button><button type="button" className={`btn-secondary min-h-10 ${s.plan?.holdToday ? "border-amber-300/50 text-amber-200" : ""}`} disabled={!canModify} onClick={holdToday}>{s.plan?.holdToday ? "Release hold" : "Hold today"}</button><button type="button" className="btn-secondary min-h-10" disabled={!canModify} onClick={resetDay}>Reset to day 1</button></div>
           </div>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-            <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
-            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-            <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
-            <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
+            <div><NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={(n) => updateFixedFluid("total", n)} min={0} max={300} step={1} disabled={!canModify} placeholder="enter" /><span className="ml-1 text-[9px] text-slate-500">{fluidDriver === "total" ? "● driving · enteral + IV follow" : "locked · follows split"}</span></div>
+            <div><NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={(n) => updateFixedFluid("enteral", n)} min={0} max={300} step={1} disabled={!canModify} placeholder="enter" /><span className="ml-1 text-[9px] text-slate-500">{fluidDriver === "enteral" ? "● driving · IV follows" : "following Total"}</span></div>
+            <div><NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={(n) => updateFixedFluid("iv", n)} min={0} max={300} step={1} disabled={!canModify} placeholder="enter" /><span className="ml-1 text-[9px] text-slate-500">{fluidDriver === "iv" ? "● driving · enteral follows" : "following Total"}</span></div>
+            <label className="rounded-xl border border-white/10 bg-slate-900/50 p-2"><span className="lbl mb-1 block">Dextrose % <span className="text-amber-300">required for GIR</span></span><input className="inp min-h-11 text-center text-base font-black" inputMode="decimal" type="number" min="0" max="40" step="0.1" value={dextroseDraft} disabled={!canModify} onChange={(event) => setDextroseDraft(event.target.value)} onBlur={commitDextrose} placeholder="5–30" />{dextroseError && <span className="mt-1 block text-[10px] font-bold text-rose-200">{dextroseError}</span>}</label>
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2"><span className="lbl mb-1 block">GIR mg/kg/min</span><FormulaValue onOpen={() => setFormula({ title: "GIR", text: girFormula })} className="text-base font-black text-white">{girStateText || (dextroseValid ? showFluid(nutrition.gir) : "Add dextrose %")}</FormulaValue><span className="mt-1 block text-[9px] text-slate-500">read-only derived value</span></div>
+            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} disabled={!canModify} placeholder="enter" />
+            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} disabled={!canModify} placeholder="enter" />
+            <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} disabled={!canModify} placeholder="enter" />
+            <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} disabled={!canModify} placeholder="enter" />
           </div>
         )}
 
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-slate-100">Nutrition detail</b><span className="text-[9px] text-slate-500">calculated from current prescription</span></div>
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2"><div><b className="text-xs text-slate-100">Feed volume</b><p className="text-[10px] text-slate-500">Ideal value is used in all calculations; draw-up rounding is display-only.</p></div><button type="button" className="btn-secondary min-h-10" disabled={!canLogFeed || idealFeedVolume <= 0} onClick={() => void recordFeedGiven()}>Log feed given</button></div>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><FormulaValue onOpen={() => setFormula({ title: feedIsContinuous ? "Continuous feed rate" : "Ideal feed volume", text: feedIsContinuous ? `Continuous feed rate = enteral ml/day ÷ 24 = ${showFluid(snapshot.enteralMlDay)} ÷ 24 = ${showFluid(snapshot.feedMlPerHour)} ml/hour.` : `Ideal feed volume = enteral ml/day ÷ feeds/day = ${showFluid(snapshot.enteralMlDay)} ÷ ${showFluid(snapshot.feedsPerDay)}. This exact value remains in downstream math.` })} className="text-xl font-black text-white">{idealFeedVolume > 0 ? showFluid(practicalFeedVolume) : "Not yet calculated"}</FormulaValue>{idealFeedVolume > 0 && <span className="text-xs text-slate-400">{feedIsContinuous ? "ml/hour" : "ml draw up"} <span className="text-slate-500">(ideal {showFluid(idealFeedVolume)} ml{feedIsContinuous ? "/hour" : ""})</span></span>}</div>
+          {snapshot.feedsPerDay && <p className="mt-1 text-[10px] text-slate-400">{showFluid(snapshot.feedsPerDay)} feeds/day · every {s.feedFreq} · ideal daily enteral volume {showFluid(snapshot.enteralMlDay)} ml/day</p>}
+          {feedsGivenToday.length > 0 && <p className="mt-1 text-[10px] font-semibold text-emerald-200">{feedsGivenToday.length} feed{feedsGivenToday.length === 1 ? "" : "s"} logged today.</p>}
+        </div>
+
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><b className="text-xs text-slate-100">Nutrition detail</b><span className="ml-2 text-[9px] text-slate-500">calculated from current prescription</span></div>{dailyMode && <label className="flex items-center gap-1 text-[10px] text-slate-400">Dextrose % <input className="inp min-h-9 w-20 text-center text-xs font-black" inputMode="decimal" type="number" min="0" max="40" step="0.1" value={dextroseDraft} disabled={!canModify} onChange={(event) => setDextroseDraft(event.target.value)} onBlur={commitDextrose} placeholder="5–30" /></label>}</div>
+          {dextroseError && dailyMode && <p className="mb-2 text-[10px] font-bold text-rose-200">{dextroseError}</p>}
           <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
             <div><span className="block text-slate-500">Enteral energy</span><FormulaValue onOpen={() => setFormula({ title: "Enteral energy", text: `Enteral energy = ${showFluid(nutrition.enteralMl)} ml/kg/day × ${nutrition.density} kcal/ml.` })}>{showFluid(nutrition.enteralKcal)}</FormulaValue> kcal/kg/d</div>
             <div><span className="block text-slate-500">IV / TPN energy</span><FormulaValue onOpen={() => setFormula({ title: "IV / TPN energy", text: `IV energy combines dextrose (${showFluid(nutrition.dextroseKcal)}), amino acid (${showFluid(nutrition.aaKcal)}), and lipid (${showFluid(nutrition.lipidKcal)}) kcal/kg/day.` })}>{showFluid(nutrition.ivKcal)}</FormulaValue> kcal/kg/d</div>
@@ -839,10 +1125,19 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         </div>
 
+        {(snapshot.ivMlKgDay ?? 0) > 0 && <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-3"><div className="mb-2 flex items-start justify-between gap-2"><div><b className="text-xs text-slate-100">Electrolytes</b><p className="text-[10px] text-slate-500">Required while IV/TPN is running · {s.electrolyteUnit ?? "mEq/kg/day"}</p></div><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${ivHeld ? "bg-amber-400/15 text-amber-200" : "bg-white/5 text-slate-400"}`}>{ivHeld ? "IV held" : "detail tier"}</span></div>{ivHeld ? <p className="text-[11px] font-semibold text-amber-200">IV/TPN held — electrolyte prescription paused.</p> : <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{([{ key: "na", label: "Na", target: [2, 4] }, { key: "k", label: "K", target: [1, 3] }, { key: "ca", label: "Ca", target: [1.5, 3.5] }, { key: "po4", label: "PO₄", target: [1, 2] }] as const).map((row) => { const value = s.electrolytes?.[row.key]; const status = value == null ? "neutral" : rangeStatus(value, row.target[0], row.target[1]); return <div key={row.key} className="rounded-xl border border-white/10 bg-slate-900/50 p-2"><div className="flex items-center justify-between gap-1"><span className="lbl">{row.label}</span><span className={`h-2.5 w-2.5 rounded-full border ${METRIC_RING[status]}`} /></div><NumField label={`${row.label} ${s.electrolyteUnit ?? "mEq/kg/day"}`} value={value} onChange={(next) => { if (canModify) setS((p) => ({ ...p, electrolytes: { ...(p.electrolytes ?? {}), [row.key]: next } })); }} min={0} max={10} step={0.1} decimals={2} disabled={!canModify} placeholder="Not entered" /><FormulaValue onOpen={() => setFormula({ title: `${row.label} formula`, text: `${row.label} ordered amount = ${row.label} per kg per day × dosing weight = ${showFluid(value)} × ${showFluid(activeWeightKg)} = ${showFluid(value == null ? undefined : value * activeWeightKg)} per day; compare with target ${row.target[0]}–${row.target[1]}.` })} className="mt-1 text-[9px] text-slate-500">{value == null ? "Not entered" : `${showFluid(value * activeWeightKg)} ${s.electrolyteUnit?.split("/")[0] ?? "mEq"}/day absolute`} · formula</FormulaValue>{value != null && status !== "safe" && <p className="mt-1 text-[9px] font-semibold text-amber-200">{value < row.target[0] ? "Below" : "Above"} target {row.target[0]}–{row.target[1]}</p>}{value == null && <p className="mt-1 text-[9px] font-semibold text-amber-200">Not entered</p>}</div>; })}</div>}</div>}
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/35">
           <button type="button" className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left" aria-expanded={configOpen} onClick={() => setConfigOpen((open) => !open)}><span><span className="block text-xs font-black text-slate-100">Prescription details</span><span className="text-[10px] text-slate-500">Feed type · route · frequency</span></span><ChevronDown className={`h-4 w-4 text-cyan-300 transition-transform ${configOpen ? "rotate-180" : ""}`} /></button>
-          {configOpen && <div className="space-y-2 border-t border-white/10 p-2"><div><div className="lbl mb-1">FEED TYPE</div><CompactPicker label="Feed type" options={FEED_TYPE} value={s.feedType} onChange={(value) => setS((p) => ({ ...p, feedType: value }))} otherPlaceholder="Other feed type…" /></div><div><div className="lbl mb-1">ROUTE</div><CompactPicker label="Route" options={FEED_ROUTE} value={s.feedRoute} onChange={(value) => setS((p) => ({ ...p, feedRoute: value }))} otherPlaceholder="Other route…" /></div><div><div className="lbl mb-1">FREQUENCY</div><CompactPicker label="Frequency" options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(value) => setS((p) => ({ ...p, feedFreq: value }))} otherPlaceholder="Other frequency…" /></div></div>}
+          {configOpen && <div className="space-y-3 border-t border-white/10 p-2">
+            <div><div className="lbl mb-1">FEED TYPE</div><CompactPicker label="Feed type" options={FEED_TYPE} value={s.feedType} onChange={(value) => { if (canModify) setS((p) => ({ ...p, feedType: value })); }} otherPlaceholder="Other feed type…" /></div>
+            <div><div className="lbl mb-1">ROUTE</div><CompactPicker label="Route" options={FEED_ROUTE} value={s.feedRoute} onChange={(value) => { if (canModify) setS((p) => ({ ...p, feedRoute: value })); }} otherPlaceholder="Other route…" /></div>
+            <div><div className="lbl mb-1">FREQUENCY</div><CompactPicker label="Frequency" options={["0.5 hourly", "1 hourly", "1.5 hourly", "2 hourly", "2.5 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={setFrequency} otherPlaceholder="Other frequency…" /></div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/20 p-2"><div className="mb-2 flex items-center justify-between gap-2"><div><b className="text-xs text-slate-100">Feed composition</b><p className="text-[10px] text-slate-500">{fortifierSummary}</p></div><button type="button" className="btn-secondary min-h-10" disabled={!canModify} onClick={addFortifier}>+ Fortifier</button></div>{fortifiers.length === 0 && <p className="text-[10px] text-slate-500">Add independently dosed fortifiers; each keeps its own dilution and phase.</p>}{fortifiers.map((fortifier) => <div key={fortifier.id} className="mb-2 rounded-lg border border-white/10 bg-slate-900/50 p-2 last:mb-0"><div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4"><label><span className="lbl mb-1 block">Name</span><input className="inp min-h-10 text-xs" value={fortifier.name} disabled={!canModify} onChange={(event) => updateFortifier(fortifier.id, { name: event.target.value })} /></label><label><span className="lbl mb-1 block">kcal / unit</span><input className="inp min-h-10 text-xs" type="number" min="0" step="0.01" value={fortifier.kcalPerUnit} disabled={!canModify} onChange={(event) => updateFortifier(fortifier.id, { kcalPerUnit: Number(event.target.value) })} /></label><label><span className="lbl mb-1 block">Dilution / ref ml</span><input className="inp min-h-10 text-xs" type="number" min="0.1" step="0.1" value={fortifier.referenceVolumeMl} disabled={!canModify} onChange={(event) => updateFortifier(fortifier.id, { referenceVolumeMl: Number(event.target.value) })} /></label><label><span className="lbl mb-1 block">Phase</span><select className="inp min-h-10 text-xs" value={fortifier.phase} disabled={!canModify} onChange={(event) => updateFortifier(fortifier.id, { phase: Number(event.target.value) })}><option value="0.25">1/4</option><option value="0.5">1/2</option><option value="0.75">3/4</option><option value="1">Full</option><option value={fortifier.phase}>Custom {fortifier.phase}</option></select></label></div>{fortifierWarnings.some((warning) => warning.startsWith(fortifier.name)) && <p className="mt-1 text-[10px] font-semibold text-amber-200">{fortifierWarnings.find((warning) => warning.startsWith(fortifier.name))}</p>}<button type="button" className="mt-1 text-[10px] text-rose-300" disabled={!canModify} onClick={() => removeFortifier(fortifier.id)}>Remove fortifier</button></div>)}</div>
+            <div className="grid gap-2 sm:grid-cols-2"><label className="flex min-h-11 items-center gap-2 rounded-lg border border-white/10 px-2 text-[11px] text-slate-300"><input type="checkbox" checked={ivHeld} disabled={!canModify} onChange={(event) => setS((p) => ({ ...p, ivHeld: event.target.checked }))} className="accent-cyan-400" /> IV/TPN held — suspend GIR</label><label className="flex min-h-11 items-center gap-2 rounded-lg border border-white/10 px-2 text-[11px] text-slate-300"><input type="checkbox" checked={feedsHeld} disabled={!canModify} onChange={(event) => setS((p) => ({ ...p, feedsHeld: event.target.checked }))} className="accent-cyan-400" /> Feeds on hold</label></div>
+            <div className="grid gap-2 sm:grid-cols-2"><NumField label="Draw-up increment (ml)" value={practicalIncrement} onChange={(value) => { if (canModify) setS((p) => ({ ...p, practicalIncrementMl: value })); }} min={0.01} max={10} step={0.1} decimals={2} disabled={!canModify} /><label className="block rounded-xl border border-white/10 bg-slate-950/20 p-2"><span className="lbl mb-1 block">Electrolyte unit</span><select className="inp min-h-11 text-xs" value={s.electrolyteUnit ?? "mEq/kg/day"} disabled={!canModify} onChange={(event) => setS((p) => ({ ...p, electrolyteUnit: event.target.value as FluidExtras["electrolyteUnit"] }))}><option>mEq/kg/day</option><option>mmol/kg/day</option></select></label></div>
+          </div>}
         </div>
+        <details className="mt-3 rounded-xl border border-white/10 bg-slate-900/35 p-3"><summary className="cursor-pointer text-xs font-black text-slate-100">Fluid audit log <span className="ml-1 text-[10px] font-normal text-slate-500">credentialed changes and feed entries</span></summary>{fluidAuditEvents.length ? <ul className="mt-2 space-y-2">{fluidAuditEvents.map((event) => <li key={event.id} className="border-t border-white/10 pt-2 text-[10px] text-slate-300"><div className="flex justify-between gap-2"><span className="font-bold text-cyan-100">{event.kind}</span><span className="text-slate-500">{fmtTime(event.at)} · {event.author}</span></div><p className="mt-0.5">{event.text}</p></li>)}</ul> : <p className="mt-2 text-[10px] text-slate-500">No applied fluid changes or feed logs yet.</p>}</details>
       </Section>
     </div>
   );

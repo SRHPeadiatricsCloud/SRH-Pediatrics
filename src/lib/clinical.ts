@@ -19,6 +19,14 @@ export type DailyFluidPlan = {
   maximumMlKgDay?: number;
 };
 
+export type FluidFortifier = {
+  id: string;
+  name: string;
+  kcalPerUnit: number;
+  referenceVolumeMl: number;
+  phase: number;
+};
+
 export type FluidPlan = {
   mode?: FluidPlanMode;
   startDate?: string;
@@ -64,6 +72,20 @@ export type Clinical = {
     tpn?: boolean;
     notes?: string;
     plan?: FluidPlan;
+    dosingWeightKg?: number;
+    dosingWeightAt?: string;
+    dosingWeightConfirmedAt?: string;
+    fluidDriver?: "total" | "enteral" | "iv";
+    practicalIncrementMl?: number;
+    dextrosePct?: number;
+    ivHeld?: boolean;
+    feedsHeld?: boolean;
+    electrolyteUnit?: "mEq/kg/day" | "mmol/kg/day";
+    electrolytes?: { na?: number; k?: number; ca?: number; po4?: number };
+    fortifiers?: FluidFortifier[];
+    feedsGiven?: { at: string; volumeMl: number; intervalHours?: number }[];
+    frequencyChangedAt?: string;
+    previousFeedFreq?: string;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: {
@@ -98,6 +120,7 @@ export type FluidPlanSnapshot = {
   totalMlDay?: number;
   feedMl?: number;
   feedMlPerHour?: number;
+  feedsPerDay?: number;
 };
 
 // Remove floating-point noise without discarding clinically meaningful decimals.
@@ -132,10 +155,11 @@ export function calculateFluidPlan(fluids: Clinical["fluids"] | undefined, weigh
   const ivMlDay = ivMlKgDay === undefined ? undefined : preserveFluid(ivMlKgDay * safeWeight);
   const totalMlDay = totalMlKgDay === undefined ? undefined : preserveFluid(totalMlKgDay * safeWeight);
   const frequency = f.feedFreq?.trim().toLowerCase() ?? "";
-  const hours = frequency === "continuous" ? 24 : /^([1-9]\d*) hourly$/.test(frequency) ? Number(frequency.split(" ")[0]) : 0;
+  const hours = frequency === "continuous" ? 24 : /^(\d+(?:\.\d+)?) hourly$/.test(frequency) ? Number(frequency.split(" ")[0]) : 0;
+  const feedsPerDay = hours > 0 && hours < 24 ? preserveFluid(24 / hours) : undefined;
   const feedMl = enteralMlDay !== undefined && hours > 0 && hours < 24 ? preserveFluid(enteralMlDay / (24 / hours)) : undefined;
   const feedMlPerHour = enteralMlDay !== undefined && frequency === "continuous" ? preserveFluid(enteralMlDay / 24) : undefined;
-  return { mode, day, enteralMlKgDay, ivMlKgDay, totalMlKgDay, enteralMlDay, ivMlDay, totalMlDay, feedMl, feedMlPerHour };
+  return { mode, day, enteralMlKgDay, ivMlKgDay, totalMlKgDay, enteralMlDay, ivMlDay, totalMlDay, feedMl, feedMlPerHour, feedsPerDay };
 }
 
 export function dayOfLife(dob: string | Date): number {
@@ -214,7 +238,14 @@ export type NutritionCalc = {
 export function calcNutrition(c: Clinical): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
-  const density = KCAL_PER_ML[feedType] ?? 0.67;
+  const baseDensity = KCAL_PER_ML[feedType] ?? 0.67;
+  const fortifierDensity = (f.fortifiers ?? []).reduce((sum, fortifier) => {
+    const reference = Number(fortifier.referenceVolumeMl);
+    const kcal = Number(fortifier.kcalPerUnit);
+    const phase = Number(fortifier.phase);
+    return reference > 0 && kcal >= 0 && phase >= 0 ? sum + (kcal * phase) / reference : sum;
+  }, 0);
+  const density = baseDensity + fortifierDensity;
   const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
 
   const enteralMl = f.enteralMlKgDay ?? 0;
