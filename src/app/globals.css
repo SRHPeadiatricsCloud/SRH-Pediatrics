@@ -4588,19 +4588,23 @@ html.light .dose-disclaimer b { color: #7b491d; }
 .dose-scope-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 4px;
+  margin-bottom: 12px;
   border: 1px solid rgba(125, 150, 190, .2);
-  border-radius: 15px;
-  padding: 6px;
+  border-radius: 13px;
+  padding: 4px;
   background: rgba(9, 19, 36, .74);
 }
 .dose-scope-switch button {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 10px 13px;
+  border-radius: 9px;
+  padding: 7px 10px;
   color: #a1b5cd;
   background: transparent;
   text-align: left;
@@ -4614,14 +4618,13 @@ html.light .dose-disclaimer b { color: #7b491d; }
   border-color: rgba(34, 211, 238, .56);
   color: #effcff;
   background: linear-gradient(135deg, rgba(116, 49, 147, .3), rgba(35, 160, 220, .24));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 8px rgba(0, 0, 0, .12);
 }
-.dose-scope-switch b { font-size: 13px; font-weight: 950; }
-.dose-scope-switch small { color: #849bb7; font-size: 9px; font-weight: 750; }
+.dose-scope-switch b,
+.dose-scope-switch small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dose-scope-switch b { font-size: 12px; font-weight: 950; }
+.dose-scope-switch small { color: #849bb7; font-size: 8px; font-weight: 750; }
 .dose-scope-switch button.active small { color: #b9ecf5; }
-@media (max-width: 560px) {
-  .dose-scope-switch { grid-template-columns: 1fr; }
-}
 html.light .dose-scope-switch {
   border-color: rgba(54, 80, 116, .2);
   background: rgba(231, 239, 249, .82);
@@ -5588,47 +5591,6 @@ html.light .dose-reference-drawer summary span {
     padding: 6px;
   }
 }
-
-/* Major release marker: keep substantial clinical reference updates visible. */
-.dose-release-banner {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-  border: 1px solid rgba(237, 22, 148, .28);
-  border-radius: 11px;
-  padding: 7px 10px;
-  color: #f7d5ed;
-  background: linear-gradient(90deg, rgba(116, 49, 147, .18), rgba(35, 160, 220, .12));
-  font-size: 10px;
-}
-.dose-release-banner span {
-  border-radius: 999px;
-  padding: 3px 6px;
-  color: #fff;
-  background: linear-gradient(135deg, #ed1694, #743193);
-  font-size: 8px;
-  font-weight: 950;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.dose-release-banner b {
-  color: #fff;
-  font-size: 11px;
-  font-weight: 950;
-}
-.dose-release-banner small {
-  color: #a9c8de;
-  font-size: 9px;
-}
-html.light .dose-release-banner {
-  border-color: #d9add1;
-  color: #334d6a;
-  background: linear-gradient(90deg, #fbf0fa, #eaf7fc);
-}
-html.light .dose-release-banner b { color: #283b59; }
-html.light .dose-release-banner small { color: #536e88; }
 
 /* ============================================================
    PAEDIATRIC DOSE DESK — calculator and medicine picker stay together
