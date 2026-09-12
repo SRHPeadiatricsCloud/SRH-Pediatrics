@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, CheckCircle2, Circle, Clock, User, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarClock, CheckCircle2, ChevronDown, Circle, Clock, User, X } from "lucide-react";
 import { WeightInput } from "@/components/weight-input";
 import { Chip, ChipGroup, DialWithOther, NumField, Section, Stepper, api, useTempUnit } from "@/components/ui";
 import { FlagsList, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
@@ -57,7 +57,8 @@ function localDateIso() {
 
 function showFluid(value: number | undefined) {
   if (value === undefined || !Number.isFinite(value)) return "—";
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  // Do not round clinically meaningful decimal fluid values for display.
+  return String(value);
 }
 
 function localDateTimeValue(value?: string) {
@@ -71,6 +72,43 @@ function localDateTimeValue(value?: string) {
 function isoFromDateTimeInput(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+/** Save a tab's draft after the clinician pauses, so changing tabs cannot lose it. */
+function useAutoSave(save: () => void | Promise<void>, watch: unknown) {
+  const saveRef = useRef(save);
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    dirtyRef.current = true;
+    const run = async () => {
+      try {
+        await saveRef.current();
+        dirtyRef.current = false;
+      } catch {
+        // Keep the draft marked dirty; the next edit will retry the save.
+      }
+    };
+    const timer = window.setTimeout(() => void run(), 1000);
+    return () => window.clearTimeout(timer);
+  }, [watch]);
+  useEffect(() => () => {
+    if (!dirtyRef.current) return;
+    void (async () => {
+      try {
+        await saveRef.current();
+      } catch {
+        // The next visit can retry if the network was unavailable.
+      }
+    })();
+  }, []);
 }
 
 function therapyDay(drug: ClinicalDrug, asOf = new Date()) {
@@ -118,10 +156,11 @@ export function VitalsTab({
     urineMlKgHr: Number(last.urineMlKgHr ?? 2),
   });
   const [saving, setSaving] = useState(false);
+  const [painOpen, setPainOpen] = useState(false);
   const set = (k: string) => (n: number) => setV((p) => ({ ...p, [k]: n }));
   const useKg = d.baby.unit !== "nicu";
 
-  const submit = async () => {
+  const saveVitals = useCallback(async () => {
     setSaving(true);
     // Auto-derive MAP from SBP/DBP when not entered, so BP always stores fully.
     const autoMap =
@@ -130,14 +169,41 @@ export function VitalsTab({
         : v.sbp != null && v.dbp != null
           ? Math.round((v.sbp + 2 * v.dbp) / 3)
           : undefined;
-    await api(`/api/babies/${id}/vitals`, "POST", {
-      ...v,
-      map: autoMap,
-      painScale,
-      painRaw,
-      painScore: Math.round(painRaw),
-      recordedBy: user || "Nurse",
+    try {
+      await api(`/api/babies/${id}/vitals`, "POST", {
+        ...v,
+        map: autoMap,
+        painScale,
+        painRaw,
+        painScore: Math.round(painRaw),
+        recordedBy: user || "Nurse",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [id, painRaw, painScale, user, v]);
+
+  // Keep parameter entry safe when the clinician changes tabs without pressing
+  // the button. The debounce groups a round of edits into one observation.
+  useAutoSave(saveVitals, v);
+
+  useAutoSave(async () => {
+    if (weight === undefined) return;
+    const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
+    const existingGrowth = d.baby.clinical?.growth ?? [];
+    const lastGrowth = existingGrowth.at(-1);
+    const sameAsLast = lastGrowth?.weight === grams && lastGrowth.hc === hc && lastGrowth.length === length;
+    const growth = sameAsLast
+      ? existingGrowth
+      : [...existingGrowth, { at: new Date().toISOString(), weight: grams, hc, length }];
+    await patch({
+      currentWeight: grams,
+      clinical: { growth, ...(length ? { birthLength: length } : {}) },
     });
+  }, `${weight ?? ""}|${hc ?? ""}|${length ?? ""}`);
+
+  const submit = async () => {
+    await saveVitals();
     if (weight) {
       const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
       const growth = [...(d.baby.clinical?.growth ?? []), { at: new Date().toISOString(), weight: grams, hc, length }];
@@ -151,7 +217,6 @@ export function VitalsTab({
         },
       });
     }
-    setSaving(false);
     reload();
   };
 
@@ -162,9 +227,12 @@ export function VitalsTab({
           title="Quick observation round"
           sub="Pre-filled with the last set — tap ± only for what changed, then save."
           right={
-            <button onClick={submit} disabled={saving} className="btn-primary">
-              {saving ? "Saving…" : "Save observations"}
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
+              <button onClick={submit} disabled={saving} className="btn-primary">
+                {saving ? "Saving…" : "Save observations"}
+              </button>
+            </div>
           }
         >
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -198,19 +266,37 @@ export function VitalsTab({
             <span className="text-[10px] text-slate-400">mmHg · systolic/diastolic (MAP)</span>
           </div>
           {d.baby.unit === "nicu" && (
-            <div className="mt-3">
-              <PainScoreCalculator
-                onCompute={(scale, total) => {
-                  setPainScale(scale);
-                  setPainRaw(total);
-                  set("painScore")(total);
-                  window.dispatchEvent(
-                    new CustomEvent("neo:saved", {
-                      detail: `Pain score ${scale} = ${total} applied to observation`,
-                    }),
-                  );
-                }}
-              />
+            <div className="mt-3 overflow-hidden rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5">
+              <button
+                type="button"
+                onClick={() => setPainOpen((open) => !open)}
+                aria-expanded={painOpen}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+              >
+                <span>
+                  <span className="block text-xs font-bold text-fuchsia-100">NICU pain-score calculator</span>
+                  <span className="text-[10px] text-slate-400">
+                    Current score: {painScale} {painRaw}
+                  </span>
+                </span>
+                <ChevronDown className={`h-4 w-4 text-fuchsia-200 transition-transform ${painOpen ? "rotate-180" : ""}`} />
+              </button>
+              {painOpen && (
+                <div className="border-t border-fuchsia-400/15 p-2">
+                  <PainScoreCalculator
+                    onCompute={(scale, total) => {
+                      setPainScale(scale);
+                      setPainRaw(total);
+                      set("painScore")(total);
+                      window.dispatchEvent(
+                        new CustomEvent("neo:saved", {
+                          detail: `Pain score ${scale} = ${total} applied to observation`,
+                        }),
+                      );
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
           <div className="mt-3">
@@ -296,22 +382,26 @@ export function RespTab({
     const n = raw == null ? null : Number(String(raw).replace(/[^0-9.]/g, ""));
     return n != null && Number.isFinite(n) ? n : null;
   })();
+  useAutoSave(() => patch({ clinical: { resp: s } }), s);
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <Section
         title="Respiratory support"
         right={
-          <button
-            className="btn-primary"
-            onClick={() =>
-              patch({
-                clinical: { resp: s },
-                logEvent: { kind: "resp", text: `Respiratory support: ${s.mode} FiO₂ ${s.settings?.fio2 ?? 21}%`, author: user },
-              })
-            }
-          >
-            Save support
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
+            <button
+              className="btn-primary"
+              onClick={() =>
+                patch({
+                  clinical: { resp: s },
+                  logEvent: { kind: "resp", text: `Respiratory support: ${s.mode} FiO₂ ${s.settings?.fio2 ?? 21}%`, author: user },
+                })
+              }
+            >
+              Save support
+            </button>
+          </div>
         }
       >
         <div className="lbl mb-1">Mode</div>
@@ -415,20 +505,38 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const advanceDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: (p.plan?.day ?? 1) + 1, holdToday: false } }));
   const holdToday = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", holdToday: !p.plan?.holdToday } }));
   const resetDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: 1, holdToday: false } }));
-  const save = () => {
+  const save = useCallback(() => {
     const resolved = calculateFluidPlan(s, weightKg);
     const fluids: FluidValues = dailyMode
       ? { ...s, enteralMlKgDay: resolved.enteralMlKgDay, ivMlKgDay: resolved.ivMlKgDay, totalMlKgDay: resolved.totalMlKgDay }
       : s;
     void patch({ clinical: { fluids } });
-  };
+  }, [dailyMode, patch, s, weightKg]);
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+  const firstFluidRender = useRef(true);
+  useEffect(() => {
+    if (firstFluidRender.current) {
+      firstFluidRender.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => saveRef.current(), 1000);
+    return () => window.clearTimeout(timer);
+  }, [s]);
   const day = s.plan?.day ?? 1;
   const todayLabel = s.plan?.holdToday ? "Held at previous target" : `Day ${day} target`;
   return (
     <div className="grid gap-3">
       <Section
         title="Fluids, TPN & nutrition"
-        right={<button className="btn-primary" onClick={save}>Save 24-hour plan</button>}
+        right={
+          <div className="flex items-center gap-2">
+            <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
+            <button className="btn-primary" onClick={save}>Save 24-hour plan</button>
+          </div>
+        }
       >
         <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -504,7 +612,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
               <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
             </div>
-            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">Total ≈ {Math.round((s.totalMlKgDay ?? 0) * weightKg)} ml/day · Auto energy {nutrition.totalKcal} kcal/kg/day</div>
+            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">Total ≈ {showFluid((s.totalMlKgDay ?? 0) * weightKg)} ml/day · Auto energy {nutrition.totalKcal} kcal/kg/day</div>
           </>
         )}
         <div className="lbl mt-4 mb-1">Feed type</div>
@@ -543,12 +651,15 @@ export function GrowthTab({
   const [w, setW] = useState<number | undefined>(undefined);
   const [wHc, setWHc] = useState<number | undefined>(undefined);
   const [wLen, setWLen] = useState<number | undefined>(undefined);
+  useAutoSave(() => patch({ birthWeight: bw, currentWeight: cw }), `${bw}:${cw}`);
   return (
     <Section
       title="Birth weight & current weight"
       right={
-        <button
-          className="btn-primary"
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
+          <button
+            className="btn-primary"
           onClick={() =>
             patch({
               birthWeight: bw,
@@ -559,6 +670,7 @@ export function GrowthTab({
         >
           Save weights
         </button>
+        </div>
       }
     >
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -732,9 +844,14 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
     setDrugs((p) => (p.some((x) => x.name === name) ? p.filter((x) => x.name !== name) : [...p, newDrug(name)]));
   const updateDrug = (index: number, patch: Partial<ClinicalDrug>) => setDrugs((p) => p.map((drug, i) => i === index ? { ...drug, ...patch } : drug));
   const currentDrugDay = (drug: ClinicalDrug) => therapyDay(drug);
+  const drugDraft = useMemo(() => ({ drugs, lines }), [drugs, lines]);
+  useAutoSave(() => patch({ clinical: { drugs, lines } }), drugDraft);
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <Section title="Medications" right={<button className="btn-primary" onClick={() => patch({ clinical: { drugs, lines } })}>Save</button>}>
+      <Section
+        title="Medications"
+        right={<div className="flex items-center gap-2"><span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span><button className="btn-primary" onClick={() => patch({ clinical: { drugs, lines } })}>Save</button></div>}
+      >
         <div className="mb-3 flex flex-wrap gap-1.5">
           {Object.keys(DRUGS).map((g) => (
             <Chip key={g} label={g} on={group === g} onClick={() => setGroup(g)} />
@@ -809,8 +926,9 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
 
 export function LabsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
   const [labs, setLabs] = useState<Record<string, string>>(d.baby.clinical?.labs ?? {});
+  useAutoSave(() => patch({ clinical: { labs } }), labs);
   return (
-    <Section title="Investigations" right={<button className="btn-primary" onClick={() => patch({ clinical: { labs } })}>Save labs</button>}>
+    <Section title="Investigations" right={<div className="flex items-center gap-2"><span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span><button className="btn-primary" onClick={() => patch({ clinical: { labs } })}>Save labs</button></div>}>
       <div className="space-y-4">
         {LAB_PANELS.map((p) => (
           <div key={p.key}>
@@ -839,9 +957,11 @@ export function CareTab({ d, patch }: { d: Detail; patch: (b: Record<string, unk
   const [disch, setDisch] = useState<string[]>(c.discharge ?? []);
   const [plan, setPlan] = useState(c.plan ?? "");
   const [family, setFamily] = useState(c.familyNote ?? "");
+  const careDraft = useMemo(() => ({ care, disch, plan, family }), [care, disch, plan, family]);
+  useAutoSave(() => patch({ clinical: { care, discharge: disch, plan, familyNote: family } }), careDraft);
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <Section title="Nursing & developmental care bundle" right={<button className="btn-primary" onClick={() => patch({ clinical: { care, discharge: disch, plan, familyNote: family } })}>Save</button>}>
+      <Section title="Nursing & developmental care bundle" right={<div className="flex items-center gap-2"><span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span><button className="btn-primary" onClick={() => patch({ clinical: { care, discharge: disch, plan, familyNote: family } })}>Save</button></div>}>
         <EditableListField options={CARE_BUNDLE} value={care} onChange={(v: string[]) => setCare(v)} placeholder="Add other care item…" />
         <div className="lbl mt-4 mb-1">Plan for next 12 hours</div>
         <textarea className="inp h-24" value={plan} onChange={(e) => setPlan(e.target.value)} />

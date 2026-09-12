@@ -100,7 +100,9 @@ export type FluidPlanSnapshot = {
   feedMlPerHour?: number;
 };
 
-const roundFluid = (value: number) => Math.round(value * 10) / 10;
+// Remove floating-point noise without discarding clinically meaningful decimals.
+// This deliberately does not force values to a one-decimal display precision.
+const preserveFluid = (value: number) => Number(value.toPrecision(15));
 
 /** Calculate a daily target from a starting rate and a signed 24-hour change. */
 export function fluidTargetForDay(plan: DailyFluidPlan | undefined, day: number): number | undefined {
@@ -110,7 +112,7 @@ export function fluidTargetForDay(plan: DailyFluidPlan | undefined, day: number)
   const raw = plan.startMlKgDay + dayIndex * change;
   const minimum = plan.minimumMlKgDay ?? 0;
   const maximum = plan.maximumMlKgDay ?? 300;
-  return roundFluid(Math.min(maximum, Math.max(minimum, raw)));
+  return preserveFluid(Math.min(maximum, Math.max(minimum, raw)));
 }
 
 /** Resolve the current 24-hour fluid plan without changing clinical rules or targets. */
@@ -123,16 +125,16 @@ export function calculateFluidPlan(fluids: Clinical["fluids"] | undefined, weigh
   const enteralMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.enteral, effectiveDay) : f.enteralMlKgDay;
   const ivMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.iv, effectiveDay) : f.ivMlKgDay;
   const totalMlKgDay = mode === "daily"
-    ? roundFluid((enteralMlKgDay ?? 0) + (ivMlKgDay ?? 0))
+    ? preserveFluid((enteralMlKgDay ?? 0) + (ivMlKgDay ?? 0))
     : f.totalMlKgDay;
   const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 0;
-  const enteralMlDay = enteralMlKgDay === undefined ? undefined : roundFluid(enteralMlKgDay * safeWeight);
-  const ivMlDay = ivMlKgDay === undefined ? undefined : roundFluid(ivMlKgDay * safeWeight);
-  const totalMlDay = totalMlKgDay === undefined ? undefined : roundFluid(totalMlKgDay * safeWeight);
+  const enteralMlDay = enteralMlKgDay === undefined ? undefined : preserveFluid(enteralMlKgDay * safeWeight);
+  const ivMlDay = ivMlKgDay === undefined ? undefined : preserveFluid(ivMlKgDay * safeWeight);
+  const totalMlDay = totalMlKgDay === undefined ? undefined : preserveFluid(totalMlKgDay * safeWeight);
   const frequency = f.feedFreq?.trim().toLowerCase() ?? "";
   const hours = frequency === "continuous" ? 24 : /^([1-9]\d*) hourly$/.test(frequency) ? Number(frequency.split(" ")[0]) : 0;
-  const feedMl = enteralMlDay !== undefined && hours > 0 && hours < 24 ? roundFluid(enteralMlDay / (24 / hours)) : undefined;
-  const feedMlPerHour = enteralMlDay !== undefined && frequency === "continuous" ? roundFluid(enteralMlDay / 24) : undefined;
+  const feedMl = enteralMlDay !== undefined && hours > 0 && hours < 24 ? preserveFluid(enteralMlDay / (24 / hours)) : undefined;
+  const feedMlPerHour = enteralMlDay !== undefined && frequency === "continuous" ? preserveFluid(enteralMlDay / 24) : undefined;
   return { mode, day, enteralMlKgDay, ivMlKgDay, totalMlKgDay, enteralMlDay, ivMlDay, totalMlDay, feedMl, feedMlPerHour };
 }
 
@@ -261,30 +263,34 @@ export function calcNutrition(c: Clinical): NutritionCalc {
 /* ------------------------- temperature conversion ------------------------- */
 export type TempUnit = "C" | "F";
 
+// Avoid binary floating-point artefacts (for example 98.24000000000001)
+// without imposing a clinical display precision on the entered value.
+const cleanConversion = (value: number) => Number(value.toPrecision(15));
+
 export function cToF(c: number): number {
-  return Math.round((c * 9) / 5 * 10) / 10 + 32;
+  return cleanConversion((c * 9) / 5 + 32);
 }
 
 export function fToC(f: number): number {
-  return Math.round(((f - 32) * 5) / 9 * 10) / 10;
+  return cleanConversion(((f - 32) * 5) / 9);
 }
 
-/** Convert a stored Celsius value into the display unit. */
+/** Convert a stored Celsius value into the display unit without truncating decimals. */
 export function tempOut(c: number | null | undefined, unit: TempUnit): number | null {
   if (c === null || c === undefined || Number.isNaN(Number(c))) return null;
   const v = Number(c);
-  return unit === "F" ? Math.round(((v * 9) / 5 + 32) * 10) / 10 : Math.round(v * 10) / 10;
+  return unit === "F" ? cleanConversion((v * 9) / 5 + 32) : v;
 }
 
 /** Convert a value typed in the display unit back to Celsius for storage. */
 export function tempIn(v: number, unit: TempUnit): number {
-  return unit === "F" ? Math.round((((v - 32) * 5) / 9) * 10) / 10 : Math.round(v * 10) / 10;
+  return unit === "F" ? cleanConversion(((v - 32) * 5) / 9) : v;
 }
 
 /** Formatted temperature string with the unit suffix. */
 export function fmtTemp(c: number | null | undefined, unit: TempUnit): string {
   const v = tempOut(c, unit);
-  return v === null ? "—" : `${v.toFixed(1)} °${unit}`;
+  return v === null ? "—" : `${String(v)} °${unit}`;
 }
 
 /**

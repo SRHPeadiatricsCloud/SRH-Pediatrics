@@ -201,7 +201,6 @@ export function Stepper({
   max = 300,
   step = 1,
   unit = "",
-  decimals = 0,
 }: {
   label: string;
   value: number | undefined;
@@ -215,16 +214,10 @@ export function Stepper({
   const [draft, setDraft] = useState<string | null>(null);
   const v = value ?? min;
   const editing = draft !== null;
-  const precisionOf = (n: number | string | null | undefined) => {
-    if (n === null || n === undefined) return 0;
-    const s = String(n);
-    const d = s.includes(".") ? s.split(".")[1]?.length ?? 0 : 0;
-    return Math.min(4, d);
-  };
-  const displayDecimals = Math.max(decimals, precisionOf(step), precisionOf(value));
-  const shown = value === undefined ? "" : v.toFixed(displayDecimals).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
-  const clamp = (n: number, precision = Math.max(decimals, precisionOf(step))) =>
-    Math.min(max, Math.max(min, Number(n.toFixed(Math.max(0, precision)))));
+  const shown = value === undefined ? "" : String(value);
+  // Preserve the exact decimal typed by the clinician. Step and decimals guide
+  // the controls, but they must never truncate a manually entered value.
+  const clamp = (n: number) => Math.min(max, Math.max(min, n));
   const set = (n: number) => {
     onChange(clamp(n));
     setDraft(null);
@@ -237,7 +230,7 @@ export function Stepper({
     const n = Number(raw);
     if (!Number.isNaN(n)) {
       // Preserve decimals typed manually even where the slider itself moves in whole-number steps.
-      onChange(clamp(n, Math.max(decimals, precisionOf(step), precisionOf(raw))));
+      onChange(clamp(n));
     }
   };
   return (
@@ -314,7 +307,6 @@ export function NumField({
   max = 6000,
   step = 10,
   unit = "",
-  decimals = 0,
   placeholder = "—",
 }: {
   label: string;
@@ -338,12 +330,13 @@ export function NumField({
     if (raw.trim() === "") return;
     const n = Number(raw);
     if (Number.isNaN(n)) return;
-    onChange(Math.min(max, Math.max(min, Number(n.toFixed(decimals)))));
+    onChange(Math.min(max, Math.max(min, n)));
   };
   const nudge = (delta: number) => {
     const base = editing && draft?.trim() ? Number(draft) : value ?? min;
     const safeBase = Number.isNaN(base) ? min : base;
-    onChange(Math.min(max, Math.max(min, Number((safeBase + delta).toFixed(decimals)))));
+    const next = safeBase + delta;
+    onChange(Math.min(max, Math.max(min, Number(next.toPrecision(12)))));
     setDraft(null);
   };
   return (
@@ -429,6 +422,8 @@ export function Section({
 export function ThemeToggle() {
   const [light, setLight] = useState(false);
   useEffect(() => {
+    // Theme is read after hydration to avoid server/client markup divergence.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLight(document.documentElement.classList.contains("light"));
   }, []);
   const apply = (next: boolean) => {

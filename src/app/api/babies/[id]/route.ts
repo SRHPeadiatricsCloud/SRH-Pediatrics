@@ -76,12 +76,23 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
   const [row] = await db.update(babies).set(patch).where(eq(babies.id, id)).returning();
   if (body.logEvent) {
-    await db.insert(events).values({
-      babyId: id,
-      kind: body.logEvent.kind ?? "update",
-      text: body.logEvent.text,
-      author: body.logEvent.author ?? "Team",
-    });
+    const kind = String(body.logEvent.kind ?? "update");
+    const text = String(body.logEvent.text ?? "").trim();
+    if (text) {
+      const [alreadyLogged] = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(and(eq(events.babyId, id), eq(events.kind, kind), eq(events.text, text)))
+        .limit(1);
+      if (!alreadyLogged) {
+        await db.insert(events).values({
+          babyId: id,
+          kind,
+          text,
+          author: body.logEvent.author ?? "Team",
+        });
+      }
+    }
   }
   return NextResponse.json({ baby: row });
 }
