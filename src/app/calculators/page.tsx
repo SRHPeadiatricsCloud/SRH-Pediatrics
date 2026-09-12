@@ -8,6 +8,7 @@ import { TopBar } from "@/components/ui";
 import { PhototherapyNomogramCalculator } from "@/components/phototherapy-calculator";
 import { BloodPressureCentileCalculator } from "@/components/blood-pressure-centile-calculator";
 import { AnthropometrySection } from "@/components/anthropometry-calculators";
+import { FluidsCalcPanel } from "@/components/interpret-ui";
 import { CALCULATORS, CATEGORIES, newBallardCompletedWeeks } from "@/lib/calculators";
 import type { Calculator as CalcDef, CalcResult } from "@/lib/calc-types";
 
@@ -417,7 +418,7 @@ type LibraryItem = {
   name: string;
   detail: string;
   category: CalcDef["category"];
-  kind: "calculator" | "anthropometry";
+  kind: "calculator" | "anthropometry" | "fluid-gir";
   calc?: CalcDef;
 };
 
@@ -429,10 +430,19 @@ const ANTHROPOMETRY_ITEM: LibraryItem = {
   kind: "anthropometry",
 };
 
+const FLUID_GIR_ITEM: LibraryItem = {
+  id: "fluid-gir",
+  name: "GIR & fluids calculator",
+  detail: "Dextrose · rate · maintenance",
+  category: "fluid",
+  kind: "fluid-gir",
+};
+
 export default function CalculatorsPage() {
   const [focusCalc, setFocusCalc] = useState("downes");
   const activeCalc = CALCULATORS.find((c) => c.id === focusCalc) ?? null;
   const anthropometryActive = focusCalc === ANTHROPOMETRY_ITEM.id;
+  const fluidGirActive = focusCalc === FLUID_GIR_ITEM.id;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [view, setView] = useState<"all" | "saved">("all");
@@ -440,6 +450,7 @@ export default function CalculatorsPage() {
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const anthropometryQueryHit = !q.trim() || /anthrop|who|iap|fenton|bmi|height|weight|growth|mid-parental|mph|preterm/i.test(q);
+  const fluidGirQueryHit = !q.trim() || /fluid|gir|dextrose|glucose|maintenance|iv rate/i.test(q);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -457,7 +468,7 @@ export default function CalculatorsPage() {
 
   useEffect(() => {
     const queryId = new URLSearchParams(window.location.search).get("calc")?.trim() ?? "";
-    const nextId = queryId === "anthropometry" || CALCULATORS.some((calc) => calc.id === queryId) ? queryId : "downes";
+    const nextId = queryId === "anthropometry" || queryId === FLUID_GIR_ITEM.id || CALCULATORS.some((calc) => calc.id === queryId) ? queryId : "downes";
     const frame = window.requestAnimationFrame(() => setFocusCalc(nextId));
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -475,7 +486,7 @@ export default function CalculatorsPage() {
   }, []);
 
   const rememberCalculator = (id: string) => {
-    if (id === ANTHROPOMETRY_ITEM.id) return;
+    if (id === ANTHROPOMETRY_ITEM.id || id === FLUID_GIR_ITEM.id) return;
     setRecentIds((current) => {
       const next = [id, ...current.filter((item) => item !== id)].slice(0, 4);
       window.localStorage.setItem("srh_calculator_recent", JSON.stringify(next));
@@ -510,14 +521,15 @@ export default function CalculatorsPage() {
   const libraryGroups = useMemo(() => {
     const items: LibraryItem[] = [];
     if (view === "all" && cat !== "neonatal" && (cat === "all" || cat === "growth") && anthropometryQueryHit) items.push(ANTHROPOMETRY_ITEM);
+    if (view === "all" && (cat === "all" || cat === FLUID_GIR_ITEM.category) && fluidGirQueryHit) items.push(FLUID_GIR_ITEM);
     for (const calc of filteredCalculators) items.push({ id: calc.id, name: calc.name, detail: calc.external ? "Primary source linked" : calc.citation.split("(")[0].trim(), category: calc.category, kind: "calculator", calc });
     const map: Record<string, LibraryItem[]> = {};
     for (const item of items) (map[item.category] ??= []).push(item);
     return CATEGORIES.filter((category) => map[category.key]?.length).map((category) => ({ ...category, items: map[category.key] }));
-  }, [anthropometryQueryHit, cat, filteredCalculators, view]);
+  }, [anthropometryQueryHit, cat, filteredCalculators, fluidGirQueryHit, view]);
 
   const recentCalculators = recentIds.map((id) => CALCULATORS.find((calc) => calc.id === id)).filter((calc): calc is CalcDef => Boolean(calc));
-  const visibleCount = filteredCalculators.length + (libraryGroups.some((group) => group.items.some((item) => item.id === ANTHROPOMETRY_ITEM.id)) ? 1 : 0);
+  const visibleCount = filteredCalculators.length + (libraryGroups.some((group) => group.items.some((item) => item.id === ANTHROPOMETRY_ITEM.id)) ? 1 : 0) + (libraryGroups.some((group) => group.items.some((item) => item.id === FLUID_GIR_ITEM.id)) ? 1 : 0);
 
   return (
     <main className="calculator-page min-h-screen pb-20">
@@ -529,19 +541,19 @@ export default function CalculatorsPage() {
               <div className="calc-command-mark"><CalculatorIcon size={22} /></div>
               <div><div className="calc-command-overline">SRH · Pediatric decision support</div><h1>Calculator workspace</h1><p>Choose one tool, complete one workflow, and keep the clinical interpretation in view.</p></div>
             </div>
-            <div className="calculator-command-stats"><span><b>{CALCULATORS.length + 1}</b> tools</span><span><b>01</b> active workflow</span><span><b>⌘K</b> quick search</span></div>
+            <div className="calculator-command-stats"><span><b>{CALCULATORS.length + 2}</b> tools</span><span><b>01</b> active workflow</span><span><b>⌘K</b> quick search</span></div>
           </div>
           <div className="calculator-command-search"><label htmlFor="calculator-search">Find a calculator or clinical feature</label><div className="calc-search-wrap"><Search size={18} /><input ref={searchRef} id="calculator-search" className="inp" placeholder="Search ROP, respiratory distress, bilirubin, birth weight…" value={q} onChange={(event) => setQ(event.target.value)} /><kbd><Keyboard size={11} />⌘K</kbd>{q && <button type="button" onClick={() => setQ("")} aria-label="Clear search"><X size={14} /></button>}</div><span>{visibleCount} result{visibleCount === 1 ? "" : "s"} · search includes fields, units and source text</span></div>
         </section>
 
         <div className="calc-workspace-layout">
           <aside className="calc-library-rail card" aria-label="Calculator library">
-            <div className="calc-rail-heading"><div><span>Library</span><b>One tool at a time</b></div><span className="calc-rail-count">{CALCULATORS.length + 1}</span></div>
+            <div className="calc-rail-heading"><div><span>Library</span><b>One tool at a time</b></div><span className="calc-rail-count">{CALCULATORS.length + 2}</span></div>
             <div className="calc-rail-tabs"><button type="button" className={view === "all" ? "active" : ""} onClick={() => setView("all")}>All tools</button><button type="button" className={view === "saved" ? "active" : ""} onClick={() => setView("saved")}><Star size={13} fill={view === "saved" ? "currentColor" : "none"} /> Saved <b>{savedIds.length}</b></button></div>
             <label className="calc-rail-filter"><span>Clinical area</span><select value={cat} onChange={(event) => setCat(event.target.value)}><option value="all">All clinical areas</option>{CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
             <div className="calc-rail-results"><span>{view === "saved" ? "Saved tools" : "Available tools"}</span><span>{visibleCount}</span></div>
             <div className="calc-library-list">
-              {libraryGroups.map((group) => <div key={group.key} className="calc-library-group"><div className={`calc-library-group-title calc-group-${group.key}`}><span>{group.label}</span><b>{group.items.length}</b></div>{group.items.map((item) => <button key={item.id} type="button" className={`calc-library-item calc-area-${item.category} ${focusCalc === item.id ? "active" : ""}`} onClick={() => launchCalculator(item.id)}><span className={`calc-library-icon calc-mark-${item.category}`}>{item.kind === "anthropometry" ? <Ruler size={14} /> : <Stethoscope size={14} />}</span><span className="calc-library-copy"><b>{item.name}</b><small>{item.detail}</small></span>{item.kind === "calculator" && item.calc && savedIds.includes(item.calc.id) && <Star className="calc-library-star" size={13} fill="currentColor" />}{focusCalc === item.id && <ChevronRight className="calc-library-current" size={14} />}</button>)}</div>)}
+              {libraryGroups.map((group) => <div key={group.key} className="calc-library-group"><div className={`calc-library-group-title calc-group-${group.key}`}><span>{group.label}</span><b>{group.items.length}</b></div>{group.items.map((item) => <button key={item.id} type="button" className={`calc-library-item calc-area-${item.category} ${focusCalc === item.id ? "active" : ""}`} onClick={() => launchCalculator(item.id)}><span className={`calc-library-icon calc-mark-${item.category}`}>{item.kind === "anthropometry" ? <Ruler size={14} /> : item.kind === "fluid-gir" ? <CalculatorIcon size={14} /> : <Stethoscope size={14} />}</span><span className="calc-library-copy"><b>{item.name}</b><small>{item.detail}</small></span>{item.kind === "calculator" && item.calc && savedIds.includes(item.calc.id) && <Star className="calc-library-star" size={13} fill="currentColor" />}{focusCalc === item.id && <ChevronRight className="calc-library-current" size={14} />}</button>)}</div>)}
               {libraryGroups.length === 0 && <div className="calc-rail-empty"><BookOpen size={20} /><b>{view === "saved" ? "No saved tools" : "No matches"}</b><span>{view === "saved" ? "Star tools to keep them here." : "Try a different search or clinical area."}</span></div>}
             </div>
           </aside>
@@ -549,7 +561,8 @@ export default function CalculatorsPage() {
           <section className="calc-workspace-stage" aria-live="polite">
             {activeCalc && <div className={`calc-stage-heading calc-stage-${activeCalc.category}`}><div><span className="calc-stage-kicker">Active workflow · {categoryLabel(activeCalc.category)}</span><h2>{activeCalc.name}</h2><p>{activeCalc.external ? "Primary source linked" : "Citation and limitations shown below"} · one focused workflow at a time</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Ready for entry</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
             {anthropometryActive && <div className="calc-stage-heading calc-stage-growth"><div><span className="calc-stage-kicker">Active workflow · Growth & nutrition</span><h2>{ANTHROPOMETRY_ITEM.name}</h2><p>WHO, IAP and Fenton references remain separate and visible.</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Reference charts</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
-            {activeCalc ? <CalcCard calc={activeCalc} open saved={savedIds.includes(activeCalc.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={(id) => setFocusCalc((current) => current === id ? "" : id)} /> : anthropometryActive ? <AnthropometrySection query="" /> : <div className="calc-stage-placeholder"><div className="calc-placeholder-icon"><CalculatorIcon size={25} /></div><span className="calc-stage-kicker">Workspace ready</span><h2>Choose a calculator from the library</h2><p>Only the active tool opens here, so the rest of the library stays compact on mobile and desktop.</p><button type="button" className="btn-primary" onClick={() => searchRef.current?.focus()}><Search size={15} /> Find a tool</button></div>}
+            {fluidGirActive && <div className="calc-stage-heading calc-stage-fluid"><div><span className="calc-stage-kicker">Active workflow · Fluid, renal & metabolic</span><h2>{FLUID_GIR_ITEM.name}</h2><p>Enter weight, dextrose concentration and IV rate to review the arithmetic.</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Calculation aid</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
+            {activeCalc ? <CalcCard calc={activeCalc} open saved={savedIds.includes(activeCalc.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={(id) => setFocusCalc((current) => current === id ? "" : id)} /> : anthropometryActive ? <AnthropometrySection query="" /> : fluidGirActive ? <FluidsCalcPanel standalone /> : <div className="calc-stage-placeholder"><div className="calc-placeholder-icon"><CalculatorIcon size={25} /></div><span className="calc-stage-kicker">Workspace ready</span><h2>Choose a calculator from the library</h2><p>Only the active tool opens here, so the rest of the library stays compact on mobile and desktop.</p><button type="button" className="btn-primary" onClick={() => searchRef.current?.focus()}><Search size={15} /> Find a tool</button></div>}
             {activeCalc && recentCalculators.length > 0 && <div className="calc-stage-recent"><History size={14} /><span>Recent:</span>{recentCalculators.filter((calc) => calc.id !== activeCalc.id).slice(0, 3).map((calc) => <button key={calc.id} type="button" onClick={() => launchCalculator(calc.id)}>{calc.name}<ArrowUpRight size={12} /></button>)}</div>}
           </section>
         </div>

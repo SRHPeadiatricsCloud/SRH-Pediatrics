@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, CheckCircle2, Circle, Clock, User, X } from "lucide-react";
 import { WeightInput } from "@/components/weight-input";
 import { Chip, ChipGroup, DialWithOther, NumField, Section, Stepper, api, useTempUnit } from "@/components/ui";
-import { FlagsList, FluidsCalcPanel, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
+import { FlagsList, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
 import { interpretVitals, type Flag, type VitalsInput } from "@/lib/interpret";
 import { PainScoreCalculator } from "@/components/pain-scores";
 import { EditableListField } from "@/components/editable-list";
@@ -497,7 +497,6 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         />
         <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
       </Section>
-      <FluidsCalcPanel baby={d.baby} />
     </div>
   );
 }

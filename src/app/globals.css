@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 /* ============================================================
@@ -84,8 +85,12 @@ body {
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body), "Segoe UI", Roboto, Arial, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  font-kerning: normal;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   letter-spacing: -0.006em;
 }
 
@@ -6795,4 +6800,26 @@ body {
     max-width: 100%;
     overflow-x: auto;
   }
+}
+
+/* Cross-platform native select contrast. Windows native menus otherwise inherit
+   a white menu with light text from the dark theme. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  color: #eaf3ff;
+  background-color: #0e1626;
+}
+html.light select {
+  color-scheme: light;
+}
+html.light select option,
+html.light select optgroup {
+  color: #152a46;
+  background-color: #ffffff;
+}
+.calc-stage-fluid {
+  --area-accent: #2dd4bf;
 }
