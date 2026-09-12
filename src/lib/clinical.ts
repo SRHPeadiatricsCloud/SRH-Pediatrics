@@ -10,6 +10,24 @@ export type GrowthEntry = {
   fluids?: number;
 };
 
+export type FluidPlanMode = "fixed" | "daily";
+
+export type DailyFluidPlan = {
+  startMlKgDay?: number;
+  changePer24h?: number;
+  minimumMlKgDay?: number;
+  maximumMlKgDay?: number;
+};
+
+export type FluidPlan = {
+  mode?: FluidPlanMode;
+  startDate?: string;
+  day?: number;
+  holdToday?: boolean;
+  enteral?: DailyFluidPlan;
+  iv?: DailyFluidPlan;
+};
+
 export type Clinical = {
   triage?: {
     scale: string;
@@ -45,6 +63,7 @@ export type Clinical = {
     residual?: string;
     tpn?: boolean;
     notes?: string;
+    plan?: FluidPlan;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: { name: string; dose?: string; day?: number; ofDays?: number }[];
@@ -55,6 +74,55 @@ export type Clinical = {
   plan?: string;
   familyNote?: string;
 };
+
+export type FluidPlanSnapshot = {
+  mode: FluidPlanMode;
+  day: number;
+  enteralMlKgDay?: number;
+  ivMlKgDay?: number;
+  totalMlKgDay?: number;
+  enteralMlDay?: number;
+  ivMlDay?: number;
+  totalMlDay?: number;
+  feedMl?: number;
+  feedMlPerHour?: number;
+};
+
+const roundFluid = (value: number) => Math.round(value * 10) / 10;
+
+/** Calculate a daily target from a starting rate and a signed 24-hour change. */
+export function fluidTargetForDay(plan: DailyFluidPlan | undefined, day: number): number | undefined {
+  if (plan?.startMlKgDay === undefined || !Number.isFinite(plan.startMlKgDay)) return undefined;
+  const dayIndex = Math.max(0, Math.round(day) - 1);
+  const change = Number.isFinite(plan.changePer24h) ? plan.changePer24h ?? 0 : 0;
+  const raw = plan.startMlKgDay + dayIndex * change;
+  const minimum = plan.minimumMlKgDay ?? 0;
+  const maximum = plan.maximumMlKgDay ?? 300;
+  return roundFluid(Math.min(maximum, Math.max(minimum, raw)));
+}
+
+/** Resolve the current 24-hour fluid plan without changing clinical rules or targets. */
+export function calculateFluidPlan(fluids: Clinical["fluids"] | undefined, weightKg: number): FluidPlanSnapshot {
+  const f = fluids ?? {};
+  const plan = f.plan;
+  const mode = plan?.mode ?? "fixed";
+  const day = Math.max(1, Math.round(plan?.day ?? 1));
+  const effectiveDay = plan?.holdToday ? Math.max(1, day - 1) : day;
+  const enteralMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.enteral, effectiveDay) : f.enteralMlKgDay;
+  const ivMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.iv, effectiveDay) : f.ivMlKgDay;
+  const totalMlKgDay = mode === "daily"
+    ? roundFluid((enteralMlKgDay ?? 0) + (ivMlKgDay ?? 0))
+    : f.totalMlKgDay;
+  const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 0;
+  const enteralMlDay = enteralMlKgDay === undefined ? undefined : roundFluid(enteralMlKgDay * safeWeight);
+  const ivMlDay = ivMlKgDay === undefined ? undefined : roundFluid(ivMlKgDay * safeWeight);
+  const totalMlDay = totalMlKgDay === undefined ? undefined : roundFluid(totalMlKgDay * safeWeight);
+  const frequency = f.feedFreq?.trim().toLowerCase() ?? "";
+  const hours = frequency === "continuous" ? 24 : /^([1-9]\d*) hourly$/.test(frequency) ? Number(frequency.split(" ")[0]) : 0;
+  const feedMl = enteralMlDay !== undefined && hours > 0 && hours < 24 ? roundFluid(enteralMlDay / (24 / hours)) : undefined;
+  const feedMlPerHour = enteralMlDay !== undefined && frequency === "continuous" ? roundFluid(enteralMlDay / 24) : undefined;
+  return { mode, day, enteralMlKgDay, ivMlKgDay, totalMlKgDay, enteralMlDay, ivMlDay, totalMlDay, feedMl, feedMlPerHour };
+}
 
 export function dayOfLife(dob: string | Date): number {
   const d = new Date(dob).getTime();

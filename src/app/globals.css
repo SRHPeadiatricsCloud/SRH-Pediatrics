@@ -200,6 +200,7 @@ html.light .chip-on.tone-emerald {
    ============================================================ */
 .btn,
 .btn-primary,
+.btn-secondary,
 .btn-ghost {
   cursor: pointer;
   border-radius: var(--r-ctl);
@@ -215,11 +216,13 @@ html.light .chip-on.tone-emerald {
 }
 .btn:active,
 .btn-primary:active,
+.btn-secondary:active,
 .btn-ghost:active {
   transform: scale(0.97);
 }
 .btn:disabled,
 .btn-primary:disabled,
+.btn-secondary:disabled,
 .btn-ghost:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -234,6 +237,18 @@ html.light .chip-on.tone-emerald {
 }
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: var(--card-hi);
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
 }
 html.light .btn-primary {
   color: #ffffff;

@@ -28,6 +28,7 @@ import {
 } from "@/lib/catalog";
 import type { Detail } from "@/lib/types";
 import {
+  calculateFluidPlan,
   calcNutrition,
   fmtBP,
   fmtTime,
@@ -35,11 +36,27 @@ import {
   pctOfBirth,
   tempIn,
   tempOut,
+  type Clinical,
+  type DailyFluidPlan,
+  type FluidPlanMode,
 } from "@/lib/clinical";
 
 function shiftTag(at: string): "Day" | "Night" {
   const h = new Date(at).getHours();
   return h >= 8 && h < 20 ? "Day" : "Night";
+}
+
+type FluidValues = NonNullable<Clinical["fluids"]>;
+
+function localDateIso() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+function showFluid(value: number | undefined) {
+  if (value === undefined || !Number.isFinite(value)) return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 export function VitalsTab({
@@ -323,10 +340,17 @@ export function RespTab({
 
 export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
   const f = d.baby.clinical?.fluids ?? {};
-  const [s, setS] = useState({ ...f });
-  const wt = d.baby.currentWeight / 1000;
-  const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
-  const nutrition = calcNutrition({ fluids: s });
+  const [s, setS] = useState<FluidValues>({ ...f });
+  const weightKg = Math.max(0, d.baby.currentWeight / 1000);
+  const dailyMode = s.plan?.mode === "daily";
+  const snapshot = calculateFluidPlan(s, weightKg);
+  const nutritionFluids: FluidValues = {
+    ...s,
+    enteralMlKgDay: snapshot.enteralMlKgDay,
+    ivMlKgDay: snapshot.ivMlKgDay,
+    totalMlKgDay: snapshot.totalMlKgDay,
+  };
+  const nutrition = calcNutrition({ fluids: nutritionFluids });
   const nutritionFlags: Flag[] = [
     nutrition.totalKcal < 110
       ? { key: "kcal", label: `Energy ${nutrition.totalKcal} kcal/kg/d below target 110–135`, sev: "warn" }
@@ -337,45 +361,146 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d below 3.5–4`, sev: "warn" }
       : { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate`, sev: "info" },
   ];
+  const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
+  const setPlanNumber = (section: "enteral" | "iv", key: keyof DailyFluidPlan) => (n: number) =>
+    setS((p) => ({
+      ...p,
+      plan: {
+        ...(p.plan ?? { mode: "daily", day: 1 }),
+        mode: "daily",
+        [section]: { ...(p.plan?.[section] ?? {}), [key]: n },
+      },
+    }));
+  const enableDaily = () => {
+    setS((p) => ({
+      ...p,
+      plan: {
+        ...(p.plan ?? {}),
+        mode: "daily",
+        startDate: p.plan?.startDate ?? localDateIso(),
+        day: p.plan?.day ?? 1,
+        holdToday: false,
+        enteral: p.plan?.enteral ?? { startMlKgDay: p.enteralMlKgDay ?? 0, changePer24h: 0, minimumMlKgDay: 0, maximumMlKgDay: 300 },
+        iv: p.plan?.iv ?? { startMlKgDay: p.ivMlKgDay ?? 0, changePer24h: 0, minimumMlKgDay: 0, maximumMlKgDay: 300 },
+      },
+    }));
+  };
+  const setMode = (mode: FluidPlanMode) => {
+    if (mode === "daily") enableDaily();
+    else setS((p) => ({ ...p, plan: { ...p.plan, mode: "fixed" } }));
+  };
+  const advanceDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: (p.plan?.day ?? 1) + 1, holdToday: false } }));
+  const holdToday = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", holdToday: !p.plan?.holdToday } }));
+  const resetDay = () => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: 1, holdToday: false } }));
+  const save = () => {
+    const resolved = calculateFluidPlan(s, weightKg);
+    const fluids: FluidValues = dailyMode
+      ? { ...s, enteralMlKgDay: resolved.enteralMlKgDay, ivMlKgDay: resolved.ivMlKgDay, totalMlKgDay: resolved.totalMlKgDay }
+      : s;
+    void patch({ clinical: { fluids } });
+  };
+  const day = s.plan?.day ?? 1;
+  const todayLabel = s.plan?.holdToday ? "Held at previous target" : `Day ${day} target`;
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-    <Section
-      title="Fluids, TPN & nutrition"
-      right={<button className="btn-primary" onClick={() => patch({ clinical: { fluids: s } })}>Save</button>}
-    >
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
-        <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
-      </div>
-      <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">
-        Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Auto energy {calcNutrition({ fluids: s }).totalKcal} kcal/kg/day
-      </div>
-      <div className="lbl mt-4 mb-1">Feed type</div>
-      <DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" />
-      <div className="lbl mt-4 mb-1">Route</div>
-      <DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" />
-      <div className="lbl mt-4 mb-1">Frequency</div>
-      <DialWithOther
-        options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]}
-        value={s.feedFreq}
-        onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))}
-        otherPlaceholder="Other frequency…"
-      />
-      <div className="mt-3">
-        <FlagsList flags={nutritionFlags} />
-      </div>
-    </Section>
-    <FluidsCalcPanel baby={d.baby} />
+      <Section
+        title="Fluids, TPN & nutrition"
+        right={<button className="btn-primary" onClick={save}>Save 24-hour plan</button>}
+      >
+        <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="lbl">24-hour prescription</div>
+              <p className="mt-1 text-[11px] text-slate-400">Use a fixed target or calculate today&apos;s target from a signed daily change.</p>
+            </div>
+            <div className="flex rounded-lg border border-white/10 bg-slate-950/40 p-0.5" role="tablist" aria-label="Fluid prescription mode">
+              <button type="button" role="tab" aria-selected={!dailyMode} className={`rounded-md px-2 py-1 text-[10px] font-bold ${!dailyMode ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400"}`} onClick={() => setMode("fixed")}>Fixed target</button>
+              <button type="button" role="tab" aria-selected={dailyMode} className={`rounded-md px-2 py-1 text-[10px] font-bold ${dailyMode ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400"}`} onClick={() => setMode("daily")}>Advance daily</button>
+            </div>
+          </div>
+        </div>
+
+        {dailyMode ? (
+          <>
+            <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-3">
+              <NumField label="Plan day" value={day} onChange={(n) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", day: Math.max(1, Math.round(n)) } }))} min={1} max={365} step={1} placeholder="1" />
+              <label className="block rounded-lg border border-white/10 bg-slate-900/40 p-2">
+                <span className="lbl mb-1 block">Plan starts</span>
+                <input className="inp !py-1 text-sm" type="date" value={s.plan?.startDate ?? localDateIso()} onChange={(event) => setS((p) => ({ ...p, plan: { ...(p.plan ?? {}), mode: "daily", startDate: event.target.value } }))} />
+              </label>
+              <div className="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-center">
+                <span className="lbl block">Dosing weight</span>
+                <b className="mt-1 block text-sm text-cyan-200">{weightKg ? `${showFluid(weightKg)} kg` : "Missing"}</b>
+                <small className="text-[9px] text-slate-500">from baby card</small>
+              </div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
+                <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-cyan-100">Enteral feeds</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <NumField label="Start" value={s.plan?.enteral?.startMlKgDay} onChange={setPlanNumber("enteral", "startMlKgDay")} min={0} max={300} step={1} placeholder="20" />
+                  <NumField label="Change /24h" value={s.plan?.enteral?.changePer24h} onChange={setPlanNumber("enteral", "changePer24h")} min={-300} max={300} step={1} placeholder="+20" />
+                  <NumField label="Maximum" value={s.plan?.enteral?.maximumMlKgDay} onChange={setPlanNumber("enteral", "maximumMlKgDay")} min={0} max={300} step={1} placeholder="160" />
+                </div>
+                <div className="mt-2 rounded-lg bg-cyan-400/10 p-2 text-[11px] text-cyan-100"><b>{todayLabel}:</b> {showFluid(snapshot.enteralMlKgDay)} ml/kg/day · {showFluid(snapshot.enteralMlDay)} ml/day</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-900/35 p-2">
+                <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-violet-100">IV / TPN</b><span className="text-[9px] text-slate-500">ml/kg/day</span></div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <NumField label="Start" value={s.plan?.iv?.startMlKgDay} onChange={setPlanNumber("iv", "startMlKgDay")} min={0} max={300} step={1} placeholder="80" />
+                  <NumField label="Change /24h" value={s.plan?.iv?.changePer24h} onChange={setPlanNumber("iv", "changePer24h")} min={-300} max={300} step={1} placeholder="−10" />
+                  <NumField label="Minimum" value={s.plan?.iv?.minimumMlKgDay} onChange={setPlanNumber("iv", "minimumMlKgDay")} min={0} max={300} step={1} placeholder="40" />
+                </div>
+                <div className="mt-2 rounded-lg bg-violet-400/10 p-2 text-[11px] text-violet-100"><b>{todayLabel}:</b> {showFluid(snapshot.ivMlKgDay)} ml/kg/day · {showFluid(snapshot.ivMlDay)} ml/day</div>
+              </div>
+            </div>
+            <div className="mt-2 rounded-xl border border-emerald-400/25 bg-emerald-400/5 p-2">
+              <div className="mb-2 flex items-center justify-between gap-2"><b className="text-xs text-emerald-100">Today&apos;s 24-hour plan</b><span className="text-[9px] text-emerald-200/70">Enteral + IV/TPN</span></div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                <div><span className="block text-slate-500">Enteral</span><b className="text-cyan-100">{showFluid(snapshot.enteralMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.enteralMlDay)} ml/day</small></div>
+                <div><span className="block text-slate-500">IV / TPN</span><b className="text-violet-100">{showFluid(snapshot.ivMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.ivMlDay)} ml/day</small></div>
+                <div><span className="block text-slate-500">Total</span><b className="text-emerald-100">{showFluid(snapshot.totalMlKgDay)} ml/kg/d</b><small className="block text-slate-400">{showFluid(snapshot.totalMlDay)} ml/day</small></div>
+              </div>
+              <p className="mt-2 text-[10px] text-slate-400">{snapshot.feedMl !== undefined ? `${showFluid(snapshot.feedMl)} ml/feed at ${s.feedFreq}.` : snapshot.feedMlPerHour !== undefined ? `${showFluid(snapshot.feedMlPerHour)} ml/hour continuously.` : "Select a fixed hourly frequency to calculate volume per feed."}</p>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary" onClick={advanceDay}>Advance 24 h</button>
+              <button type="button" className={`btn-secondary ${s.plan?.holdToday ? "border-amber-300/50 text-amber-200" : ""}`} onClick={holdToday}>{s.plan?.holdToday ? "Release hold" : "Hold today"}</button>
+              <button type="button" className="btn-secondary" onClick={resetDay}>Reset to day 1</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+              <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+              <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+              <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
+              <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+              <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+              <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
+              <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
+            </div>
+            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">Total ≈ {Math.round((s.totalMlKgDay ?? 0) * weightKg)} ml/day · Auto energy {nutrition.totalKcal} kcal/kg/day</div>
+          </>
+        )}
+        <div className="lbl mt-4 mb-1">Feed type</div>
+        <DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" />
+        <div className="lbl mt-4 mb-1">Route</div>
+        <DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" />
+        <div className="lbl mt-4 mb-1">Frequency</div>
+        <DialWithOther
+          options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]}
+          value={s.feedFreq}
+          onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))}
+          otherPlaceholder="Other frequency…"
+        />
+        <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
+      </Section>
+      <FluidsCalcPanel baby={d.baby} />
     </div>
   );
 }
-
 export function GrowthTab({
   d,
   patch,
@@ -815,8 +940,8 @@ const blankAction = (text: string, owner = ""): ComposedAction => ({
 
 export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; reload: () => void; user: string }) {
   const b = d.baby;
-  const c = b.clinical ?? {};
-  const v = d.vitals[0] ?? {};
+  const c = useMemo(() => b.clinical ?? {}, [b.clinical]);
+  const v = useMemo(() => d.vitals[0] ?? {}, [d.vitals]);
   const autoSummary = useMemo(
     () =>
       [
@@ -850,6 +975,8 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
   const [actionDraft, setActionDraft] = useState("");
   const [synthesis, setSynthesis] = useState("Read-back completed at bedside with nurse in charge.");
   const [saving, setSaving] = useState(false);
+  // Keep generated text current when source data changes while allowing manual edits.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setSummary(autoSummary), [autoSummary]);
   return (
     <div className="grid gap-3 lg:grid-cols-3">
