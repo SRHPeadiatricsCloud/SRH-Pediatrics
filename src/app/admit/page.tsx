@@ -77,6 +77,21 @@ const CONSULTANTS = [
 
 const INSURANCE_TYPES = ["Self-pay / cash", "Insurance", "Scheme (Govt / CMCHIS)", "Corporate / TPA"];
 
+type AdmissionMode = "new" | "existing-transfer";
+
+function localDateTimeNow() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 16);
+}
+
+function dayOfLifePreview(birth: string, asOf: string) {
+  const start = new Date(birth).getTime();
+  const end = new Date(asOf).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+  return Math.floor((end - start) / 86400000) + 1;
+}
+
 /** Postnatal ward — immediate maternal/baby care options (no NRP terms). */
 const POSTNATAL_CARE = [
   "Skin-to-skin contact started",
@@ -141,6 +156,9 @@ function AdmitForm() {
   const r = useRouter();
   const search = useSearchParams();
   const { name } = useUser();
+  const [admissionMode, setAdmissionMode] = useState<AdmissionMode>("new");
+  const [birthDateTime, setBirthDateTime] = useState(localDateTimeNow);
+  const [recordedAt, setRecordedAt] = useState(localDateTimeNow);
 
   const [unit, setUnit] = useState<UnitKey>(() => {
     const u = (search?.get("unit") ?? "nicu") as UnitKey;
@@ -182,10 +200,14 @@ function AdmitForm() {
   const u = unitOf(unit);
   const systems = useMemo(() => systemsForUnit(unit), [unit]);
   useEffect(() => {
+    // Keep the selected system valid when the unit changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!systems.includes(sys)) setSys(systems[0]);
   }, [systems, sys]);
   useEffect(() => {
     if (!unitOf(unit).bedZones.some((z) => z.beds.includes(f.bed))) {
+      // The bed dial is an external unit selection; synchronise its fallback here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setF((p) => ({ ...p, bed: defaultBed(unit) }));
     }
   }, [unit]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -198,6 +220,9 @@ function AdmitForm() {
   const catalog = UNIT_CATALOGS[unit] ?? {};
 
   const submit = async () => {
+    const birthAt = new Date(birthDateTime);
+    const recordedDate = new Date(recordedAt);
+    if (Number.isNaN(birthAt.getTime()) || Number.isNaN(recordedDate.getTime())) return;
     const grams = toGrams(f.birthWeight);
     if (unit === "nicu" && (grams < 300 || grams > 6000)) return;
     if (useKg && grams <= 0) return;
@@ -211,6 +236,7 @@ function AdmitForm() {
       uhid: f.uhid,
       bed: f.bed,
       unit,
+      dob: birthAt.toISOString(),
       subspecialty: unit === "picu" || unit === "stepdown" ? f.subspecialty : "",
       sex: f.sex,
       gestWeeks: f.gestWeeks,
@@ -250,6 +276,7 @@ function AdmitForm() {
         drugs: unit === "nicu" ? [{ name: "Vitamin K" }] : [],
         care: [],
         triage: f.triage ?? undefined,
+        admissionContext: { mode: admissionMode, recordedAt: recordedDate.toISOString() },
       },
     };
     const res = (await api("/api/babies", "POST", payload)) as { baby?: { id?: number } } | undefined;
@@ -282,7 +309,26 @@ function AdmitForm() {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
+        <Section title="Case timeline" sub="Set this before entering an older or transferred baby. It prevents every treatment from being labelled D1.">
+          <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-slate-900/35 p-1">
+            <button type="button" className={`rounded-lg px-3 py-2 text-left text-xs font-bold ${admissionMode === "new" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-400"}`} onClick={() => setAdmissionMode("new")}>
+              New admission<small className="mt-0.5 block text-[9px] font-normal opacity-75">Birth / first treatment today</small>
+            </button>
+            <button type="button" className={`rounded-lg px-3 py-2 text-left text-xs font-bold ${admissionMode === "existing-transfer" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-400"}`} onClick={() => setAdmissionMode("existing-transfer")}>
+              Existing / transfer<small className="mt-0.5 block text-[9px] font-normal opacity-75">Already receiving treatment</small>
+            </button>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            <label className="block"><span className="lbl mb-1 block">Date &amp; time of birth</span><input className="inp" type="datetime-local" value={birthDateTime} onChange={(event) => setBirthDateTime(event.target.value)} /></label>
+            <label className="block"><span className="lbl mb-1 block">Record as of</span><input className="inp" type="datetime-local" value={recordedAt} onChange={(event) => setRecordedAt(event.target.value)} /></label>
+          </div>
+          <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] text-cyan-100">
+            {dayOfLifePreview(birthDateTime, recordedAt) ? <>Calculated day of life at entry: <b>DOL {dayOfLifePreview(birthDateTime, recordedAt)}</b>.</> : <>Check the birth and record dates — the record date must be after birth.</>}
+            {admissionMode === "existing-transfer" && <span className="ml-1 text-slate-400">After saving, set each medicine&apos;s first-dose date in Drugs &amp; medications.</span>}
+          </div>
+        </Section>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <Section title="Identification">
             <div className="grid gap-2 md:grid-cols-2">
               <div>

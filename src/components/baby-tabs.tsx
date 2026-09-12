@@ -47,6 +47,7 @@ function shiftTag(at: string): "Day" | "Night" {
 }
 
 type FluidValues = NonNullable<Clinical["fluids"]>;
+type ClinicalDrug = NonNullable<Clinical["drugs"]>[number];
 
 function localDateIso() {
   const now = new Date();
@@ -57,6 +58,28 @@ function localDateIso() {
 function showFluid(value: number | undefined) {
   if (value === undefined || !Number.isFinite(value)) return "—";
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function localDateTimeValue(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function isoFromDateTimeInput(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function therapyDay(drug: ClinicalDrug, asOf = new Date()) {
+  if (drug.dayOverride !== undefined && Number.isFinite(drug.dayOverride)) return Math.max(1, Math.round(drug.dayOverride));
+  if (drug.startedAt) {
+    const started = new Date(drug.startedAt).getTime();
+    if (Number.isFinite(started)) return Math.max(1, Math.floor((asOf.getTime() - started) / 86400000) + 1);
+  }
+  return Math.max(1, Math.round(drug.day ?? 1));
 }
 
 export function VitalsTab({
@@ -703,8 +726,12 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
   const [drugs, setDrugs] = useState(c.drugs ?? []);
   const [lines, setLines] = useState(c.lines ?? []);
   const [group, setGroup] = useState(Object.keys(DRUGS)[0]);
+  const likelyCourseDays = (name: string) => /cillin|cef|myc|penem|zolid|istin|azole|comycin|Amikacin|Gentamicin/i.test(name) ? 7 : undefined;
+  const newDrug = (name: string): ClinicalDrug => ({ name, day: 1, startedAt: new Date().toISOString(), ofDays: likelyCourseDays(name), source: "our unit" });
   const toggleDrug = (name: string) =>
-    setDrugs((p) => (p.some((x) => x.name === name) ? p.filter((x) => x.name !== name) : [...p, { name, day: 1, ofDays: /cillin|cef|myc|penem|zolid|istin|azole|comycin|Amikacin|Gentamicin/i.test(name) ? 7 : undefined }]));
+    setDrugs((p) => (p.some((x) => x.name === name) ? p.filter((x) => x.name !== name) : [...p, newDrug(name)]));
+  const updateDrug = (index: number, patch: Partial<ClinicalDrug>) => setDrugs((p) => p.map((drug, i) => i === index ? { ...drug, ...patch } : drug));
+  const currentDrugDay = (drug: ClinicalDrug) => therapyDay(drug);
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <Section title="Medications" right={<button className="btn-primary" onClick={() => patch({ clinical: { drugs, lines } })}>Save</button>}>
@@ -725,22 +752,34 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
             onChange={(names: string[]) =>
               setDrugs(names.filter((n) => n.trim()).map((n) => {
                 const existing = drugs.find((x) => x.name === n || `${x.name} — ${x.dose ?? ""}` === n);
-                return existing ?? { name: n, day: 1, ofDays: /cillin|cef|myc|penem|zolid|istin|azole|comycin|Amikacin|Gentamicin/i.test(n) ? 7 : undefined };
+                return existing ?? newDrug(n);
               }))
             }
             placeholder="Add custom medication or dose…"
             emptyLabel="No medications added yet."
           />
         </div>
-        <div className="lbl mt-4 mb-1">Running medications</div>
-        <div className="space-y-1.5">
-          {drugs.map((x, i) => (
-            <div key={x.name} className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/40 p-2 text-xs">
-              <span className="flex-1 text-slate-100">{x.name}{x.dose ? ` · ${x.dose}` : ""}</span>
-              {x.ofDays !== undefined && <span className="text-amber-200">D{x.day ?? 1}/{x.ofDays}</span>}
-              <button className="text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
+        <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-[10px] leading-relaxed text-cyan-100">
+          <b>Therapy day is medicine-specific.</b> For an existing or transferred case, set the first-dose date for each antibiotic below. A medicine started three days ago will show D4; a medicine started today will show D1.
+        </div>
+        <div className="lbl mt-4 mb-1">Running medications · current as of now</div>
+        <div className="space-y-2">
+          {drugs.map((x, i) => {
+            const derived = Boolean(x.startedAt && x.dayOverride === undefined);
+            return <div key={`${x.name}-${i}`} className="rounded-xl border border-white/10 bg-slate-900/40 p-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 text-slate-100">{x.name}{x.dose ? ` · ${x.dose}` : ""}</span>
+                {x.ofDays !== undefined && <span className="shrink-0 text-amber-200">D{currentDrugDay(x)}/{x.ofDays}</span>}
+                <button className="shrink-0 text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <label className="block"><span className="lbl mb-1 block !text-[9px]">First dose</span><input className="inp !min-h-0 !py-1 text-[11px]" type="datetime-local" value={localDateTimeValue(x.startedAt)} onChange={(event) => updateDrug(i, { startedAt: isoFromDateTimeInput(event.target.value), dayOverride: undefined })} /></label>
+                <label className="block"><span className="lbl mb-1 block !text-[9px]">Planned days</span><input className="inp !min-h-0 !py-1 text-[11px]" type="number" min={1} max={365} value={x.ofDays ?? ""} placeholder="e.g. 7" onChange={(event) => updateDrug(i, { ofDays: event.target.value ? Number(event.target.value) : undefined })} /></label>
+                <label className="block"><span className="lbl mb-1 block !text-[9px]">Manual day if date unknown</span><input className="inp !min-h-0 !py-1 text-[11px]" type="number" min={1} max={365} value={x.dayOverride ?? ""} placeholder={derived ? `Auto D${currentDrugDay(x)}` : "e.g. 4"} onChange={(event) => updateDrug(i, { dayOverride: event.target.value ? Number(event.target.value) : undefined })} /></label>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-2 text-[9px] text-slate-500"><span>{derived ? "Calculated from first dose" : x.dayOverride !== undefined ? "Manual therapy day" : "Enter first-dose date"}</span>{x.source && <span>· {x.source}</span>}</div>
+            </div>;
+          })}
         </div>
       </Section>
       <Section title="Lines, tubes & devices" right={<button className="btn-primary" onClick={() => patch({ clinical: { drugs, lines } })}>Save</button>}>

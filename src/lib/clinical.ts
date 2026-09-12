@@ -66,7 +66,19 @@ export type Clinical = {
     plan?: FluidPlan;
   };
   lines?: { name: string; day: number; site?: string }[];
-  drugs?: { name: string; dose?: string; day?: number; ofDays?: number }[];
+  drugs?: {
+    name: string;
+    dose?: string;
+    day?: number;
+    ofDays?: number;
+    startedAt?: string;
+    dayOverride?: number;
+    source?: "our unit" | "referring hospital" | "unknown";
+  }[];
+  admissionContext?: {
+    mode: "new" | "existing-transfer";
+    recordedAt: string;
+  };
   labs?: Record<string, string>;
   care?: string[];
   discharge?: string[];
