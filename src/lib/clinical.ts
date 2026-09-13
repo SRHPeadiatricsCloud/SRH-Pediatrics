@@ -346,11 +346,14 @@ export function fToC(f: number): number {
   return cleanConversion(((f - 32) * 5) / 9);
 }
 
-/** Convert a stored Celsius value into the display unit without truncating decimals. */
+/** Convert a stored Celsius value for bedside display at standard one-decimal temperature precision. */
 export function tempOut(c: number | null | undefined, unit: TempUnit): number | null {
   if (c === null || c === undefined || Number.isNaN(Number(c))) return null;
   const v = Number(c);
-  return unit === "F" ? cleanConversion((v * 9) / 5 + 32) : v;
+  const displayed = unit === "F" ? (v * 9) / 5 + 32 : v;
+  // Display-only rounding removes binary floating-point noise; storage remains
+  // Celsius and retains the original entered/calculated value.
+  return Number(displayed.toFixed(1));
 }
 
 /** Convert a value typed in the display unit back to Celsius for storage. */

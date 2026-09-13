@@ -478,12 +478,12 @@ export function VitalsTab({
             <Stepper label="SpO₂ pre-ductal %" value={v.spo2} onChange={set("spo2")} min={40} max={100} />
             <Stepper label="SpO₂ post-ductal %" value={v.spo2Post} onChange={set("spo2Post")} min={40} max={100} />
             <Stepper
-              label="Temp °F"
+              label={`Temp °${unit}`}
               value={tempOut(v.temp, unit) ?? 0}
               onChange={(n) => set("temp")(tempIn(n, unit))}
               min={89.6}
               max={104}
-              step={0.2}
+              step={0.1}
               decimals={1}
             />
             <Stepper label="Systolic BP" value={v.sbp} onChange={set("sbp")} min={20} max={160} />
