@@ -42,6 +42,11 @@ export type Clinical = {
     feedRoute?: string;
     feedFreq?: string;
     feedVol?: number;
+    fortificationName?: string;
+    fortificationAmount?: number;
+    fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
+    fortificationFeedVolumeMl?: number;
+    fortificationNotes?: string;
     residual?: string;
     tpn?: boolean;
     notes?: string;

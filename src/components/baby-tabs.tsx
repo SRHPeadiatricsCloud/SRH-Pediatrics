@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Circle, Clock, Info, User, X } from "lucide-react";
 import { WeightInput } from "@/components/weight-input";
 import { Chip, ChipGroup, DialWithOther, NumField, Section, Stepper, api, useTempUnit } from "@/components/ui";
-import { FlagsList, FluidsCalcPanel, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
-import { girFromDextrose, interpretVitals, neonatalDayFluidRange, type Flag, type VitalsInput } from "@/lib/interpret";
+import { FlagsList, GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpretation } from "@/components/interpret-ui";
+import { interpretVitals, type Flag, type VitalsInput } from "@/lib/interpret";
 import { PainScoreCalculator } from "@/components/pain-scores";
 import { EditableListField } from "@/components/editable-list";
 import {
@@ -438,6 +438,7 @@ export function RespTab({
 export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
   const f = d.baby.clinical?.fluids ?? {};
   const [s, setS] = useState({ ...f });
+  const [activePanel, setActivePanel] = useState<"plan" | "fortification">("plan");
   const wt = d.baby.currentWeight / 1000;
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
   const nutrition = calcNutrition({ fluids: s });
@@ -452,40 +453,47 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       : { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate`, sev: "info" },
   ];
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-    <Section
-      title="Fluids, TPN & nutrition"
-      right={<button className="btn-primary" onClick={() => patch({ clinical: { fluids: s } })}>Save</button>}
-    >
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-        <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-        <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
-        <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
-      </div>
-      <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-xs text-cyan-200">
-        Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Auto energy {calcNutrition({ fluids: s }).totalKcal} kcal/kg/day
-      </div>
-      <div className="lbl mt-4 mb-1">Feed type</div>
-      <DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" />
-      <div className="lbl mt-4 mb-1">Route</div>
-      <DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" />
-      <div className="lbl mt-4 mb-1">Frequency</div>
-      <DialWithOther
-        options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]}
-        value={s.feedFreq}
-        onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))}
-        otherPlaceholder="Other frequency…"
-      />
-      <div className="mt-3">
-        <FlagsList flags={nutritionFlags} />
-      </div>
-    </Section>
-    <FluidsCalcPanel baby={d.baby} />
+    <div className="grid gap-3">
+      <Section
+        title="Fluids, TPN & nutrition"
+        right={<button type="button" className="btn-primary" onClick={() => patch({ clinical: { fluids: s } })}>Save</button>}
+      >
+        <div className="mb-4 flex flex-wrap gap-1 border-b border-white/10 pb-2" role="tablist" aria-label="Nutrition sections">
+          <button type="button" role="tab" aria-selected={activePanel === "plan"} className={`min-h-10 rounded-lg px-4 text-xs font-black ${activePanel === "plan" ? "bg-cyan-400/15 text-cyan-100 ring-1 ring-cyan-300/50" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`} onClick={() => setActivePanel("plan")}>Feeds & fluids</button>
+          <button type="button" role="tab" aria-selected={activePanel === "fortification"} className={`min-h-10 rounded-lg px-4 text-xs font-black ${activePanel === "fortification" ? "bg-cyan-400/15 text-cyan-100 ring-1 ring-cyan-300/50" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`} onClick={() => setActivePanel("fortification")}>Fortification</button>
+        </div>
+        {activePanel === "plan" ? <div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="GIR mg/kg/min" value={s.gir ?? undefined} onChange={set("gir")} min={0} max={20} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Energy kcal/kg/d" value={s.kcal ?? undefined} onChange={set("kcal")} min={0} max={200} step={1} placeholder="enter" />
+            <NumField label="Feed volume / feed (ml)" value={s.feedVol ?? undefined} onChange={set("feedVol")} min={0} max={120} step={1} placeholder="enter" />
+          </div>
+          <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">
+            Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Auto energy {nutrition.totalKcal} kcal/kg/day · Protein {nutrition.totalProtein} g/kg/day
+          </div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <label className="block"><span className="lbl mb-1 block">Feed type</span><DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Route</span><DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
+          </div>
+          <div className="mt-4"><FlagsList flags={nutritionFlags} /></div>
+        </div> : <div role="tabpanel" className="grid gap-4">
+          <div className="max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record the fortifier exactly as prepared.</b> Enter the product, the amount used, and the feed volume it was mixed into. This records the preparation without changing the feed volume or automatically scaling the fortifier.</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
+            <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.1} decimals={2} placeholder="enter" />
+            <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml</option><option value="scoop">scoop</option><option value="measure">measure</option></select></label>
+            <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="enter" />
+            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional preparation detail" /></label>
+          </div>
+          <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety note:</b> the recorded amount stays linked to the stated mixed feed volume. Changing feed volume does not automatically change the fortifier amount.</div>
+        </div>}
+      </Section>
     </div>
   );
 }
