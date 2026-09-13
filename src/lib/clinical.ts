@@ -10,40 +10,6 @@ export type GrowthEntry = {
   fluids?: number;
 };
 
-export type FluidPlanMode = "fixed" | "daily";
-
-export type DailyFluidPlan = {
-  startMlKgDay?: number;
-  changePer24h?: number;
-  minimumMlKgDay?: number;
-  maximumMlKgDay?: number;
-};
-
-export type FluidFortifier = {
-  id: string;
-  name: string;
-  type?: string;
-  kcalPerUnit: number;
-  proteinPerUnit?: number;
-  referenceVolumeMl: number;
-  phase: number;
-  amount?: number;
-  amountUnit?: "sachet" | "ml" | "g" | "scoop" | "unit" | "custom";
-  minimumAmount?: number;
-  maximumAmount?: number;
-  notes?: string;
-  confirmed?: boolean;
-};
-
-export type FluidPlan = {
-  mode?: FluidPlanMode;
-  startDate?: string;
-  day?: number;
-  holdToday?: boolean;
-  enteral?: DailyFluidPlan;
-  iv?: DailyFluidPlan;
-};
-
 export type Clinical = {
   triage?: {
     scale: string;
@@ -76,38 +42,9 @@ export type Clinical = {
     feedRoute?: string;
     feedFreq?: string;
     feedVol?: number;
-    idealFeedVolumeMl?: number;
-    practicalFeedVolumeMl?: number;
     residual?: string;
     tpn?: boolean;
     notes?: string;
-    plan?: FluidPlan;
-    dosingWeightKg?: number;
-    dosingWeightAt?: string;
-    dosingWeightConfirmedAt?: string;
-    fluidDriver?: "total" | "enteral" | "iv";
-    practicalIncrementMl?: number;
-    dextrosePct?: number;
-    ivHeld?: boolean;
-    feedsHeld?: boolean;
-    outputs?: { at: string; urineMl?: number; gastricAspirateMl?: number; stoolMl?: number; stool?: "none" | "small" | "moderate" | "large"; insensibleMl?: number; note?: string }[];
-    baseMilkKcalPerMl?: number;
-    baseMilkProteinGPer100Ml?: number;
-    baseMilkCarbohydrateGPer100Ml?: number;
-    baseMilkFatGPer100Ml?: number;
-    targets?: {
-      fluids?: [number, number];
-      energy?: [number, number];
-      protein?: [number, number];
-      gir?: [number, number];
-      maximumEnteralMlKgDay?: number;
-    };
-    electrolyteUnit?: "mEq/kg/day" | "mmol/kg/day";
-    electrolytes?: { na?: number; k?: number; ca?: number; po4?: number };
-    fortifiers?: FluidFortifier[];
-    feedsGiven?: { at: string; volumeMl: number; plannedVolumeMl?: number; intervalHours?: number; status?: "given" | "held" | "refused" | "emesis"; reason?: string }[];
-    frequencyChangedAt?: string;
-    previousFeedFreq?: string;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: {
@@ -131,58 +68,6 @@ export type Clinical = {
   familyNote?: string;
 };
 
-export type FluidPlanSnapshot = {
-  mode: FluidPlanMode;
-  day: number;
-  enteralMlKgDay?: number;
-  ivMlKgDay?: number;
-  totalMlKgDay?: number;
-  enteralMlDay?: number;
-  ivMlDay?: number;
-  totalMlDay?: number;
-  feedMl?: number;
-  feedMlPerHour?: number;
-  feedsPerDay?: number;
-};
-
-// Remove floating-point noise without discarding clinically meaningful decimals.
-// This deliberately does not force values to a one-decimal display precision.
-const preserveFluid = (value: number) => Number(value.toPrecision(15));
-
-/** Calculate a daily target from a starting rate and a signed 24-hour change. */
-export function fluidTargetForDay(plan: DailyFluidPlan | undefined, day: number): number | undefined {
-  if (plan?.startMlKgDay === undefined || !Number.isFinite(plan.startMlKgDay)) return undefined;
-  const dayIndex = Math.max(0, Math.round(day) - 1);
-  const change = Number.isFinite(plan.changePer24h) ? plan.changePer24h ?? 0 : 0;
-  const raw = plan.startMlKgDay + dayIndex * change;
-  const minimum = plan.minimumMlKgDay ?? 0;
-  const maximum = plan.maximumMlKgDay ?? 300;
-  return preserveFluid(Math.min(maximum, Math.max(minimum, raw)));
-}
-
-/** Resolve the current 24-hour fluid plan without changing clinical rules or targets. */
-export function calculateFluidPlan(fluids: Clinical["fluids"] | undefined, weightKg: number): FluidPlanSnapshot {
-  const f = fluids ?? {};
-  const plan = f.plan;
-  const mode = plan?.mode ?? "fixed";
-  const day = Math.max(1, Math.round(plan?.day ?? 1));
-  const effectiveDay = plan?.holdToday ? Math.max(1, day - 1) : day;
-  const enteralMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.enteral, effectiveDay) : f.enteralMlKgDay;
-  const ivMlKgDay = mode === "daily" ? fluidTargetForDay(plan?.iv, effectiveDay) : f.ivMlKgDay;
-  const totalMlKgDay = mode === "daily"
-    ? preserveFluid((enteralMlKgDay ?? 0) + (ivMlKgDay ?? 0))
-    : f.totalMlKgDay;
-  const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 0;
-  const enteralMlDay = enteralMlKgDay === undefined ? undefined : preserveFluid(enteralMlKgDay * safeWeight);
-  const ivMlDay = ivMlKgDay === undefined ? undefined : preserveFluid(ivMlKgDay * safeWeight);
-  const totalMlDay = totalMlKgDay === undefined ? undefined : preserveFluid(totalMlKgDay * safeWeight);
-  const frequency = f.feedFreq?.trim().toLowerCase() ?? "";
-  const hours = frequency === "continuous" ? 24 : /^(\d+(?:\.\d+)?) hourly$/.test(frequency) ? Number(frequency.split(" ")[0]) : 0;
-  const feedsPerDay = hours > 0 && hours < 24 ? preserveFluid(24 / hours) : undefined;
-  const feedMl = enteralMlDay !== undefined && hours > 0 && hours < 24 ? preserveFluid(enteralMlDay / (24 / hours)) : undefined;
-  const feedMlPerHour = enteralMlDay !== undefined && frequency === "continuous" ? preserveFluid(enteralMlDay / 24) : undefined;
-  return { mode, day, enteralMlKgDay, ivMlKgDay, totalMlKgDay, enteralMlDay, ivMlDay, totalMlDay, feedMl, feedMlPerHour, feedsPerDay };
-}
 
 export function dayOfLife(dob: string | Date): number {
   const d = new Date(dob).getTime();
@@ -239,9 +124,6 @@ export type NutritionCalc = {
   enteralMl: number;
   enteralKcal: number;
   enteralProtein: number;
-  fortifierKcal: number;
-  mctKcal: number;
-  fortifierProtein: number;
   gir: number;
   dextroseG: number;
   dextroseKcal: number;
@@ -263,31 +145,12 @@ export type NutritionCalc = {
 export function calcNutrition(c: Clinical): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
-  const baseDensity = Number.isFinite(f.baseMilkKcalPerMl) && (f.baseMilkKcalPerMl ?? 0) >= 0 ? f.baseMilkKcalPerMl ?? 0 : KCAL_PER_ML[feedType] ?? 0.67;
-  const baseProteinPerMl = Number.isFinite(f.baseMilkProteinGPer100Ml) && (f.baseMilkProteinGPer100Ml ?? 0) >= 0 ? (f.baseMilkProteinGPer100Ml ?? 0) / 100 : PROTEIN_G_PER_ML[feedType] ?? 0.011;
-  const fortifierKcalDensity = (f.fortifiers ?? []).reduce((sum, fortifier) => {
-    const reference = Number(fortifier.referenceVolumeMl);
-    const kcal = Number(fortifier.kcalPerUnit);
-    const phase = Number(fortifier.phase);
-    const amount = fortifier.amount == null ? 1 : Number(fortifier.amount);
-    return reference > 0 && kcal >= 0 && phase >= 0 && phase <= 1.5 && amount >= 0 ? sum + (kcal * amount * phase) / reference : sum;
-  }, 0);
-  const fortifierProteinDensity = (f.fortifiers ?? []).reduce((sum, fortifier) => {
-    const reference = Number(fortifier.referenceVolumeMl);
-    const protein = Number(fortifier.proteinPerUnit ?? 0);
-    const phase = Number(fortifier.phase);
-    const amount = fortifier.amount == null ? 1 : Number(fortifier.amount);
-    return reference > 0 && protein >= 0 && phase >= 0 && phase <= 1.5 && amount >= 0 ? sum + (protein * amount * phase) / reference : sum;
-  }, 0);
-  const density = baseDensity + fortifierKcalDensity;
-  const protPerMl = baseProteinPerMl + fortifierProteinDensity;
+  const density = KCAL_PER_ML[feedType] ?? 0.67;
+  const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
 
   const enteralMl = f.enteralMlKgDay ?? 0;
   const enteralKcal = Math.round(enteralMl * density * 10) / 10;
   const enteralProtein = Math.round(enteralMl * protPerMl * 100) / 100;
-  const fortifierKcal = Math.round(enteralMl * fortifierKcalDensity * 10) / 10;
-  const fortifierProtein = Math.round(enteralMl * fortifierProteinDensity * 100) / 100;
-  const mctKcal = Math.round(enteralMl * (f.fortifiers ?? []).filter((fortifier) => /mct/i.test(`${fortifier.type ?? ""} ${fortifier.name}`)).reduce((sum, fortifier) => sum + (Number(fortifier.kcalPerUnit) * Number(fortifier.amount ?? 1) * Number(fortifier.phase) / Number(fortifier.referenceVolumeMl || 1)), 0) * 10) / 10;
 
   const gir = f.gir ?? 0;
   const dextroseG = Math.round(gir * 1.44 * 10) / 10; // mg/kg/min -> g/kg/day
@@ -301,8 +164,8 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const totalKcal = Math.round((enteralKcal + ivKcal) * 10) / 10;
   const totalProtein = Math.round((enteralProtein + aaG) * 100) / 100;
 
-  const kcalTarget: [number, number] = f.targets?.energy ?? [110, 135];
-  const proteinTarget: [number, number] = f.targets?.protein ?? [3.5, 4];
+  const kcalTarget: [number, number] = [110, 135];
+  const proteinTarget: [number, number] = [3.5, 4];
 
   return {
     feedType,
@@ -310,9 +173,6 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     enteralMl,
     enteralKcal,
     enteralProtein,
-    fortifierKcal,
-    mctKcal,
-    fortifierProtein,
     gir,
     dextroseG,
     dextroseKcal,

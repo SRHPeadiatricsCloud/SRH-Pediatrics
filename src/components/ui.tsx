@@ -360,9 +360,8 @@ export function NumField({
   max = 6000,
   step = 10,
   unit = "",
+  decimals = 0,
   placeholder = "—",
-  disabled = false,
-  strict = false,
 }: {
   label: string;
   value: number | undefined | null;
@@ -373,9 +372,6 @@ export function NumField({
   unit?: string;
   decimals?: number;
   placeholder?: string;
-  disabled?: boolean;
-  /** When true, pass entered values through so the owning clinical field can reject them with an inline explanation. */
-  strict?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = value === undefined || value === null || Number.isNaN(value) ? "" : String(value);
@@ -388,33 +384,28 @@ export function NumField({
     if (raw.trim() === "") return;
     const n = Number(raw);
     if (Number.isNaN(n)) return;
-    onChange(strict ? n : Math.min(max, Math.max(min, n)));
+    onChange(Math.min(max, Math.max(min, Number(n.toFixed(decimals)))));
   };
   const nudge = (delta: number) => {
     const base = editing && draft?.trim() ? Number(draft) : value ?? min;
     const safeBase = Number.isNaN(base) ? min : base;
-    const next = safeBase + delta;
-    onChange(strict ? Number(next.toPrecision(12)) : Math.min(max, Math.max(min, Number(next.toPrecision(12)))));
+    onChange(Math.min(max, Math.max(min, Number((safeBase + delta).toFixed(decimals)))));
     setDraft(null);
   };
-  const decrement = usePressAndHold(() => nudge(-step));
-  const increment = usePressAndHold(() => nudge(step));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
       <div className="lbl mb-1 truncate">{label}</div>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          {...decrement}
-          disabled={disabled}
-          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => nudge(-step)}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           −
         </button>
         <input
           inputMode="decimal"
-          disabled={disabled}
-          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
           value={editing ? draft : shown}
           placeholder={placeholder}
           onFocus={() => setDraft(shown)}
@@ -445,8 +436,8 @@ export function NumField({
         <span className="shrink-0 text-[10px] text-slate-400">{unit}</span>
         <button
           type="button"
-          {...increment}
-          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          onClick={() => nudge(step)}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           +
         </button>
