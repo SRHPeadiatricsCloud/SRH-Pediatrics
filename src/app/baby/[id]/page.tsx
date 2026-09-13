@@ -644,31 +644,182 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 function Trend({ rows }: { rows: Record<string, number | string | null>[] }) {
-  const series = rows.slice(0, 12).reverse();
-  const keys: [string, string][] = [
-    ["hr", "HR"],
-    ["spo2", "SpO₂"],
-    ["rr", "RR"],
-  ];
+  const series = rows.slice(0, 12).reverse(); // chronological oldest→newest
+  const vitalConfig: Record<string, { label: string; unit: string; clinicalMin: number; clinicalMax: number; color: string; }> = {
+    hr: { label: "HR", unit: "/min", clinicalMin: 60, clinicalMax: 200, color: "#22d3ee" },
+    spo2: { label: "SpO₂", unit: "%", clinicalMin: 70, clinicalMax: 100, color: "#34d399" },
+    rr: { label: "RR", unit: "/min", clinicalMin: 20, clinicalMax: 80, color: "#a78bfa" },
+  };
+  const keys = Object.keys(vitalConfig) as (keyof typeof vitalConfig)[];
+
+  const getFlag = (k: string, v: number | null): "ok" | "warn" | "bad" => {
+    if (v === null || Number.isNaN(v)) return "ok";
+    const ranges: Record<string, [number, number, number, number]> = {
+      hr: [100, 160, 90, 180],
+      rr: [30, 60, 25, 70],
+      spo2: [90, 100, 88, 100],
+    };
+    const r = ranges[k];
+    if (!r) return "ok";
+    const [lo, hi, lo2, hi2] = r;
+    if (v >= lo && v <= hi) return "ok";
+    if (v >= lo2 && v <= hi2) return "warn";
+    return "bad";
+  };
+
   return (
-    <div className="space-y-3">
-      {keys.map(([k, label]) => {
-        const vals = series.map((r) => Number(r[k] ?? 0));
-        const max = Math.max(...vals, 1);
-        return (
-          <div key={k}>
-            <div className="lbl mb-1">
-              {label} · latest {vals[vals.length - 1] || "—"}
+    <div className="space-y-5">
+      {keys.map((k) => {
+        const cfg = vitalConfig[k];
+        const vals = series.map((r) => {
+          const raw = r[k];
+          const n = raw === null || raw === undefined || raw === "" ? null : Number(raw);
+          return Number.isFinite(n) ? (n as number) : null;
+        });
+        const validVals = vals.filter((v): v is number => v !== null);
+        if (validVals.length === 0) {
+          return (
+            <div key={k} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+              <div className="lbl mb-1">{cfg.label} · no readings</div>
+              <div className="text-[11px] text-slate-500">No {cfg.label} data in last {series.length} entries.</div>
             </div>
-            <div className="flex h-10 items-end gap-1">
-              {vals.map((v, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t bg-gradient-to-t from-cyan-500/30 to-cyan-300/80"
-                  style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
-                  title={String(v)}
-                />
-              ))}
+          );
+        }
+        const latest = validVals[validVals.length - 1];
+        const min = Math.min(...validVals);
+        const max = Math.max(...validVals);
+        const avg = Math.round((validVals.reduce((a, b) => a + b, 0) / validVals.length) * 10) / 10;
+        // Visual scaling: use data range with padding for variation visibility, but clamp to clinical range for accuracy
+        const dataRange = max - min;
+        const pad = dataRange === 0 ? Math.max(1, max * 0.05) : dataRange * 0.25;
+        const visMin = Math.max(cfg.clinicalMin, Math.min(min - pad, avg - pad * 2));
+        const visMax = Math.min(cfg.clinicalMax, Math.max(max + pad, avg + pad * 2));
+        const range = Math.max(1, visMax - visMin);
+
+        // Sparkline path
+        const W = 200;
+        const H = 44;
+        const points = vals.map((v, i) => {
+          if (v === null) return null;
+          const x = validVals.length === 1 ? W / 2 : (i / (vals.length - 1)) * W;
+          const y = H - ((v - visMin) / range) * H;
+          return { x, y, v, i, flag: getFlag(k, v) };
+        }).filter(Boolean) as { x: number; y: number; v: number; i: number; flag: string }[];
+
+        const pathD = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+        const areaD = points.length > 1 ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${H} L ${points[0].x.toFixed(1)} ${H} Z` : "";
+
+        const latestFlag = getFlag(k, latest);
+        const flagColor =
+          latestFlag === "bad" ? "border-rose-400/50 bg-rose-500/15 text-rose-200" :
+          latestFlag === "warn" ? "border-amber-400/40 bg-amber-400/10 text-amber-200" :
+          "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+
+        return (
+          <div key={k} className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="lbl !mb-0">{cfg.label}</span>
+                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${flagColor}`}>
+                  latest {latest} {cfg.unit}
+                </span>
+                <span className="text-[10px] text-slate-500">avg {avg} · min {min} · max {max}</span>
+              </div>
+              <span className="text-[10px] text-slate-500">clinical {cfg.clinicalMin}–{cfg.clinicalMax} {cfg.unit} · last {series.length} readings</span>
+            </div>
+
+            {/* Sparkline + bars combined for visual accuracy */}
+            <div className="relative">
+              <svg viewBox={`0 0 ${W} ${H}`} className="h-[52px] w-full overflow-visible" preserveAspectRatio="none" aria-label={`${cfg.label} trend sparkline`}>
+                {/* normal band */}
+                {(() => {
+                  const normalRanges: Record<string, [number, number]> = {
+                    hr: [100, 160],
+                    spo2: [90, 100],
+                    rr: [30, 60],
+                  };
+                  const nr = normalRanges[k];
+                  if (!nr) return null;
+                  const [nLo, nHi] = nr;
+                  const y1 = H - ((Math.min(nHi, visMax) - visMin) / range) * H;
+                  const y2 = H - ((Math.max(nLo, visMin) - visMin) / range) * H;
+                  const top = Math.min(y1, y2);
+                  const bottom = Math.max(y1, y2);
+                  if (bottom <= 0 || top >= H) return null;
+                  return <rect x={0} y={Math.max(0, top)} width={W} height={Math.max(0, bottom - top)} fill={cfg.color} opacity={0.08} rx={2} />;
+                })()}
+                {/* grid lines */}
+                {[0, 0.5, 1].map((f) => (
+                  <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} stroke="rgba(148,163,184,0.12)" strokeDasharray={f === 0.5 ? "3 3" : undefined} />
+                ))}
+                {/* area */}
+                {areaD && <path d={areaD} fill={cfg.color} opacity={0.14} />}
+                {/* line */}
+                {pathD && <path d={pathD} fill="none" stroke={cfg.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />}
+                {/* dots */}
+                {points.map((p) => (
+                  <circle
+                    key={p.i}
+                    cx={p.x}
+                    cy={p.y}
+                    r={p.flag === "bad" ? 3.5 : p.flag === "warn" ? 3 : 2.5}
+                    fill={p.flag === "bad" ? "#fb7185" : p.flag === "warn" ? "#fbbf24" : cfg.color}
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth={0.8}
+                  >
+                    <title>{`${cfg.label} ${p.v} ${cfg.unit} — ${(() => {
+                      const r = series[p.i];
+                      const at = (r?.recordedAt as string) || (r?.at as string) || "";
+                      if (!at) return `reading ${p.i + 1}`;
+                      const d = new Date(at);
+                      return isNaN(d.getTime()) ? `reading ${p.i + 1}` : d.toLocaleString("en-IN", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+                    })()}`}</title>
+                  </circle>
+                ))}
+              </svg>
+              {/* y-axis labels */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex flex-col justify-between py-1 text-[9px] text-slate-500">
+                <span>{visMax.toFixed(0)}</span>
+                <span>{((visMin + visMax) / 2).toFixed(0)}</span>
+                <span>{visMin.toFixed(0)}</span>
+              </div>
+            </div>
+
+            {/* Bar diagram with data-driven height (not uniform) */}
+            <div className="mt-3 flex h-12 items-end gap-[3px] rounded-lg bg-slate-950/40 p-2">
+              {vals.map((v, i) => {
+                if (v === null) {
+                  return <div key={i} className="flex-1 rounded-t bg-white/5" style={{ height: "8%" }} title="no reading" />;
+                }
+                const hPct = ((v - visMin) / range) * 75 + 18; // 18% min height, up to 93%
+                const flag = getFlag(k, v);
+                const barCls =
+                  flag === "bad" ? "bg-gradient-to-t from-rose-500/40 to-rose-300/90" :
+                  flag === "warn" ? "bg-gradient-to-t from-amber-500/30 to-amber-300/80" :
+                  "bg-gradient-to-t from-cyan-500/30 to-cyan-300/80";
+                const at = (series[i] as Record<string, unknown>)?.recordedAt as string | undefined;
+                const timeLabel = at ? new Date(at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : `#${i + 1}`;
+                return (
+                  <div key={i} className="group relative flex flex-1 flex-col items-center justify-end gap-1">
+                    <span className="hidden text-[8px] font-bold tabular-nums text-slate-300 group-hover:block sm:block">{v}</span>
+                    <div
+                      className={`w-full rounded-t transition-all ${barCls}`}
+                      style={{ height: `${Math.max(12, Math.min(100, hPct))}%` }}
+                      title={`${cfg.label} ${v} ${cfg.unit} — ${timeLabel}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {/* x-axis time labels */}
+            <div className="mt-1 flex justify-between gap-1 text-[9px] text-slate-500">
+              {series.map((r, i) => {
+                const at = (r as Record<string, unknown>).recordedAt as string | undefined;
+                const label = at ? new Date(at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : `${i + 1}`;
+                // show only first, middle, last to avoid clutter when many points
+                if (series.length > 6 && i !== 0 && i !== Math.floor(series.length / 2) && i !== series.length - 1) return <span key={i} className="w-0" />;
+                return <span key={i} className="truncate">{label}</span>;
+              })}
             </div>
           </div>
         );
