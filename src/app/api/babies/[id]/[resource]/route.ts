@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { editorOfChecked, unsigned } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,12 @@ const asRealOrNull = (v: unknown) => {
 type Ctx = { params: Promise<{ id: string; resource: string }> };
 
 async function log(babyId: number, kind: string, text: string, author = "Team") {
+  const [alreadyLogged] = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.babyId, babyId), eq(events.kind, kind), eq(events.text, text)))
+    .limit(1);
+  if (alreadyLogged) return;
   await db.insert(events).values({ babyId, kind, text, author });
   await db.update(babies).set({ updatedAt: new Date() }).where(eq(babies.id, babyId));
 }
@@ -77,12 +83,11 @@ export async function POST(req: Request, ctx: Ctx) {
       return NextResponse.json({ row });
     }
     case "events": {
-      const [row] = await db
-        .insert(events)
-        .values({ babyId: id, kind: body.kind ?? "note", text: body.text, author: body.author ?? "Team" })
-        .returning();
-      await db.update(babies).set({ updatedAt: new Date() }).where(eq(babies.id, id));
-      return NextResponse.json({ row });
+      const kind = String(body.kind ?? "note");
+      const text = String(body.text ?? "").trim();
+      if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });
+      await log(id, kind, text, body.author ?? "Team");
+      return NextResponse.json({ ok: true });
     }
     case "tasks": {
       // items may be plain strings or rich objects {text, priority, owner, scheduledAt, note}
