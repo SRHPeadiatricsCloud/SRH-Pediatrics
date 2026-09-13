@@ -1,6 +1,6 @@
 "use client";
 
-import { AirVent, AlertTriangle, Bed, HeartPulse, Info, LayoutGrid, ListChecks, ListTodo, OctagonAlert, Siren, Wind } from "lucide-react";
+import { AirVent, AlertTriangle, Bed, Columns3, Grid3x3, HeartPulse, Info, LayoutGrid, ListChecks, ListTodo, Maximize2, Minimize2, OctagonAlert, Siren, Wind } from "lucide-react";
 import { ActionChecklist } from "@/components/action-list";
 import { interpretVitals, type VitalsInput } from "@/lib/interpret";
 import { useEffect, useMemo, useState } from "react";
@@ -59,6 +59,16 @@ export default function BoardClient() {
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
   const [pending, setPending] = useState<DeletableBaby | null>(null);
+  const [layoutMode, setLayoutMode] = useState<"masonry" | "uniform">("masonry");
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    const savedLayout = localStorage.getItem("neo_board_layout") as "masonry" | "uniform" | null;
+    if (savedLayout === "masonry" || savedLayout === "uniform") setLayoutMode(savedLayout);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("neo_board_layout", layoutMode);
+  }, [layoutMode]);
 
   useEffect(() => {
     const saved = localStorage.getItem("neo_unit") as UnitKey | "all" | null;
@@ -204,8 +214,25 @@ export default function BoardClient() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search bed / UHID / name"
-            className="inp ml-auto max-w-xs"
+            className="inp ml-auto max-w-[200px] sm:max-w-xs"
           />
+          <div className="ml-auto flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1 sm:ml-2">
+            <span className="hidden px-2 text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:inline">Layout</span>
+            <button
+              onClick={() => setLayoutMode("masonry")}
+              title="Masonry — fills empty spaces by moving next cards up"
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${layoutMode === "masonry" ? "bg-cyan-400/20 text-cyan-200 border border-cyan-400/40" : "text-slate-400 hover:text-white"}`}
+            >
+              <Columns3 size={13} /> Masonry
+            </button>
+            <button
+              onClick={() => setLayoutMode("uniform")}
+              title="Uniform — same height, expand to see bigger cards"
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${layoutMode === "uniform" ? "bg-violet-400/20 text-violet-200 border border-violet-400/40" : "text-slate-400 hover:text-white"}`}
+            >
+              <Grid3x3 size={13} /> Uniform
+            </button>
+          </div>
         </div>
 
         {babies.length === 0 && (
@@ -232,18 +259,57 @@ export default function BoardClient() {
           </div>
         )}
 
-        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3 items-start content-start auto-rows-[minmax(min-content,max-content)]">
-          {shown.map((b) => (
-            <BabyCard
-              key={b.id}
-              b={b}
-              onDelete={() =>
-                setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
-              }
-              onActionToggled={reload}
-            />
-          ))}
-        </div>
+        {/* Layout modes:
+            - masonry: CSS columns fill empty vertical gaps by moving next cards up
+            - uniform: grid with equal-height cards + expand toggle for bigger content */}
+        {layoutMode === "masonry" ? (
+          <div className="columns-1 gap-3 lg:columns-2 2xl:columns-3 [column-fill:_balance]">
+            {shown.map((b) => (
+              <div key={b.id} className="mb-3 break-inside-avoid">
+                <BabyCard
+                  b={b}
+                  uniform={false}
+                  expanded={expandedIds.has(b.id)}
+                  onToggleExpand={() =>
+                    setExpandedIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(b.id)) next.delete(b.id);
+                      else next.add(b.id);
+                      return next;
+                    })
+                  }
+                  onDelete={() =>
+                    setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
+                  }
+                  onActionToggled={reload}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3 auto-rows-fr items-stretch">
+            {shown.map((b) => (
+              <BabyCard
+                key={b.id}
+                b={b}
+                uniform={true}
+                expanded={expandedIds.has(b.id)}
+                onToggleExpand={() =>
+                  setExpandedIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(b.id)) next.delete(b.id);
+                    else next.add(b.id);
+                    return next;
+                  })
+                }
+                onDelete={() =>
+                  setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
+                }
+                onActionToggled={reload}
+              />
+            ))}
+          </div>
+        )}
 
         {deleted.length > 0 && (
           <section className="card mt-5 p-4">
@@ -342,10 +408,16 @@ function BabyCard({
   b,
   onDelete,
   onActionToggled,
+  uniform = false,
+  expanded = false,
+  onToggleExpand,
 }: {
   b: BoardBaby;
   onDelete: () => void;
   onActionToggled?: () => void;
+  uniform?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }) {
   const meta = ACUITY_META[b.acuity] ?? ACUITY_META.stable;
   const { unit } = useTempUnit();
@@ -353,8 +425,19 @@ function BabyCard({
   const wt = weightChangePct(b.birthWeight, b.currentWeight);
   const abx = (b.clinical?.drugs ?? []).filter((d) => d.ofDays);
   const isNeo = b.unit === "nicu" || b.unit === "postnatal";
+  // Uniform mode: compact by default, expand reveals full problems/tasks
+  const showAllProblems = !uniform || expanded;
+  const problemsToShow = showAllProblems ? b.problems : b.problems.slice(0, 3);
+  const hasMoreProblems = b.problems.length > 3;
+  const showAllTasks = !uniform || expanded;
+  const tasksToShowCount = showAllTasks ? b.openTasks.length : Math.min(2, b.openTasks.length);
+  const hasMoreTasks = b.openTasks.length > 2;
+  const needsExpand = hasMoreProblems || hasMoreTasks || b.problems.length > 6 || b.openTasks.length > 3;
+
   return (
-    <div className="card relative flex h-fit w-full flex-col self-start break-inside-avoid transition hover:border-cyan-400/40 hover:bg-white/[0.07]">
+    <div
+      className={`card relative flex w-full flex-col transition hover:border-cyan-400/40 hover:bg-white/[0.07] ${uniform ? (expanded ? "h-auto min-h-[380px] self-stretch" : "h-full min-h-[380px] max-h-[520px] self-stretch overflow-hidden") : "h-fit self-start break-inside-avoid"}`}
+    >
       <button
         type="button"
         title="Delete card"
@@ -464,7 +547,7 @@ function BabyCard({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1">
-          {b.problems.slice(0, 6).map((p) => (
+          {problemsToShow.map((p) => (
             <span
               key={p.id}
               className="rounded border border-rose-400/25 bg-rose-400/10 px-1.5 py-0.5 text-[10px] text-rose-200"
@@ -472,8 +555,8 @@ function BabyCard({
               {p.label}
             </span>
           ))}
-          {b.problems.length > 6 && (
-            <span className="text-[10px] text-slate-400">+{b.problems.length - 6} more</span>
+          {!showAllProblems && hasMoreProblems && (
+            <span className="text-[10px] text-slate-400">+{b.problems.length - 3} more</span>
           )}
         </div>
       </Link>
@@ -484,7 +567,7 @@ function BabyCard({
             <ListTodo size={12} /> Open actions ({b.openTasks.length})
           </div>
           <ActionChecklist
-            tasks={b.openTasks.map((t) => ({ ...t, done: false, doneAt: null, doneBy: "" }))}
+            tasks={b.openTasks.slice(0, tasksToShowCount).map((t) => ({ ...t, done: false, doneAt: null, doneBy: "" }))}
             onSchedule={async (taskId, iso) => {
               await api(`/api/babies/${b.id}/tasks`, "PATCH", { id: taskId, scheduledAt: iso });
               onActionToggled?.();
@@ -496,19 +579,55 @@ function BabyCard({
               onActionToggled?.();
             }}
           />
+          {!showAllTasks && hasMoreTasks && (
+            <p className="mt-1 text-[10px] text-slate-400">+{b.openTasks.length - 2} more actions — expand to see</p>
+          )}
         </div>
       )}
 
-      <Link href={`/baby/${b.id}`} className="block px-4 pb-3">
-        <div className="flex items-center justify-between text-[10px] text-slate-500">
-          <span>Primary Consultant: {b.consultant || "—"}</span>
-          <span>
-            {b.lastHandover
-              ? `Last handover ${b.lastHandover.shift} · ${relTime(b.lastHandover.createdAt)}`
-              : "No handover recorded"}
-          </span>
-        </div>
-      </Link>
+      <div className="mt-auto flex items-center justify-between gap-2 px-4 pb-3">
+        <Link href={`/baby/${b.id}`} className="block min-w-0 flex-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-500">
+            <span className="truncate">Primary Consultant: {b.consultant || "—"}</span>
+            <span className="ml-2 shrink-0">
+              {b.lastHandover
+                ? `Last handover ${b.lastHandover.shift} · ${relTime(b.lastHandover.createdAt)}`
+                : "No handover recorded"}
+            </span>
+          </div>
+        </Link>
+        {uniform && needsExpand && onToggleExpand && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition ${expanded ? "border-violet-400/40 bg-violet-400/15 text-violet-200" : "border-cyan-400/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/15"}`}
+          >
+            {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        )}
+        {!uniform && needsExpand && onToggleExpand && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition ${expanded ? "border-violet-400/40 bg-violet-400/15 text-violet-200" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+          >
+            {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            {expanded ? "Less" : `${b.problems.length + b.openTasks.length > 5 ? `+${b.problems.length + b.openTasks.length - 5} more` : "More"}`}
+          </button>
+        )}
+      </div>
+      {uniform && !expanded && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-slate-950/60 to-transparent" />
+      )}
     </div>
   );
 }
