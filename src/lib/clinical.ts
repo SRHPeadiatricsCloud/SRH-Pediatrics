@@ -34,14 +34,18 @@ export type Clinical = {
     totalMlKgDay?: number;
     enteralMlKgDay?: number;
     ivMlKgDay?: number;
+    dextrosePct?: number;
     gir?: number;
+    girManual?: boolean;
     aminoAcid?: number;
     lipid?: number;
     kcal?: number;
+    kcalManual?: boolean;
     feedType?: string;
     feedRoute?: string;
     feedFreq?: string;
     feedVol?: number;
+    feedVolManual?: boolean;
     fortificationName?: string;
     fortificationAmount?: number;
     fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
