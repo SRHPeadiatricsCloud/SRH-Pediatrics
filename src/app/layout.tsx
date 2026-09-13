@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     title: "SRH Pediatrics",
   },
   icons: {
-    icon: [{ url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }],
+    icon: [{ url: "/icons/icon-512.png?v=3.0.000", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/icons/icon-512.png?v=3.0.000", sizes: "512x512", type: "image/png" }],
   },
 };
 
@@ -46,17 +46,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body style={fontVars} className="text-slate-100 antialiased">
+      <body style={fontVars} className="text-slate-100">
         <LockBanner />
         {children}
         <footer className="no-print border-t border-white/5 py-5 text-center">
           <div className="mb-2 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/hospital-logo.png"
+              src="/images/hospital-logo.png?v=3.0.000"
               alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
               width={320}
-              height={176}
+              height={220}
               className="h-20 w-auto rounded-xl bg-white p-1 opacity-100 shadow-sm"
             />
           </div>
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             browser bar · Use the 🔗 Share link button to invite your team
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
-            v{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.
+            V.{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.
           </p>
         </footer>
         <SaveToast />

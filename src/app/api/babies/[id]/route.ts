@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
+import { babies, events, handovers, keymasters, problems, tasks, vitals } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { editorOfChecked, unsigned } from "@/lib/guard";
 
@@ -11,6 +11,58 @@ const int = (v: unknown) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.round(n) : v;
 };
+
+function validateFluidPayload(value: unknown): string[] {
+  if (!value || typeof value !== "object") return ["Fluids must be an object."];
+  const fluids = value as Record<string, unknown>;
+  const errors: string[] = [];
+  const numeric = (key: string) => {
+    const candidate = fluids[key];
+    return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : undefined;
+  };
+  const dosingWeight = numeric("dosingWeightKg");
+  if (dosingWeight !== undefined && (dosingWeight < 0.3 || dosingWeight > 6)) errors.push("Dosing weight must be between 0.3 and 6 kg.");
+  const dextrose = numeric("dextrosePct");
+  if (dextrose !== undefined && (dextrose < 5 || dextrose > 30)) errors.push("Dextrose must be between 5% and 30%.");
+  for (const key of ["totalMlKgDay", "enteralMlKgDay", "ivMlKgDay", "feedMl", "feedMlPerHour", "idealFeedVolumeMl", "practicalFeedVolumeMl"] as const) {
+    const candidate = numeric(key);
+    if (candidate !== undefined && candidate < 0) errors.push(`${key} cannot be negative.`);
+  }
+  const total = numeric("totalMlKgDay");
+  const enteral = numeric("enteralMlKgDay");
+  const iv = numeric("ivMlKgDay");
+  if (total !== undefined && enteral !== undefined && iv !== undefined && Math.abs(total - (enteral + iv)) > 0.0001) errors.push(`Fluid mismatch: total ${total} must equal enteral ${enteral} plus IV/TPN ${iv} ml/kg/day.`);
+  const fortifiers = fluids.fortifiers;
+  if (Array.isArray(fortifiers)) {
+    fortifiers.forEach((fortifier, index) => {
+      if (!fortifier || typeof fortifier !== "object") return errors.push(`Fortifier ${index + 1} is invalid.`);
+      const item = fortifier as Record<string, unknown>;
+      const phase = Number(item.phase);
+      const reference = Number(item.referenceVolumeMl);
+      const amount = item.amount == null ? 1 : Number(item.amount);
+      if (!Number.isFinite(phase) || phase < 0 || phase > 1.5) errors.push(`Fortifier ${index + 1} phase must be between 0 and 1.5.`);
+      if (!Number.isFinite(reference) || reference <= 0) errors.push(`Fortifier ${index + 1} needs a positive reference volume.`);
+      if (!Number.isFinite(amount) || amount < 0) errors.push(`Fortifier ${index + 1} amount cannot be negative.`);
+      if (item.minimumAmount != null && amount < Number(item.minimumAmount)) errors.push(`Fortifier ${index + 1} amount is below its minimum.`);
+      if (item.maximumAmount != null && amount > Number(item.maximumAmount)) errors.push(`Fortifier ${index + 1} amount is above its maximum.`);
+    });
+  }
+  const outputs = fluids.outputs;
+  if (Array.isArray(outputs)) outputs.forEach((output, index) => {
+    if (!output || typeof output !== "object") return errors.push(`Output ${index + 1} is invalid.`);
+    const item = output as Record<string, unknown>;
+    for (const key of ["urineMl", "gastricAspirateMl", "stoolMl", "insensibleMl"] as const) if (item[key] != null && (!Number.isFinite(Number(item[key])) || Number(item[key]) < 0)) errors.push(`Output ${index + 1} ${key} cannot be negative.`);
+    if (item.stool != null && !["none", "small", "moderate", "large"].includes(String(item.stool))) errors.push(`Output ${index + 1} has an invalid stool category.`);
+  });
+  const feedsGiven = fluids.feedsGiven;
+  if (Array.isArray(feedsGiven)) feedsGiven.forEach((feed, index) => {
+    if (!feed || typeof feed !== "object") return errors.push(`Feed ${index + 1} is invalid.`);
+    const item = feed as Record<string, unknown>;
+    for (const key of ["volumeMl", "plannedVolumeMl"] as const) if (item[key] != null && (!Number.isFinite(Number(item[key])) || Number(item[key]) < 0)) errors.push(`Feed ${index + 1} ${key} cannot be negative.`);
+    if (item.status != null && !["given", "held", "refused", "emesis"].includes(String(item.status))) errors.push(`Feed ${index + 1} has an invalid outcome.`);
+  });
+  return errors;
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -37,10 +89,36 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  if (!(await editorOfChecked(req))) return unsigned();
+  const editor = await editorOfChecked(req);
+  if (!editor) return unsigned();
   const id = Number((await ctx.params).id);
   const body = await req.json();
   const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (body.clinical?.fluids) {
+    const validationErrors = validateFluidPayload(body.clinical.fluids);
+    if (validationErrors.length) return NextResponse.json({ error: validationErrors.join(" "), validationErrors }, { status: 422 });
+    const keyRows = await db.select().from(keymasters);
+    const actor = keyRows.find((row) => row.name.toLowerCase() === editor.toLowerCase());
+    const role = actor?.role ?? req.headers.get("x-role") ?? "";
+    const kind = String(body.logEvent?.kind ?? "fluid-edit");
+    const canModifyFluids = /admin|consultant|registrar|postgraduate|resident/i.test(role);
+    const canLogFeed = canModifyFluids || /nurse/i.test(role);
+    if (!canModifyFluids && !(canLogFeed && ["feed-given", "fluid-output"].includes(kind))) {
+      return NextResponse.json({ error: "Only a credentialed clinician may alter fluids/TPN; nurses may log feeds." }, { status: 403 });
+    }
+    if (!canModifyFluids) {
+      const [currentBaby] = await db.select().from(babies).where(eq(babies.id, id));
+      const existing = { ...(((currentBaby?.clinical as { fluids?: Record<string, unknown> } | null)?.fluids) ?? {}) };
+      const incoming = { ...(body.clinical.fluids as Record<string, unknown>) };
+      delete existing.feedsGiven;
+      delete incoming.feedsGiven;
+      delete existing.outputs;
+      delete incoming.outputs;
+      if (JSON.stringify(existing) !== JSON.stringify(incoming)) {
+        return NextResponse.json({ error: "Nurses may log feeds only; fluid targets and composition require a credentialed clinician." }, { status: 403 });
+      }
+    }
+  }
   const scalar = [
     "uhid",
     "babyName",
@@ -72,16 +150,30 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (body.dob) patch.dob = new Date(body.dob);
   if (body.clinical) {
     const [cur] = await db.select().from(babies).where(eq(babies.id, id));
+    if (body.expectedUpdatedAt && body.clinical.fluids && cur?.updatedAt && new Date(body.expectedUpdatedAt).getTime() !== new Date(cur.updatedAt).getTime()) {
+      return NextResponse.json({ conflict: true, error: "This plan changed on the server. Reload before saving." }, { status: 409 });
+    }
     patch.clinical = { ...((cur?.clinical as object) ?? {}), ...body.clinical };
   }
   const [row] = await db.update(babies).set(patch).where(eq(babies.id, id)).returning();
   if (body.logEvent) {
-    await db.insert(events).values({
-      babyId: id,
-      kind: body.logEvent.kind ?? "update",
-      text: body.logEvent.text,
-      author: body.logEvent.author ?? "Team",
-    });
+    const kind = String(body.logEvent.kind ?? "update");
+    const text = String(body.logEvent.text ?? "").trim();
+    if (text) {
+      const [alreadyLogged] = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(and(eq(events.babyId, id), eq(events.kind, kind), eq(events.text, text)))
+        .limit(1);
+      if (!alreadyLogged) {
+        await db.insert(events).values({
+          babyId: id,
+          kind,
+          text,
+          author: ["fluid-edit", "fluid-advance", "feed-given", "fluid-output"].includes(kind) ? `${body.logEvent.author ?? editor} · employee code verified` : body.logEvent.author ?? "Team",
+        });
+      }
+    }
   }
   return NextResponse.json({ baby: row });
 }

@@ -134,14 +134,15 @@ export function GrowthFlagsRow({
 }
 
 /** Live fluids & GIR calculator with maintenance-fluid suggestion. */
-export function FluidsCalcPanel({ baby }: { baby: BabyLite }) {
-  const weightKg = Math.max(0.3, baby.currentWeight / 1000);
+export function FluidsCalcPanel({ baby, standalone = false }: { baby?: BabyLite; standalone?: boolean }) {
+  const [standaloneWeight, setStandaloneWeight] = useState(1);
+  const weightKg = baby ? Math.max(0.3, baby.currentWeight / 1000) : Math.max(0.1, standaloneWeight);
   const [dex, setDex] = useState(10);
   const [rate, setRate] = useState(80);
   const gir = girFromDextrose(dex, rate);
   const maint = maintenanceFluidsMlPerDay(weightKg);
-  const neoRange = neonatalDayFluidRange(baby);
-  const isNeo = baby.unit === "nicu" || baby.unit === "postnatal";
+  const neoRange = baby ? neonatalDayFluidRange(baby) : null;
+  const isNeo = baby ? baby.unit === "nicu" || baby.unit === "postnatal" : false;
   const girFlag: Flag[] =
     gir < 4
       ? [{ key: "gir", label: "Low GIR (< 4)", sev: "warn", note: `${gir} mg/kg/min` }]
@@ -149,7 +150,12 @@ export function FluidsCalcPanel({ baby }: { baby: BabyLite }) {
         ? [{ key: "gir", label: "High GIR (> 12) — central line", sev: "warn", note: `${gir}` }]
         : [{ key: "gir", label: "GIR within safe range", sev: "info", note: `${gir} mg/kg/min` }];
   return (
-    <Panel title="Fluids & GIR calculator">
+    <Panel title={standalone ? "GIR & fluids calculator" : "Fluids & GIR calculator"}>
+      {standalone && <label className="mb-2 block rounded-lg border border-white/10 bg-slate-900/40 p-2">
+        <span className="lbl mb-1 block">Current weight</span>
+        <div className="flex items-center gap-2"><input className="inp !py-1 text-center text-sm font-bold" type="number" inputMode="decimal" value={standaloneWeight} min={0.1} max={200} step={0.01} onChange={(e) => setStandaloneWeight(Math.max(0.1, Number(e.target.value) || 0.1))} /><b className="text-[10px] text-slate-400">kg</b></div>
+        <small className="mt-1 block text-[9px] text-slate-500">Used for daily volume and maintenance calculations.</small>
+      </label>}
       <div className="mb-2 grid grid-cols-2 gap-2">
         <label className="rounded-lg border border-white/10 bg-slate-900/40 p-2">
           <span className="lbl mb-1 block">Dextrose %</span>
@@ -198,13 +204,13 @@ export function FluidsCalcPanel({ baby }: { baby: BabyLite }) {
             ≈ {Math.round(maint / weightKg)} ml/kg/d @ {weightKg.toFixed(1)} kg
           </div>
         </div>
-        <div className="rounded-lg border border-white/10 bg-white/5 p-2">
+        {neoRange && <div className="rounded-lg border border-white/10 bg-white/5 p-2">
           <div className="lbl">{isNeo ? "Neonatal day-fluid target" : "Suggested range"}</div>
           <div className="text-base font-black tabular-nums text-slate-100">
             {neoRange[0]}–{neoRange[1]}
           </div>
           <div className="text-[9px] text-slate-400">ml/kg/day</div>
-        </div>
+        </div>}
       </div>
       <FlagsList flags={girFlag} />
     </Panel>
