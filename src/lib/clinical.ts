@@ -90,8 +90,6 @@ export type Clinical = {
     dextrosePct?: number;
     ivHeld?: boolean;
     feedsHeld?: boolean;
-    fluidRestricted?: boolean;
-    restrictedFluidRange?: [number, number];
     outputs?: { at: string; urineMl?: number; gastricAspirateMl?: number; stoolMl?: number; stool?: "none" | "small" | "moderate" | "large"; insensibleMl?: number; note?: string }[];
     baseMilkKcalPerMl?: number;
     baseMilkProteinGPer100Ml?: number;

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the implementation contract for the Level 3B NICU nutrition workflow. It describes the component boundaries, visual hierarchy, state model, calculation flow, validation gates, realtime behavior, and testable acceptance criteria. The module uses the existing baby record and clinical JSON fields; it does not create a second patient or prescription store.
+This document is the implementation contract for the Level 3B NICU nutrition workflow. It describes the component boundaries, visual hierarchy, state model, calculation flow, validation gates, realtime behavior, and testable acceptance criteria. The module uses the existing baby record and clinical JSON fields; it does not create a second patient or prescription store. Fluid restriction controls and restriction-specific gating are intentionally omitted; the module shows target interpretation, warnings, and formulas without a restriction flag.
 
 ## 1. Component architecture
 
@@ -15,7 +15,6 @@ BabyRecordPage
         │   ├── current weight + confirmed dosing weight
         │   ├── nutrition day + last update
         │   ├── realtime updated-by indicator
-        │   └── Fluid restricted badge
         ├── NutritionViewRouter
         │   ├── TodayPlanView              default, read-only
         │   │   ├── NutritionEmptyState
@@ -74,7 +73,6 @@ BabyRecordPage
 │ Baby name · MRN · GA · DOL       │
 │ Current 1.42 kg · Dosing 1.42 kg │
 │ Nutrition day 3 · Updated 14:30  │
-│ ⚠ Fluid restricted                │
 ├──────────────────────────────────┤
 │ 180 ml/kg/day total               │
 │ 136 kcal/kg/day · GIR 6.2        │
@@ -171,8 +169,6 @@ type FluidState = {
   dosingWeightConfirmedAt?: string;
   fluidDriver?: "total" | "enteral" | "iv";
   practicalIncrementMl?: number;
-  fluidRestricted?: boolean;
-  restrictedFluidRange?: [number, number];
   electrolyteUnit?: "mEq/kg/day" | "mmol/kg/day";
   electrolytes?: { na?: number; k?: number; ca?: number; po4?: number };
   targets?: {
@@ -291,7 +287,7 @@ No save or advance action is allowed when any gate is false. Server-side validat
 - Feed frequency changes store `previousFeedFreq` and `frequencyChangedAt`. Historical feed rows remain unchanged; future projection uses the new interval.
 - Feed logging stores `plannedVolumeMl` separately from actual `volumeMl` and records `given`, `held`, `refused`, or `emesis`.
 - Advance controls require explicit `per-day` or `per-feed` selection, validate the maximum enteral target, show current → proposed → new values, then disable Apply immediately while saving.
-- Fluid restriction and target changes create a pending confirmation state before autosave can commit them.
+- Target changes create a pending confirmation state before autosave can commit them; fluid targets are interpreted against the configured range without a restriction mode.
 
 ## 7. Status language
 

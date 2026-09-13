@@ -24,8 +24,6 @@ function validateFluidPayload(value: unknown): string[] {
   if (dosingWeight !== undefined && (dosingWeight < 0.3 || dosingWeight > 6)) errors.push("Dosing weight must be between 0.3 and 6 kg.");
   const dextrose = numeric("dextrosePct");
   if (dextrose !== undefined && (dextrose < 5 || dextrose > 30)) errors.push("Dextrose must be between 5% and 30%.");
-  const restrictedRange = fluids.restrictedFluidRange;
-  if (fluids.fluidRestricted && (!Array.isArray(restrictedRange) || restrictedRange.length !== 2 || !Number.isFinite(Number(restrictedRange[0])) || !Number.isFinite(Number(restrictedRange[1])) || Number(restrictedRange[0]) < 0 || Number(restrictedRange[0]) > Number(restrictedRange[1]))) errors.push("Fluid-restricted target must have a valid low and high range.");
   for (const key of ["totalMlKgDay", "enteralMlKgDay", "ivMlKgDay", "feedMl", "feedMlPerHour", "idealFeedVolumeMl", "practicalFeedVolumeMl"] as const) {
     const candidate = numeric(key);
     if (candidate !== undefined && candidate < 0) errors.push(`${key} cannot be negative.`);
