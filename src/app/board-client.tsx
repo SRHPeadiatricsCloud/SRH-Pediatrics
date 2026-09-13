@@ -232,7 +232,7 @@ export default function BoardClient() {
           </div>
         )}
 
-        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3 items-start content-start auto-rows-[minmax(min-content,max-content)]">
           {shown.map((b) => (
             <BabyCard
               key={b.id}
@@ -354,7 +354,7 @@ function BabyCard({
   const abx = (b.clinical?.drugs ?? []).filter((d) => d.ofDays);
   const isNeo = b.unit === "nicu" || b.unit === "postnatal";
   return (
-    <div className="card relative transition hover:border-cyan-400/40 hover:bg-white/[0.07]">
+    <div className="card relative flex h-fit w-full flex-col self-start break-inside-avoid transition hover:border-cyan-400/40 hover:bg-white/[0.07]">
       <button
         type="button"
         title="Delete card"
