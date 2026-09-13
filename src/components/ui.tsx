@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; import { createPortal } from "react-dom";
+import { EditableListField } from "@/components/editable-list";
 
 export function Chip({
   label,
@@ -107,6 +108,20 @@ export function DialWithOther({
   const [draft, setDraft] = useState("");
   const arr = Array.isArray(value) ? value : value ? [value] : [];
 
+  // Multi-selects use the same editable-row interaction as handover lists.
+  // This keeps preset selections editable instead of collapsing them into chips.
+  if (multi) {
+    return (
+      <EditableListField
+        options={options}
+        value={arr}
+        onChange={(next) => onChange(next as never)}
+        placeholder={otherPlaceholder}
+        emptyLabel="No selections added yet."
+      />
+    );
+  }
+
   const addCustom = () => {
     const t = draft.trim();
     if (!t) return;
@@ -178,6 +193,51 @@ export function DialWithOther({
   );
 }
 
+/** Repeated tap/press-and-hold interaction for bedside numeric controls. */
+function usePressAndHold(action: () => void) {
+  const actionRef = useRef(action);
+  const timeoutRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const suppressClick = useRef(false);
+
+  useEffect(() => {
+    actionRef.current = action;
+  }, [action]);
+  useEffect(() => () => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+  }, []);
+
+  const stop = () => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    timeoutRef.current = null;
+    intervalRef.current = null;
+  };
+  const start = () => {
+    suppressClick.current = true;
+    stop();
+    actionRef.current();
+    timeoutRef.current = window.setTimeout(() => {
+      intervalRef.current = window.setInterval(() => actionRef.current(), 90);
+    }, 400);
+  };
+  const click = () => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    actionRef.current();
+  };
+  return {
+    onPointerDown: start,
+    onPointerUp: stop,
+    onPointerLeave: stop,
+    onPointerCancel: stop,
+    onClick: click,
+  };
+}
+
 export function Stepper({
   label,
   value,
@@ -186,7 +246,7 @@ export function Stepper({
   max = 300,
   step = 1,
   unit = "",
-  decimals = 0,
+  disabled = false,
 }: {
   label: string;
   value: number | undefined;
@@ -196,20 +256,15 @@ export function Stepper({
   step?: number;
   unit?: string;
   decimals?: number;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const v = value ?? min;
   const editing = draft !== null;
-  const precisionOf = (n: number | string | null | undefined) => {
-    if (n === null || n === undefined) return 0;
-    const s = String(n);
-    const d = s.includes(".") ? s.split(".")[1]?.length ?? 0 : 0;
-    return Math.min(4, d);
-  };
-  const displayDecimals = Math.max(decimals, precisionOf(step), precisionOf(value));
-  const shown = value === undefined ? "" : v.toFixed(displayDecimals).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
-  const clamp = (n: number, precision = Math.max(decimals, precisionOf(step))) =>
-    Math.min(max, Math.max(min, Number(n.toFixed(Math.max(0, precision)))));
+  const shown = value === undefined ? "" : String(value);
+  // Preserve the exact decimal typed by the clinician. Step and decimals guide
+  // the controls, but they must never truncate a manually entered value.
+  const clamp = (n: number) => Math.min(max, Math.max(min, n));
   const set = (n: number) => {
     onChange(clamp(n));
     setDraft(null);
@@ -222,24 +277,28 @@ export function Stepper({
     const n = Number(raw);
     if (!Number.isNaN(n)) {
       // Preserve decimals typed manually even where the slider itself moves in whole-number steps.
-      onChange(clamp(n, Math.max(decimals, precisionOf(step), precisionOf(raw))));
+      onChange(clamp(n));
     }
   };
+  const decrement = usePressAndHold(() => set(v - step));
+  const increment = usePressAndHold(() => set(v + step));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
       <div className="lbl mb-1 truncate">{label}</div>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => set(v - step)}
-          className="h-8 w-8 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...decrement}
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
         <div className="flex min-w-0 flex-1 items-center rounded-lg bg-white/[0.03] px-1.5">
           <input
             inputMode="decimal"
-            className="w-full min-w-0 bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+            disabled={disabled}
+            className="w-full min-w-0 bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             value={editing ? draft : shown}
             placeholder="—"
             onFocus={() => setDraft(shown)}
@@ -271,8 +330,9 @@ export function Stepper({
         </div>
         <button
           type="button"
-          onClick={() => set(v + step)}
-          className="h-8 w-8 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...increment}
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           +
         </button>
@@ -284,7 +344,8 @@ export function Stepper({
         step={step}
         value={v}
         onChange={(e) => set(Number(e.target.value))}
-        className="mt-1 h-1 w-full accent-cyan-400"
+        disabled={disabled}
+        className="mt-1 h-1 w-full accent-cyan-400 disabled:opacity-40"
       />
     </div>
   );
@@ -299,8 +360,9 @@ export function NumField({
   max = 6000,
   step = 10,
   unit = "",
-  decimals = 0,
   placeholder = "—",
+  disabled = false,
+  strict = false,
 }: {
   label: string;
   value: number | undefined | null;
@@ -311,6 +373,9 @@ export function NumField({
   unit?: string;
   decimals?: number;
   placeholder?: string;
+  disabled?: boolean;
+  /** When true, pass entered values through so the owning clinical field can reject them with an inline explanation. */
+  strict?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = value === undefined || value === null || Number.isNaN(value) ? "" : String(value);
@@ -323,28 +388,33 @@ export function NumField({
     if (raw.trim() === "") return;
     const n = Number(raw);
     if (Number.isNaN(n)) return;
-    onChange(Math.min(max, Math.max(min, Number(n.toFixed(decimals)))));
+    onChange(strict ? n : Math.min(max, Math.max(min, n)));
   };
   const nudge = (delta: number) => {
     const base = editing && draft?.trim() ? Number(draft) : value ?? min;
     const safeBase = Number.isNaN(base) ? min : base;
-    onChange(Math.min(max, Math.max(min, Number((safeBase + delta).toFixed(decimals)))));
+    const next = safeBase + delta;
+    onChange(strict ? Number(next.toPrecision(12)) : Math.min(max, Math.max(min, Number(next.toPrecision(12)))));
     setDraft(null);
   };
+  const decrement = usePressAndHold(() => nudge(-step));
+  const increment = usePressAndHold(() => nudge(step));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
       <div className="lbl mb-1 truncate">{label}</div>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => nudge(-step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...decrement}
+          disabled={disabled}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
         <input
           inputMode="decimal"
-          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+          disabled={disabled}
+          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
           value={editing ? draft : shown}
           placeholder={placeholder}
           onFocus={() => setDraft(shown)}
@@ -375,8 +445,8 @@ export function NumField({
         <span className="shrink-0 text-[10px] text-slate-400">{unit}</span>
         <button
           type="button"
-          onClick={() => nudge(step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          {...increment}
+          className="h-11 w-11 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
         >
           +
         </button>
@@ -414,6 +484,8 @@ export function Section({
 export function ThemeToggle() {
   const [light, setLight] = useState(false);
   useEffect(() => {
+    // Theme is read after hydration to avoid server/client markup divergence.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLight(document.documentElement.classList.contains("light"));
   }, []);
   const apply = (next: boolean) => {
@@ -557,10 +629,10 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png"
+            src="/images/hospital-logo.png?v=3.0.000"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
-            height={27}
+            height={33}
             className="h-12 w-auto shrink-0 rounded-lg bg-white p-0.5 drop-shadow-sm"
           />
           <span className="leading-tight">
@@ -597,7 +669,7 @@ export function TopBar({
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
           <MobileNavLink href="/handover" icon={<Printer size={13} />}>Shift sheet</MobileNavLink>
-          <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Parameters</MobileNavLink>
+          <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Drugs &amp; doses</MobileNavLink>
           <MobileNavLink href="/learning" icon={<GraduationCap size={13} />}>Learning space</MobileNavLink>
           <MobileNavLink href="/updates" icon={<Newspaper size={13} />}>Recent updates</MobileNavLink>
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
@@ -954,21 +1026,23 @@ export function useLocked(): boolean {
 /** Amber strip shown while the session is view-only. */
 export function LockBanner() {
   const locked = useLocked();
+  const user = useUser();
   useEffect(() => {
+    // View-only is also a privacy state: keep the navigation tabs available,
+    // but visually obscure all clinical page content until the session is
+    // authenticated. This is deliberately independent of `locked` so setup
+    // mode cannot accidentally expose patient data to an unsigned visitor.
     document.body.classList.toggle("view-only", locked);
-  }, [locked]);
+    document.body.classList.toggle("privacy-view", !user.signedIn);
+  }, [locked, user.signedIn]);
   if (!locked) return null;
   return (
     <div className="no-print relative z-40 border-b border-amber-400/40 bg-amber-500/15 backdrop-blur">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2 text-[11px] font-semibold text-amber-200">
         <LockIcon size={12} strokeWidth={2.5} aria-hidden />
         <span>
-          <b>View-only mode.</b> Sign in with your <b>employee code</b> (top-right) to unlock editing, admitting and
-          autosave. Browsing stays open to everyone. Keys are managed in the{" "}
-          <Link href="/keymasters" className="font-bold underline">
-            Keymaster List
-          </Link>
-          .
+          <b>View-only privacy mode.</b> Clinical content is blurred until you sign in with your <b>employee code</b>
+          {" "}(top-right). The navigation tabs remain available.
         </span>
       </div>
     </div>
@@ -1004,6 +1078,7 @@ export async function api(url: string, method: string, body?: unknown) {
           ? {
               "x-editor": session?.name ?? getUserName(),
               ...(session?.code ? { "x-code": session.code } : {}),
+              ...(session?.role ? { "x-role": session.role } : {}),
             }
           : {}),
       },
@@ -1024,7 +1099,7 @@ export async function api(url: string, method: string, body?: unknown) {
       window.dispatchEvent(new Event("neo:lockflash"));
       refreshHasKeys();
     } else {
-      window.dispatchEvent(new CustomEvent("neo:error", { detail: "Cloud save failed — retry" }));
+      window.dispatchEvent(new CustomEvent("neo:error", { detail: (j && j.error) || "Cloud save failed — retry" }));
     }
     return j;
   } catch {

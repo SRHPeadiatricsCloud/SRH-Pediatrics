@@ -45,8 +45,8 @@ export async function POST() {
         },
         fluids: {
           totalMlKgDay: 150,
-          enteralMlKgDay: 30,
-          ivMlKgDay: 120,
+          enteralMlKgDay: 40,
+          ivMlKgDay: 110,
           gir: 7,
           aminoAcid: 3.5,
           lipid: 3,
@@ -54,8 +54,15 @@ export async function POST() {
           feedType: "Expressed breast milk (EBM)",
           feedRoute: "OG tube",
           feedFreq: "2 hourly",
-          feedVol: 4,
+          feedVol: 2.8,
           tpn: true,
+          plan: {
+            mode: "daily",
+            startDate: new Date().toISOString().slice(0, 10),
+            day: 2,
+            enteral: { startMlKgDay: 20, changePer24h: 20, minimumMlKgDay: 0, maximumMlKgDay: 160 },
+            iv: { startMlKgDay: 120, changePer24h: -10, minimumMlKgDay: 40, maximumMlKgDay: 200 },
+          },
         },
         lines: [
           { name: "PICC line", day: 4, site: "Right saphenous" },

@@ -115,9 +115,9 @@ export function UnitBedDial({ unit, value, onChange }: { unit: UnitKey; value: s
         ))}
       </div>
       <div className="flex items-stretch gap-2">
-        <div className="relative h-[126px] w-44 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[42px] bg-gradient-to-b from-slate-950/90 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42px] bg-gradient-to-t from-slate-950/90 to-transparent" />
+        <div className="bed-dial-surface relative h-[126px] w-44 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+          <div className="bed-dial-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-[42px] bg-gradient-to-b from-slate-950/90 to-transparent" />
+          <div className="bed-dial-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42px] bg-gradient-to-t from-slate-950/90 to-transparent" />
           <div className="pointer-events-none absolute inset-x-2 top-1/2 z-10 h-[42px] -translate-y-1/2 rounded-xl border border-cyan-400/35 bg-cyan-400/10" />
           <div
             ref={wheelRef}
@@ -133,8 +133,8 @@ export function UnitBedDial({ unit, value, onChange }: { unit: UnitKey; value: s
                 key={b}
                 type="button"
                 onClick={() => onChange(b)}
-                className={`flex h-[42px] w-full snap-center items-center justify-center text-center transition ${
-                  b === value ? "font-black text-cyan-200" : "font-medium text-slate-400"
+                className={`bed-dial-item flex h-[42px] w-full snap-center items-center justify-center text-center transition ${
+                  b === value ? "bed-dial-item-selected font-black text-cyan-200" : "font-medium text-slate-400"
                 }`}
               >
                 {b}
