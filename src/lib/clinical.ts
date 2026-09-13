@@ -34,20 +34,41 @@ export type Clinical = {
     totalMlKgDay?: number;
     enteralMlKgDay?: number;
     ivMlKgDay?: number;
+    dextrosePct?: number;
     gir?: number;
+    girManual?: boolean;
     aminoAcid?: number;
     lipid?: number;
     kcal?: number;
+    kcalManual?: boolean;
     feedType?: string;
     feedRoute?: string;
     feedFreq?: string;
     feedVol?: number;
+    feedVolManual?: boolean;
+    fortificationName?: string;
+    fortificationAmount?: number;
+    fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
+    fortificationFeedVolumeMl?: number;
+    fortificationNotes?: string;
     residual?: string;
     tpn?: boolean;
     notes?: string;
   };
   lines?: { name: string; day: number; site?: string }[];
-  drugs?: { name: string; dose?: string; day?: number; ofDays?: number }[];
+  drugs?: {
+    name: string;
+    dose?: string;
+    day?: number;
+    ofDays?: number;
+    startedAt?: string;
+    dayOverride?: number;
+    source?: "our unit" | "referring hospital" | "unknown";
+  }[];
+  admissionContext?: {
+    mode: "new" | "existing-transfer";
+    recordedAt: string;
+  };
   labs?: Record<string, string>;
   care?: string[];
   discharge?: string[];
@@ -55,6 +76,7 @@ export type Clinical = {
   plan?: string;
   familyNote?: string;
 };
+
 
 export function dayOfLife(dob: string | Date): number {
   const d = new Date(dob).getTime();
@@ -181,30 +203,37 @@ export function calcNutrition(c: Clinical): NutritionCalc {
 /* ------------------------- temperature conversion ------------------------- */
 export type TempUnit = "C" | "F";
 
+// Avoid binary floating-point artefacts (for example 98.24000000000001)
+// without imposing a clinical display precision on the entered value.
+const cleanConversion = (value: number) => Number(value.toPrecision(15));
+
 export function cToF(c: number): number {
-  return Math.round((c * 9) / 5 * 10) / 10 + 32;
+  return cleanConversion((c * 9) / 5 + 32);
 }
 
 export function fToC(f: number): number {
-  return Math.round(((f - 32) * 5) / 9 * 10) / 10;
+  return cleanConversion(((f - 32) * 5) / 9);
 }
 
-/** Convert a stored Celsius value into the display unit. */
+/** Convert a stored Celsius value for bedside display at standard one-decimal temperature precision. */
 export function tempOut(c: number | null | undefined, unit: TempUnit): number | null {
   if (c === null || c === undefined || Number.isNaN(Number(c))) return null;
   const v = Number(c);
-  return unit === "F" ? Math.round(((v * 9) / 5 + 32) * 10) / 10 : Math.round(v * 10) / 10;
+  const displayed = unit === "F" ? (v * 9) / 5 + 32 : v;
+  // Display-only rounding removes binary floating-point noise; storage remains
+  // Celsius and retains the original entered/calculated value.
+  return Number(displayed.toFixed(1));
 }
 
 /** Convert a value typed in the display unit back to Celsius for storage. */
 export function tempIn(v: number, unit: TempUnit): number {
-  return unit === "F" ? Math.round((((v - 32) * 5) / 9) * 10) / 10 : Math.round(v * 10) / 10;
+  return unit === "F" ? cleanConversion(((v - 32) * 5) / 9) : v;
 }
 
 /** Formatted temperature string with the unit suffix. */
 export function fmtTemp(c: number | null | undefined, unit: TempUnit): string {
   const v = tempOut(c, unit);
-  return v === null ? "—" : `${v.toFixed(1)} °${unit}`;
+  return v === null ? "—" : `${String(v)} °${unit}`;
 }
 
 /**

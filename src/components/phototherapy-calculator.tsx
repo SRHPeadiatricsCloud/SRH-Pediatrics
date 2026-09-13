@@ -154,7 +154,7 @@ export function PhototherapyNomogramCalculator() {
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-cyan-400/25 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_38%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.12),transparent_30%),linear-gradient(180deg,rgba(8,15,30,0.96),rgba(15,23,42,0.92))] p-4 text-[11px] text-slate-300 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
+      <div className="bilirubin-intro relative overflow-hidden rounded-2xl border border-cyan-400/25 p-4 text-[11px] text-slate-300 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
         <div className="absolute inset-0 bg-[linear-gradient(transparent,rgba(255,255,255,0.02),transparent)] opacity-60" />
         <div className="relative">
           <p className="font-semibold tracking-wide text-cyan-200">SRH NICU bilirubin nomograms</p>
@@ -168,7 +168,7 @@ export function PhototherapyNomogramCalculator() {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="bilirubin-input-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Age in hours" value={ageHours} onChange={setAgeHours} min={0} max={240} unit="h" />
         <Field label="Gestation" value={gestWeeks} onChange={setGestWeeks} min={22} max={42} step={0.1} unit="weeks" />
         <Field label="Birth weight" value={weightGrams} onChange={setWeightGrams} min={400} max={5000} unit="g" />
@@ -193,7 +193,7 @@ export function PhototherapyNomogramCalculator() {
       />
 
       <div className="grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
-        <div className={`rounded-2xl border p-4 ${TONE[interpretation.severity]}`}>
+        <div className={`bilirubin-result rounded-2xl border p-4 ${TONE[interpretation.severity]}`}>
           <div className="flex flex-wrap items-start gap-2">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Auto-selected pathway</div>
@@ -226,7 +226,7 @@ export function PhototherapyNomogramCalculator() {
           <p className="mt-3 text-[12px] leading-relaxed text-current">{interpretation.note}</p>
         </div>
 
-        <div className="rounded-2xl border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,15,30,0.92))] p-4 shadow-[0_0_40px_rgba(34,211,238,0.06)]">
+        <div className="bilirubin-risk-panel rounded-2xl border border-cyan-400/15 p-4 shadow-[0_0_40px_rgba(34,211,238,0.06)]">
           <div className="lbl mb-2">Risk flags and selection logic</div>
           {riskFlags.length > 0 ? (
             <div className="space-y-1.5">
@@ -295,11 +295,11 @@ function Field({
   helper?: string;
 }) {
   return (
-    <label className="rounded-xl border border-cyan-400/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.88))] p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
+    <label className="bilirubin-field rounded-xl border border-cyan-400/10 p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
       <span className="lbl mb-1 block">{label}</span>
       <div className="flex items-center gap-2">
         <input
-          className="inp !border-cyan-400/10 !bg-slate-950/70 !py-1.5 text-center text-sm font-bold"
+          className="bilirubin-input inp !py-1.5 text-center text-sm font-bold"
           type="number"
           inputMode="decimal"
           min={min}
@@ -308,7 +308,7 @@ function Field({
           value={Number.isFinite(value) ? value : ""}
           onChange={(e) => onChange(Number(e.target.value) || 0)}
         />
-        {unit && <span className="shrink-0 text-[10px] text-slate-500">{unit}</span>}
+        {unit && <span className="bilirubin-unit shrink-0 text-[10px] font-bold">{unit}</span>}
       </div>
       {helper && <span className="mt-1 block text-[10px] text-slate-500">{helper}</span>}
     </label>
@@ -325,9 +325,9 @@ function SelectField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="rounded-xl border border-cyan-400/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.88))] p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
+    <label className="bilirubin-field rounded-xl border border-cyan-400/10 p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
       <span className="lbl mb-1 block">{label}</span>
-      <select className="inp !border-cyan-400/10 !bg-slate-950/70 !py-1.5 text-sm font-semibold" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="bilirubin-input inp !py-1.5 text-sm font-semibold" value={value} onChange={(e) => onChange(e.target.value)}>
         {BLOOD_GROUPS.map((group) => (
           <option key={group} value={group}>
             {group}
@@ -350,7 +350,7 @@ function ToggleField({
   helper?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-cyan-400/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.88))] p-3 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
+    <label className="bilirubin-toggle flex cursor-pointer items-start gap-3 rounded-xl border border-cyan-400/10 p-3 shadow-[0_0_24px_rgba(34,211,238,0.04)]">
       <input
         type="checkbox"
         checked={checked}
@@ -367,10 +367,10 @@ function ToggleField({
 
 function Metric({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2 text-white shadow-[inset_0_0_24px_rgba(255,255,255,0.02)]">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-white/65">{k}</div>
-      <div className="mt-0.5 text-sm font-black leading-tight">{v}</div>
-      {sub && <div className="mt-1 text-[10px] text-white/70">{sub}</div>}
+    <div className="bilirubin-metric rounded-xl border px-3 py-2 text-white shadow-[inset_0_0_24px_rgba(255,255,255,0.02)]">
+      <div className="bilirubin-metric-label text-[10px] font-bold uppercase tracking-wide">{k}</div>
+      <div className="bilirubin-metric-value mt-0.5 text-sm font-black leading-tight">{v}</div>
+      {sub && <div className="bilirubin-metric-sub mt-1 text-[10px]">{sub}</div>}
     </div>
   );
 }
@@ -430,7 +430,7 @@ function NomogramChart({
   const graphNotes = chart.graphNotes ?? pathwayGuide;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,0.96))] p-4 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
+    <div className="bilirubin-chart-shell overflow-hidden rounded-2xl border border-cyan-400/15 p-4 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
       <div className="flex flex-wrap items-start gap-3">
         <div>
           <h3 className="text-sm font-black text-white">{chart.title}</h3>
@@ -442,9 +442,9 @@ function NomogramChart({
         </div>
       </div>
 
-      <div className="relative mt-4 overflow-hidden rounded-xl border border-cyan-400/10 bg-slate-950/70">
+      <div className="bilirubin-plot relative mt-4 overflow-hidden rounded-xl border border-cyan-400/10">
         <div className="overflow-x-auto">
-          <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[780px] w-full">
+          <svg viewBox={`0 0 ${width} ${height}`} className="bilirubin-chart min-w-[780px] w-full">
           <defs>
             <linearGradient id={`bg-${chart.key}`} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="rgba(34,211,238,0.10)" />
@@ -544,7 +544,7 @@ function NomogramChart({
                       strokeWidth={1.6}
                       strokeDasharray="7 6"
                     />
-                    <text x={width - pad.right - 4} y={y(curve.exchange) - 6} textAnchor="end" fontSize="11" fill="#fda4af">
+                    <text x={width - pad.right - 4} y={y(curve.exchange) - 6} textAnchor="end" className="bilirubin-exchange-label" fontSize="11" fill="#fda4af">
                       Exchange {curve.exchange} µmol/L · {micromolToMgDl(curve.exchange)} mg/dL
                     </text>
                   </>
@@ -557,7 +557,7 @@ function NomogramChart({
           <line x1={pad.left} y1={currentY} x2={width - pad.right} y2={currentY} stroke="rgba(255,255,255,.20)" strokeDasharray="4 4" />
           <circle cx={currentX} cy={currentY} r={8} fill="rgba(34,211,238,0.22)" filter={`url(#glow-${chart.key})`} />
           <circle cx={currentX} cy={currentY} r={5.5} fill="#f8fafc" stroke="#0f172a" strokeWidth={2.5} />
-          <text x={currentX + 12} y={Math.max(pad.top + 16, currentY - 14)} fontSize="11" fill="#e2e8f0">
+          <text x={currentX + 12} y={Math.max(pad.top + 16, currentY - 14)} className="bilirubin-current-label" fontSize="11" fill="#e2e8f0">
             Current point · {ageHours} h · {tsbUmol} µmol/L · {micromolToMgDl(tsbUmol)} mg/dL
           </text>
 
@@ -575,7 +575,7 @@ function NomogramChart({
       </div>
 
       <div className="mt-3 space-y-3">
-        <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/5 px-3 py-3 text-[11px] text-slate-300 shadow-[inset_0_0_20px_rgba(34,211,238,0.03)]">
+        <div className="bilirubin-notes rounded-xl border border-cyan-400/15 px-3 py-3 text-[11px] text-slate-300 shadow-[inset_0_0_20px_rgba(34,211,238,0.03)]">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">
             {chart.graphNotes ? "Source chart notes" : "Risk line guide"}
           </div>
@@ -610,7 +610,7 @@ function NomogramChart({
 function LegendChip({ curve, active }: { curve: PhototherapyCurve; active: boolean }) {
   return (
     <div
-      className={`rounded-xl border px-3 py-2 text-[11px] shadow-[inset_0_0_16px_rgba(255,255,255,0.02)] ${
+      className={`bilirubin-legend rounded-xl border px-3 py-2 text-[11px] shadow-[inset_0_0_16px_rgba(255,255,255,0.02)] ${
         active ? CURVE_ACCENT[curve.key] ?? "border-cyan-400/40 bg-cyan-400/10 text-white" : "border-white/10 bg-white/5"
       }`}
     >

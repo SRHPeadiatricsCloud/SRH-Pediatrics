@@ -67,7 +67,17 @@ export function AdmissionEdit({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => setF(baby), [baby]);
+  // The detail page polls every few seconds and creates a fresh `baby` object.
+  // Do not let that background refresh overwrite names while the edit form is open.
+  // When the form is closed, keep the draft aligned with the server snapshot so
+  // reopening it always starts from the latest saved admission details.
+  useEffect(() => {
+    if (!open) {
+      // Sync the closed summary with the latest polled server snapshot.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setF(baby);
+    }
+  }, [baby, open]);
 
   const set = <K extends keyof AdmissionFields>(k: K) => (v: AdmissionFields[K]) =>
     setF((p) => ({ ...p, [k]: v }));

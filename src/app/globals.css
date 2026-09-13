@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 /* ============================================================
@@ -84,8 +85,12 @@ body {
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body), "Segoe UI", Roboto, Arial, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  font-kerning: normal;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   letter-spacing: -0.006em;
 }
 
@@ -200,6 +205,7 @@ html.light .chip-on.tone-emerald {
    ============================================================ */
 .btn,
 .btn-primary,
+.btn-secondary,
 .btn-ghost {
   cursor: pointer;
   border-radius: var(--r-ctl);
@@ -215,11 +221,13 @@ html.light .chip-on.tone-emerald {
 }
 .btn:active,
 .btn-primary:active,
+.btn-secondary:active,
 .btn-ghost:active {
   transform: scale(0.97);
 }
 .btn:disabled,
 .btn-primary:disabled,
+.btn-secondary:disabled,
 .btn-ghost:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -234,6 +242,18 @@ html.light .chip-on.tone-emerald {
 }
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: var(--card-hi);
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
 }
 html.light .btn-primary {
   color: #ffffff;
@@ -591,6 +611,42 @@ table thead th {
   }
 }
 
+/* Anthropometry charts use the same clinical hologram language as the
+   bilirubin nomograms, with a restrained parallax sheen for pointer users. */
+.anthro-hologram {
+  position: relative;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+.anthro-hologram::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(115deg, rgba(255,255,255,0.08), transparent 18%, transparent 72%, rgba(34,211,238,0.06));
+  mix-blend-mode: screen;
+}
+.anthro-hologram > * {
+  position: relative;
+  z-index: 2;
+}
+.anthro-hologram .anthro-chart {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  transform: none;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .anthro-hologram .anthro-chart {
+    transition: filter 0.28s ease;
+  }
+  .anthro-hologram:hover .anthro-chart {
+    filter: drop-shadow(0 0 12px rgba(34,211,238,0.11));
+  }
+}
+
 main > div {
   animation: riseIn 0.32s ease-out;
 }
@@ -607,6 +663,27 @@ main > div {
 /* ============================================================
    VIEW-ONLY MODE (unsigned session)
    ============================================================ */
+/*
+ * Privacy boundary: TopBar contains the navigation tabs and sign-in
+ * control, so it remains usable. Every other direct child of a page main is
+ * obscured and non-interactive until a verified session exists. This is a
+ * visual privacy guard for shared screens; API authorization remains the
+ * security boundary for data access and writes.
+ */
+body.privacy-view main > :not(header),
+body.privacy-view footer {
+  filter: blur(12px) saturate(0.55);
+  opacity: 0.58;
+  pointer-events: none;
+  user-select: none;
+  transition: filter 180ms ease, opacity 180ms ease;
+}
+body.privacy-view main > header {
+  filter: none;
+  opacity: 1;
+  pointer-events: auto;
+  user-select: auto;
+}
 body.view-only .btn-primary {
   opacity: 0.55;
   filter: saturate(0.45);
@@ -881,4 +958,5868 @@ body,
 }
 .text-\[11px\] {
   font-size: 13px;
+}
+
+/* ============================================================
+   LIGHT MODE v3 — Sri Ramakrishna brand palette
+   Uses the logo's purple, magenta, orange and blue for a brighter,
+   calmer clinical surface with high-contrast text throughout.
+   ============================================================ */
+html.light {
+  color-scheme: light;
+  --brand-purple: #743193;
+  --brand-purple-deep: #5b2378;
+  --brand-magenta: #ed1694;
+  --brand-orange: #f26a29;
+  --brand-blue: #23a0dc;
+  --brand-blue-deep: #0878b5;
+  --light-ink: #17233d;
+  --light-ink-soft: #34445f;
+  --light-muted: #596b86;
+  --light-line: #d9deea;
+  --light-surface: #ffffff;
+  --light-surface-soft: #f7f8fc;
+  --light-surface-blue: #f0f8fd;
+  --bg: #f4f7fb;
+  --bg-glow-1: rgba(35, 160, 220, 0.18);
+  --bg-glow-2: rgba(116, 49, 147, 0.14);
+  --bg-glow-3: rgba(237, 22, 148, 0.08);
+  --card: linear-gradient(145deg, #ffffff 0%, #fdfcff 68%, #f8f5fb 100%);
+  --card-solid: #ffffff;
+  --card-hi: #f5f7fc;
+  --border: var(--light-line);
+  --border-strong: #b9bfd2;
+  --text: var(--light-ink);
+  --text-2: var(--light-ink-soft);
+  --text-3: var(--light-muted);
+  --text-4: #72819a;
+  --accent: var(--brand-blue);
+  --accent-2: var(--brand-purple);
+  --accent-soft: rgba(35, 160, 220, 0.13);
+  --shadow-card: 0 1px 2px rgba(23, 35, 61, 0.05), 0 13px 30px -19px rgba(70, 47, 105, 0.34);
+  --shadow-pop: 0 18px 36px -21px rgba(70, 47, 105, 0.42);
+}
+
+html.light body {
+  background:
+    radial-gradient(1000px 520px at 3% -12%, var(--bg-glow-2) 0%, transparent 62%),
+    radial-gradient(950px 500px at 100% -8%, var(--bg-glow-1) 0%, transparent 60%),
+    radial-gradient(900px 560px at 56% 112%, var(--bg-glow-3) 0%, transparent 64%),
+    linear-gradient(180deg, #edf5fb 0%, #f7f8fc 48%, #ffffff 100%);
+  background-attachment: fixed;
+  color: var(--light-ink);
+}
+
+html.light .card {
+  background: var(--card);
+  border-color: var(--light-line);
+  box-shadow: var(--shadow-card);
+}
+html.light .card::before {
+  height: 3px;
+  opacity: 0.82;
+  background: linear-gradient(
+    90deg,
+    transparent 2%,
+    var(--brand-magenta) 20%,
+    var(--brand-orange) 43%,
+    var(--brand-blue) 66%,
+    var(--brand-purple) 88%,
+    transparent 98%
+  );
+}
+html.light a.card:hover {
+  border-color: #b9a6c8;
+  box-shadow: var(--shadow-pop);
+}
+
+/* Clear, brand-tinted panels replace muddy translucent dark utilities. */
+html.light .bg-slate-950,
+html.light .bg-slate-900 {
+  background-color: var(--light-surface-soft);
+  color: var(--light-ink);
+}
+html.light .bg-slate-950\/40,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/95,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/95 {
+  background-color: var(--light-surface-soft);
+  color: var(--light-ink);
+}
+html.light .bg-white {
+  background-color: #ffffff;
+}
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+html.light .bg-white\/\[0\.02\],
+html.light .bg-white\/\[0\.03\],
+html.light .bg-white\/\[0\.04\],
+html.light .bg-white\/\[0\.07\] {
+  background-color: #f1f4fa;
+}
+
+/* Logo-derived semantic surfaces. */
+html.light .bg-cyan-400\/5,
+html.light .bg-cyan-400\/10,
+html.light .bg-cyan-400\/15,
+html.light .bg-sky-400\/5,
+html.light .bg-sky-400\/10,
+html.light .bg-sky-500\/15 {
+  background-color: #e4f4fb;
+}
+html.light .bg-violet-400\/10,
+html.light .bg-indigo-400\/10,
+html.light .bg-indigo-400\/15,
+html.light .bg-purple-400\/10 {
+  background-color: #f0e9f5;
+}
+html.light .bg-fuchsia-400\/10,
+html.light .bg-pink-400\/10 {
+  background-color: #fde7f4;
+}
+html.light .bg-rose-400\/10,
+html.light .bg-rose-500\/10,
+html.light .bg-rose-500\/15,
+html.light .bg-rose-500\/20 {
+  background-color: #ffe5eb;
+}
+html.light .bg-amber-400\/5,
+html.light .bg-amber-400\/10,
+html.light .bg-amber-500\/15 {
+  background-color: #fff0df;
+}
+html.light .bg-emerald-400\/10 {
+  background-color: #e0f6eb;
+}
+
+/* Text contrast: never use pale dark-mode text on a white surface. */
+html.light .text-white,
+html.light h1,
+html.light h2,
+html.light h3 {
+  color: var(--light-ink);
+}
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: var(--light-ink-soft);
+}
+html.light .text-slate-400 {
+  color: #4f607b;
+}
+html.light .text-slate-500 {
+  color: #64738a;
+}
+html.light .text-slate-600 {
+  color: #56657b;
+}
+html.light .text-cyan-100,
+html.light .text-cyan-200,
+html.light .text-cyan-300,
+html.light .text-sky-200,
+html.light .text-sky-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .text-violet-100,
+html.light .text-violet-200,
+html.light .text-violet-300,
+html.light .text-purple-200,
+html.light .text-purple-300 {
+  color: var(--brand-purple-deep);
+}
+html.light .text-fuchsia-200,
+html.light .text-fuchsia-300,
+html.light .text-pink-200,
+html.light .text-pink-300 {
+  color: #b20d6d;
+}
+html.light .text-rose-100,
+html.light .text-rose-200,
+html.light .text-rose-300 {
+  color: #bd234d;
+}
+html.light .text-amber-100,
+html.light .text-amber-200,
+html.light .text-amber-300 {
+  color: #a6530c;
+}
+html.light .text-emerald-200,
+html.light .text-emerald-300 {
+  color: #08764f;
+}
+html.light .text-indigo-200,
+html.light .text-indigo-300 {
+  color: #514096;
+}
+
+/* Borders stay visible against both white cards and tinted panels. */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/20 {
+  border-color: var(--light-line);
+}
+html.light .border-cyan-400\/20,
+html.light .border-cyan-400\/25,
+html.light .border-cyan-400\/30,
+html.light .border-cyan-400\/35,
+html.light .border-cyan-400\/40 {
+  border-color: #88cde8;
+}
+html.light .border-sky-400\/25,
+html.light .border-sky-400\/30,
+html.light .border-sky-400\/40 {
+  border-color: #8fcfe9;
+}
+html.light .border-violet-400\/20,
+html.light .border-violet-400\/25,
+html.light .border-violet-400\/30,
+html.light .border-violet-400\/35,
+html.light .border-purple-400\/30 {
+  border-color: #c4acd1;
+}
+html.light .border-fuchsia-400\/30,
+html.light .border-pink-400\/30 {
+  border-color: #edabd0;
+}
+html.light .border-rose-400\/20,
+html.light .border-rose-400\/25,
+html.light .border-rose-400\/30,
+html.light .border-rose-400\/40,
+html.light .border-rose-400\/50,
+html.light .border-rose-500\/40 {
+  border-color: #f1a9bb;
+}
+html.light .border-amber-400\/20,
+html.light .border-amber-400\/25,
+html.light .border-amber-400\/30,
+html.light .border-amber-400\/40 {
+  border-color: #efc080;
+}
+html.light .border-emerald-400\/20,
+html.light .border-emerald-400\/30,
+html.light .border-emerald-400\/40 {
+  border-color: #8bd5b3;
+}
+
+/* Brand-led controls. */
+html.light .chip-off {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink-soft);
+}
+html.light .chip-off:hover {
+  background: #e9f6fc;
+  border-color: var(--brand-blue);
+  color: var(--light-ink);
+}
+html.light .chip-on {
+  background: linear-gradient(135deg, var(--brand-purple) 0%, var(--brand-blue) 100%);
+  color: #ffffff;
+  box-shadow: 0 7px 18px -11px rgba(116, 49, 147, 0.7), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+html.light .chip-on.tone-rose {
+  background: linear-gradient(135deg, var(--brand-magenta) 0%, #c50c72 100%);
+  color: #ffffff;
+}
+html.light .chip-on.tone-amber {
+  background: linear-gradient(135deg, #ffb14e 0%, var(--brand-orange) 100%);
+  color: #442000;
+}
+html.light .chip-on.tone-emerald {
+  background: linear-gradient(135deg, #37c98b 0%, #08764f 100%);
+  color: #ffffff;
+}
+html.light .btn-primary {
+  background: linear-gradient(135deg, var(--brand-purple) 0%, var(--brand-blue) 100%);
+  color: #ffffff;
+  box-shadow: 0 11px 25px -15px rgba(116, 49, 147, 0.78), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+html.light .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.07) saturate(1.08);
+}
+html.light .btn-ghost {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink-soft);
+}
+html.light .btn-ghost:hover:not(:disabled) {
+  background: #e9f6fc;
+  border-color: var(--brand-blue);
+  color: var(--light-ink);
+}
+html.light .inp {
+  background: #ffffff;
+  border-color: var(--light-line);
+  color: var(--light-ink);
+  box-shadow: inset 0 1px 2px rgba(23, 35, 61, 0.025);
+}
+html.light .inp:focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(35, 160, 220, 0.17), inset 0 1px 2px rgba(23, 35, 61, 0.025);
+}
+html.light .lbl {
+  color: #52637e;
+}
+
+/* Header and tabs have a quiet brand gradient instead of a dull grey bar. */
+html.light header {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: #d4dbea !important;
+  box-shadow: 0 8px 26px -22px rgba(91, 35, 120, 0.62);
+}
+html.light header nav {
+  background: linear-gradient(90deg, rgba(116,49,147,0.08), rgba(35,160,220,0.10) 56%, rgba(237,22,148,0.05));
+  border-top-color: #e1e4ee !important;
+}
+html.light header nav a[aria-current="page"] {
+  border-color: rgba(116,49,147,0.52);
+  background: linear-gradient(135deg, rgba(116,49,147,0.12), rgba(35,160,220,0.14));
+  color: var(--brand-purple-deep);
+}
+html.light .theme-switch {
+  background: #ffffff;
+  border-color: #c7cada;
+  box-shadow: 0 2px 6px rgba(23, 35, 61, 0.08);
+}
+html.light .theme-switch button {
+  color: var(--light-ink-soft);
+}
+html.light .theme-switch button.theme-on.bg-amber-400 {
+  background: var(--brand-purple);
+  color: #ffffff;
+}
+html.light .theme-switch button:hover {
+  background: #edf6fb;
+}
+
+/* Gradients used by hero panels inherit the logo palette. */
+html.light .from-cyan-500\/10 { --tw-gradient-from: rgba(35,160,220,0.14); }
+html.light .via-indigo-500\/10 { --tw-gradient-via: rgba(116,49,147,0.09); }
+html.light .to-fuchsia-500\/10 { --tw-gradient-to: rgba(237,22,148,0.08); }
+html.light .bg-gradient-to-br {
+  background-image: linear-gradient(145deg, rgba(35,160,220,0.18) 0%, rgba(116,49,147,0.14) 100%);
+}
+
+/* Tables, dividers and focus affordances. */
+html.light table thead th {
+  background: linear-gradient(180deg, #eef8fc 0%, #f2edf8 100%);
+  color: #244468;
+  border-bottom: 2px solid #b9dce9;
+}
+html.light table tbody tr {
+  border-color: #e2e6ef;
+}
+html.light table tbody tr:hover {
+  background: #f0f8fc;
+}
+html.light :focus-visible {
+  outline: 3px solid rgba(237, 22, 148, 0.38);
+  outline-offset: 2px;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(116, 49, 147, 0.34);
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 160, 220, 0.58);
+}
+
+/* ============================================================
+   CALCULATOR INPUTS — light-mode clinical controls
+   ============================================================ */
+.calculator-field,
+.anthro-field {
+  border: 1px solid rgba(126, 165, 214, 0.18);
+  background: rgba(6, 10, 18, 0.22);
+}
+.calculator-input,
+.anthro-input {
+  background: rgba(6, 10, 18, 0.58);
+}
+.anthro-unit {
+  color: var(--text-3);
+}
+
+html.light .calculator-field,
+html.light .anthro-field {
+  border-color: #d7d5e5;
+  background: linear-gradient(135deg, #fbf8fd 0%, #f1f8fc 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px -10px rgba(91,35,120,0.45);
+}
+html.light .calculator-field:hover,
+html.light .anthro-field:hover {
+  border-color: #b9a6c8;
+  background: linear-gradient(135deg, #fffafe 0%, #eef9fd 100%);
+}
+html.light .calculator-input,
+html.light .anthro-input {
+  background: #ffffff !important;
+  border-color: #cbd4e2 !important;
+  color: var(--light-ink) !important;
+  box-shadow: inset 0 1px 2px rgba(23,35,61,0.04);
+}
+html.light .calculator-input:focus,
+html.light .anthro-input:focus {
+  border-color: var(--brand-blue) !important;
+  box-shadow: 0 0 0 3px rgba(35,160,220,0.16), inset 0 1px 2px rgba(23,35,61,0.04);
+}
+html.light .calculator-input::placeholder,
+html.light .anthro-input::placeholder {
+  color: #7b889e;
+}
+html.light .anthro-unit {
+  color: #52637e;
+}
+html.light .calculator-field .lbl,
+html.light .anthro-field .lbl {
+  color: #435574;
+}
+html.light .calculator-input option,
+html.light .anthro-input option {
+  background: #ffffff;
+  color: var(--light-ink);
+}
+
+/* Results and reference banners use full-strength readable text in light mode. */
+html.light .text-cyan-100,
+html.light .text-emerald-100,
+html.light .text-amber-100,
+html.light .text-rose-100,
+html.light .text-violet-100,
+html.light .text-sky-100,
+html.light .text-indigo-100 {
+  color: var(--light-ink-soft);
+}
+html.light .text-orange-100,
+html.light .text-orange-200,
+html.light .text-orange-300 {
+  color: #a94b0c;
+}
+html.light .border-orange-400\/35,
+html.light .border-orange-400\/40 {
+  border-color: #efb079;
+}
+html.light .bg-orange-400\/10 {
+  background-color: #fff0df;
+}
+
+/* ============================================================
+   CLINICAL CHARTS — light-mode hologram treatment
+   ============================================================ */
+.bilirubin-field,
+.bilirubin-toggle {
+  background: linear-gradient(180deg, rgba(15,23,42,0.88), rgba(2,6,23,0.88));
+}
+.bilirubin-input {
+  background: rgba(6,10,18,0.58);
+}
+.bilirubin-unit {
+  color: var(--text-3);
+}
+.bilirubin-metric {
+  background: rgba(6,10,18,0.30);
+}
+.bilirubin-metric-label,
+.bilirubin-metric-sub {
+  color: rgba(255,255,255,0.68);
+}
+.bilirubin-chart-shell {
+  background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(2,6,23,0.96));
+}
+
+html.light .bilirubin-intro {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(35,160,220,0.18), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(237,22,148,0.12), transparent 34%),
+    linear-gradient(145deg, #f8fcff 0%, #f8f2fb 100%) !important;
+  border-color: #b9dce9;
+  color: var(--light-ink-soft);
+  box-shadow: 0 12px 26px -18px rgba(35,160,220,0.58);
+}
+html.light .bilirubin-intro .text-white,
+html.light .bilirubin-intro .text-slate-200,
+html.light .bilirubin-intro .text-slate-300,
+html.light .bilirubin-intro .text-slate-400 {
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-field,
+html.light .bilirubin-toggle {
+  border-color: #d7d5e5;
+  background: linear-gradient(135deg, #fbf8fd 0%, #f1f8fc 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.92), 0 4px 12px -10px rgba(91,35,120,0.45);
+}
+html.light .bilirubin-field:hover,
+html.light .bilirubin-toggle:hover {
+  border-color: #b9a6c8;
+  background: linear-gradient(135deg, #fffafe 0%, #eef9fd 100%) !important;
+}
+html.light .bilirubin-input {
+  background: #ffffff !important;
+  border-color: #cbd4e2 !important;
+  color: var(--light-ink) !important;
+}
+html.light .bilirubin-input:focus {
+  border-color: var(--brand-blue) !important;
+  box-shadow: 0 0 0 3px rgba(35,160,220,0.16) !important;
+}
+html.light .bilirubin-unit {
+  color: #52637e;
+}
+html.light .bilirubin-result {
+  box-shadow: 0 10px 25px -18px rgba(91,35,120,0.4);
+}
+html.light .bilirubin-risk-panel {
+  border-color: #c5d4e1;
+  background: linear-gradient(145deg, #fbfcff 0%, #f4f8fc 100%) !important;
+  box-shadow: 0 10px 24px -18px rgba(35,160,220,0.45);
+}
+html.light .bilirubin-metric {
+  border-color: #d7dce7;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f8fc 100%);
+  color: var(--light-ink);
+}
+html.light .bilirubin-metric-label {
+  color: #52637e;
+}
+html.light .bilirubin-metric-value {
+  color: var(--light-ink);
+}
+html.light .bilirubin-metric-sub {
+  color: #5e7089;
+}
+html.light .bilirubin-chart-shell {
+  border-color: #c7b6d3;
+  background: linear-gradient(145deg, #fbfdff 0%, #f8f1fb 100%) !important;
+  box-shadow: 0 15px 34px -22px rgba(116,49,147,0.52);
+}
+html.light .bilirubin-chart-shell h3 {
+  color: var(--light-ink);
+}
+html.light .bilirubin-chart-shell .text-slate-300,
+html.light .bilirubin-chart-shell .text-slate-400 {
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-plot {
+  border-color: #b9dce9;
+  background: #f8fbff !important;
+  box-shadow: inset 0 0 28px rgba(35,160,220,0.08);
+}
+html.light .bilirubin-chart {
+  background: linear-gradient(145deg, #f5fbfe 0%, #fbf5fc 100%);
+}
+html.light .bilirubin-chart > rect:first-of-type {
+  fill: #f5fbfe !important;
+}
+html.light .bilirubin-chart > rect:nth-of-type(2) {
+  fill: #fbfdff !important;
+}
+html.light .bilirubin-chart stop:first-of-type {
+  stop-color: #dff4fb !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart stop:nth-of-type(2) {
+  stop-color: #eee6f6 !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart stop:last-of-type {
+  stop-color: #fde7f4 !important;
+  stop-opacity: 1 !important;
+}
+html.light .bilirubin-chart > line {
+  stroke: rgba(35,160,220,0.22) !important;
+}
+html.light .bilirubin-chart text {
+  fill: #38516e !important;
+}
+html.light .bilirubin-chart .bilirubin-exchange-label {
+  fill: #b20d6d !important;
+}
+html.light .bilirubin-chart .bilirubin-current-label {
+  fill: #243b5b !important;
+}
+html.light .bilirubin-notes {
+  border-color: #b9dce9;
+  background: linear-gradient(135deg, #f1f9fd 0%, #f8f1fb 100%) !important;
+  color: var(--light-ink-soft);
+}
+html.light .bilirubin-notes .text-cyan-200,
+html.light .bilirubin-notes .text-cyan-300,
+html.light .bilirubin-notes .text-slate-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .bilirubin-legend {
+  border-color: #d7d5e5;
+  background: #ffffff !important;
+  color: var(--light-ink);
+  box-shadow: 0 5px 14px -12px rgba(91,35,120,0.5);
+}
+html.light .bilirubin-legend .text-white {
+  color: var(--light-ink) !important;
+}
+html.light .bilirubin-legend .text-slate-300 {
+  color: #52637e;
+}
+
+/* Growth charts: brighter canvas, crisp grid, and luminous curve lines. */
+html.light .anthro-hologram {
+  border-color: #b9dce9;
+  background: linear-gradient(145deg, #f8fdff 0%, #fbf4fc 100%) !important;
+  box-shadow: 0 15px 34px -22px rgba(116,49,147,0.5), inset 0 0 32px rgba(35,160,220,0.06);
+}
+html.light .anthro-hologram::before {
+  background: linear-gradient(115deg, rgba(35,160,220,0.16), transparent 24%, transparent 70%, rgba(237,22,148,0.12));
+  mix-blend-mode: multiply;
+}
+html.light .anthro-hologram svg {
+  border: 1px solid #c6dfeb;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f5fbfe 0%, #fbf5fc 100%);
+}
+html.light .anthro-hologram svg > rect:first-of-type {
+  fill: #f5fbfe !important;
+}
+html.light .anthro-hologram svg > rect:nth-of-type(2) {
+  fill: #fbfdff !important;
+}
+html.light .anthro-hologram svg stop:first-of-type {
+  stop-color: #dff4fb !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg stop:nth-of-type(2) {
+  stop-color: #eee6f6 !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg stop:last-of-type {
+  stop-color: #fde7f4 !important;
+  stop-opacity: 1 !important;
+}
+html.light .anthro-hologram svg line {
+  stroke: rgba(35,160,220,0.18) !important;
+}
+html.light .anthro-hologram svg text {
+  fill: #3d526c !important;
+}
+html.light .anthro-hologram .text-cyan-100,
+html.light .anthro-hologram .text-cyan-200,
+html.light .anthro-hologram .text-cyan-300 {
+  color: var(--brand-blue-deep);
+}
+html.light .anthro-hologram .text-rose-300 {
+  color: #b20d6d;
+}
+
+/* Anthropometry point callout: keeps the current centile and z-score attached
+   to the marker instead of forcing the reader to cross-reference the result box. */
+.anthro-point-callout {
+  pointer-events: none;
+}
+.anthro-callout-leader {
+  stroke: rgba(34,211,238,0.75);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.anthro-callout-bg {
+  fill: rgba(2,6,23,0.9);
+  stroke: rgba(34,211,238,0.75);
+  stroke-width: 1;
+}
+.anthro-callout-title {
+  fill: #a5f3fc;
+  font-weight: 800;
+}
+.anthro-callout-value {
+  fill: #ffffff;
+  font-weight: 900;
+}
+html.light .anthro-callout-leader {
+  stroke: #743193;
+  stroke-width: 1.8;
+}
+html.light .anthro-callout-bg {
+  fill: #ffffff;
+  stroke: #743193;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 4px 6px rgba(91,35,120,0.2));
+}
+html.light .anthro-callout-title {
+  fill: #5b2378 !important;
+}
+html.light .anthro-callout-value {
+  fill: #17233d !important;
+}
+
+/* ============================================================
+   CALCULATOR VISUAL GUIDES
+   Schematic aids are deliberately labeled as non-diagnostic. They
+   improve recognition of the domains without replacing examination,
+   validated charts, or clinician judgment.
+   ============================================================ */
+.calculator-visual {
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 16px;
+  padding: 13px;
+  background: linear-gradient(135deg, rgba(15, 31, 52, 0.86), rgba(20, 24, 48, 0.72));
+  color: var(--text);
+}
+.calc-visual-kicker {
+  color: #67e8f9;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.calc-visual-badge {
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 999px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .08);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+.calc-visual-subtitle {
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+.visual-svg {
+  overflow: visible;
+}
+.visual-svg-text {
+  fill: #8ba1bf;
+  font-size: 8px;
+  font-weight: 700;
+}
+.visual-airway,
+.visual-rib {
+  fill: none;
+  stroke: #67e8f9;
+  stroke-linecap: round;
+  stroke-width: 3;
+  opacity: .7;
+}
+.visual-lung {
+  fill: rgba(34, 211, 238, .13);
+  stroke: #22d3ee;
+  stroke-width: 2;
+}
+.visual-pulse {
+  fill: #fb7185;
+  filter: drop-shadow(0 0 5px rgba(251, 113, 133, .8));
+}
+.visual-score-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(72px, 1fr) auto 20px;
+  font-size: 10px;
+}
+.visual-score-label {
+  color: var(--text-2);
+  font-weight: 700;
+}
+.visual-score-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.visual-score-dots i {
+  background: rgba(148, 163, 184, .22);
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+.visual-score-dots i.on {
+  background: #22d3ee;
+  border-color: #67e8f9;
+  box-shadow: 0 0 7px rgba(34, 211, 238, .4);
+}
+.visual-score-number {
+  color: #a5f3fc;
+  font-weight: 900;
+  text-align: right;
+}
+.visual-total {
+  align-items: center;
+  border-top: 1px solid rgba(148, 163, 184, .18);
+  color: var(--text-3);
+  display: flex;
+  font-size: 10px;
+  font-weight: 700;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.visual-total b {
+  color: #fbbf24;
+  font-size: 15px;
+}
+.visual-callout {
+  background: rgba(14, 165, 233, .08);
+  border: 1px solid rgba(14, 165, 233, .24);
+  border-radius: 9px;
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 8px;
+  padding: 7px 9px;
+}
+.visual-baby {
+  fill: rgba(168, 85, 247, .14);
+  stroke: #c084fc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+.visual-joint {
+  fill: none;
+  stroke: #f0abfc;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.visual-mark {
+  fill: #f0abfc;
+}
+.ballard-domain > div:first-child {
+  align-items: center;
+  color: var(--text-2);
+  display: flex;
+  font-size: 10px;
+  font-weight: 800;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.ballard-domain b {
+  color: #c4b5fd;
+  font-size: 9px;
+}
+.domain-track,
+.tbsa-track {
+  background: rgba(148, 163, 184, .15);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+.domain-track i,
+.tbsa-track i {
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width .2s ease;
+}
+.domain-track.physical i {
+  background: linear-gradient(90deg, #fb923c, #f472b6);
+}
+.retina-zone {
+  fill: rgba(34, 211, 238, .04);
+  stroke: rgba(103, 232, 249, .5);
+  stroke-width: 1.5;
+}
+.retina-zone.zone-two {
+  fill: rgba(167, 139, 250, .07);
+  stroke: rgba(196, 181, 253, .65);
+}
+.retina-zone.zone-one {
+  fill: rgba(251, 113, 133, .1);
+  stroke: rgba(251, 113, 133, .8);
+}
+.retina-zone.selected {
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, .7));
+  stroke: #fbbf24;
+  stroke-width: 3;
+}
+.retina-disc {
+  fill: #f8fafc;
+  opacity: .85;
+}
+.retina-text {
+  fill: #e0f2fe;
+  font-size: 9px;
+  font-weight: 900;
+}
+.rop-stage-strip {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+.rop-stage-strip span {
+  align-items: center;
+  background: rgba(148, 163, 184, .12);
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 8px;
+  color: var(--text-3);
+  display: flex;
+  font-size: 10px;
+  font-weight: 900;
+  height: 25px;
+  justify-content: center;
+  width: 25px;
+}
+.rop-stage-strip span.active {
+  background: #f59e0b;
+  border-color: #fcd34d;
+  color: #241000;
+}
+.visual-pill {
+  background: rgba(148, 163, 184, .1);
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 999px;
+  color: var(--text-3);
+  padding: 4px 7px;
+}
+.visual-pill.active {
+  background: rgba(34, 211, 238, .12);
+  border-color: rgba(103, 232, 249, .4);
+  color: #a5f3fc;
+}
+.visual-pill.alert {
+  background: rgba(251, 113, 133, .14);
+  border-color: rgba(251, 113, 133, .45);
+  color: #fecdd3;
+}
+.burn-head,
+.burn-region {
+  stroke: rgba(251, 191, 36, .65);
+  stroke-width: 1.4;
+}
+.burn-head,
+.burn-region.head {
+  fill: rgba(251, 191, 36, .2);
+}
+.burn-region.trunk {
+  fill: rgba(244, 114, 182, .18);
+}
+.burn-region.limb {
+  fill: rgba(96, 165, 250, .18);
+}
+.burn-region.leg {
+  fill: rgba(167, 139, 250, .2);
+}
+.tbsa-number {
+  color: #fbbf24;
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1;
+}
+.tbsa-number small {
+  color: #fcd34d;
+  font-size: 13px;
+  margin-left: 2px;
+}
+
+html.light .calculator-visual {
+  background: linear-gradient(135deg, #f5fbff, #f7f5ff);
+  border-color: #a8dceb;
+}
+html.light .calc-visual-kicker,
+html.light .calc-visual-badge,
+html.light .visual-score-number,
+html.light .visual-pill.active {
+  color: #075985;
+}
+html.light .calc-visual-badge {
+  background: #e0f5fb;
+  border-color: #9bd8e8;
+}
+html.light .visual-svg-text,
+html.light .calc-visual-subtitle,
+html.light .visual-score-label,
+html.light .visual-total,
+html.light .visual-pill {
+  color: #47597a;
+}
+html.light .visual-airway,
+html.light .visual-rib {
+  stroke: #0284c7;
+}
+html.light .visual-lung {
+  fill: #d8f2fd;
+  stroke: #0284c7;
+}
+html.light .visual-baby {
+  fill: #eee5ff;
+  stroke: #7c3aed;
+}
+html.light .visual-callout {
+  background: #e7f5fd;
+  border-color: #a6d7ee;
+  color: #075985;
+}
+html.light .visual-total b,
+html.light .tbsa-number {
+  color: #b45309;
+}
+html.light .tbsa-number small {
+  color: #a2550a;
+}
+html.light .retina-text {
+  fill: #334155;
+}
+html.light .retina-zone {
+  fill: #e6f5fb;
+}
+html.light .retina-zone.zone-two {
+  fill: #f0eaff;
+}
+html.light .retina-zone.zone-one {
+  fill: #ffe4ea;
+}
+html.light .retina-disc {
+  fill: #334155;
+}
+html.light .rop-stage-strip span {
+  background: #eef4fb;
+  border-color: #cbd9ec;
+  color: #47597a;
+}
+html.light .visual-pill.alert {
+  color: #be123c;
+}
+html.light .burn-head,
+html.light .burn-region.head {
+  fill: #fff0c7;
+}
+html.light .burn-region.trunk {
+  fill: #ffe4f0;
+}
+html.light .burn-region.limb {
+  fill: #e0efff;
+}
+html.light .burn-region.leg {
+  fill: #eee8ff;
+}
+
+/* New Admission rolling warmer/bed dial: keep the labels readable in both themes. */
+.bed-dial-surface {
+  color: #dbeafe;
+}
+.bed-dial-item {
+  color: #94a3b8;
+}
+.bed-dial-item-selected {
+  color: #a5f3fc;
+  text-shadow: 0 0 12px rgba(34, 211, 238, .28);
+}
+html.light .bed-dial-surface {
+  background: #f8fbff !important;
+  border-color: #b6c9e0 !important;
+  color: #0b1526;
+}
+html.light .bed-dial-fade {
+  background: linear-gradient(to bottom, rgba(248, 251, 255, .98), rgba(248, 251, 255, 0)) !important;
+}
+html.light .bed-dial-surface .bed-dial-fade:nth-child(2) {
+  background: linear-gradient(to top, rgba(248, 251, 255, .98), rgba(248, 251, 255, 0)) !important;
+}
+html.light .bed-dial-item {
+  color: #47597a !important;
+}
+html.light .bed-dial-item-selected {
+  color: #075985 !important;
+  text-shadow: none;
+}
+
+/* Source-backed Lund–Browder interaction controls. */
+.burn-age-select {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+.burn-age-select span {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 800;
+}
+.burn-age-select select {
+  background: var(--card-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+.burn-region-grid {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.burn-region-chip {
+  align-items: center;
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 8px;
+  color: var(--text-2);
+  display: flex;
+  font-size: 9px;
+  font-weight: 800;
+  gap: 5px;
+  justify-content: space-between;
+  min-height: 31px;
+  padding: 5px 7px;
+  text-align: left;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.burn-region-chip:hover {
+  border-color: rgba(34, 211, 238, .55);
+  transform: translateY(-1px);
+}
+.burn-region-chip b {
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.burn-region-chip.active {
+  background: rgba(34, 211, 238, .14);
+  border-color: rgba(103, 232, 249, .7);
+  color: #a5f3fc;
+}
+.burn-region-chip.active b {
+  color: #fbbf24;
+}
+.burn-region.selected,
+.burn-head.selected {
+  fill: rgba(251, 191, 36, .48);
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6));
+}
+html.light .burn-age-select select {
+  background: #fff;
+  border-color: #a8bed8;
+  color: #0b1526;
+}
+html.light .burn-region-chip {
+  background: #f2f6fb;
+  border-color: #cbd9ec;
+  color: #334155;
+}
+html.light .burn-region-chip b {
+  color: #47597a;
+}
+html.light .burn-region-chip.active {
+  background: #dff5fb;
+  border-color: #58b9d5;
+  color: #075985;
+}
+html.light .burn-region-chip.active b {
+  color: #a2550a;
+}
+
+.scale-summary-meter {
+  align-items: center;
+  background: conic-gradient(#22d3ee var(--meter), rgba(148, 163, 184, .14) 0);
+  border-radius: 50%;
+  display: grid;
+  height: 116px;
+  justify-self: center;
+  place-items: center;
+  position: relative;
+  width: 116px;
+}
+.scale-summary-meter::after {
+  background: var(--card-solid);
+  border-radius: 50%;
+  content: "";
+  inset: 8px;
+  position: absolute;
+}
+.scale-summary-meter > div {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+.scale-summary-meter b {
+  color: #a5f3fc;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+.scale-summary-meter span {
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-align: center;
+}
+.scale-summary-bars {
+  display: grid;
+  gap: 7px;
+}
+.scale-summary-row {
+  align-items: center;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: minmax(90px, 1fr) minmax(80px, 1.3fr) 22px;
+}
+.scale-summary-row span,
+.scale-summary-row em {
+  color: var(--text-2);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+.scale-summary-row em {
+  color: #a5f3fc;
+  text-align: right;
+}
+.scale-summary-row i {
+  background: rgba(148, 163, 184, .15);
+  border-radius: 999px;
+  display: block;
+  height: 7px;
+  overflow: hidden;
+}
+.scale-summary-row i b {
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+html.light .scale-summary-meter::after {
+  background: #fff;
+}
+html.light .scale-summary-meter b,
+html.light .scale-summary-row em {
+  color: #075985;
+}
+html.light .scale-summary-row span {
+  color: #47597a;
+}
+
+/* ============================================================
+   CALCULATOR COCKPIT — high-density clinical workspace
+   ============================================================ */
+.calculator-hero {
+  background:
+    radial-gradient(600px 220px at 0% 0%, rgba(34, 211, 238, .15), transparent 65%),
+    radial-gradient(520px 260px at 100% 100%, rgba(168, 85, 247, .13), transparent 70%),
+    var(--card);
+  padding: 20px;
+}
+.calculator-hero-grid {
+  align-items: center;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(310px, .8fr);
+}
+.calculator-hero-copy h1 {
+  color: var(--text);
+  font-size: clamp(25px, 4vw, 40px);
+  font-weight: 950;
+  letter-spacing: -.055em;
+  line-height: .98;
+  margin: 10px 0 8px;
+}
+.calculator-hero-copy p {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 580px;
+}
+.calc-hero-overline,
+.calc-hero-meta,
+.calc-howto-strip,
+.calc-card-context-main,
+.calc-card-actions,
+.calc-input-label,
+.calc-action-row,
+.calc-result-topline,
+.calc-hero-live {
+  align-items: center;
+  display: flex;
+}
+.calc-hero-overline {
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 900;
+  gap: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.calc-hero-icon {
+  align-items: center;
+  background: linear-gradient(135deg, #22d3ee, #6366f1);
+  border-radius: 11px;
+  box-shadow: 0 8px 25px -12px #22d3ee;
+  color: #06111e;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+.calc-hero-live {
+  border: 1px solid rgba(52, 211, 153, .3);
+  border-radius: 999px;
+  color: #86efac;
+  font-size: 9px;
+  gap: 5px;
+  letter-spacing: normal;
+  padding: 4px 7px;
+  text-transform: none;
+}
+.calc-hero-live i {
+  background: #34d399;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #34d399;
+  height: 5px;
+  width: 5px;
+}
+.calc-hero-meta {
+  color: var(--text-3);
+  flex-wrap: wrap;
+  font-size: 10px;
+  font-weight: 800;
+  gap: 12px;
+  margin-top: 16px;
+}
+.calc-hero-meta span {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+.calc-hero-meta svg {
+  color: #67e8f9;
+}
+.calculator-hero-search {
+  background: rgba(7, 15, 29, .45);
+  border: 1px solid rgba(126, 165, 214, .24);
+  border-radius: 18px;
+  padding: 15px;
+}
+.calculator-hero-search label {
+  color: var(--text-2);
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.calculator-hero-search p {
+  color: var(--text-4);
+  font-size: 10px;
+  margin-top: 8px;
+}
+.calc-search-wrap {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  position: relative;
+}
+.calc-search-wrap > svg {
+  color: #67e8f9;
+  flex: 0 0 auto;
+}
+.calc-search-wrap input {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(103,232,249,.28);
+  min-width: 0;
+  padding-left: 4px;
+  width: 100%;
+}
+.calc-search-wrap kbd {
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 5px;
+  color: var(--text-4);
+  font-size: 9px;
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+.calc-search-wrap button {
+  align-items: center;
+  background: rgba(148,163,184,.12);
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-2);
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+.calc-howto-strip {
+  border-top: 1px solid rgba(148,163,184,.16);
+  flex-wrap: wrap;
+  gap: 9px 20px;
+  margin-top: 20px;
+  padding-top: 13px;
+}
+.calc-howto-strip > span {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+}
+.calc-howto-strip b {
+  color: #67e8f9;
+  font-size: 9px;
+  margin-right: 4px;
+}
+.calc-howto-title {
+  color: var(--text-2) !important;
+  display: inline-flex;
+  gap: 6px;
+  font-weight: 900 !important;
+}
+.calc-howto-title svg {
+  color: #fbbf24;
+}
+.calc-spotlight-row {
+  align-items: center;
+  display: flex;
+  gap: 13px;
+  overflow: auto hidden;
+  scrollbar-width: none;
+}
+.calc-spotlight-row::-webkit-scrollbar {
+  display: none;
+}
+.calc-spotlight-heading {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+.calc-spotlight-heading span,
+.calc-spotlight-heading small {
+  display: block;
+}
+.calc-spotlight-heading span {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 950;
+}
+.calc-spotlight-heading small {
+  color: var(--text-4);
+  font-size: 9px;
+  margin-top: 3px;
+}
+.calc-spotlights {
+  display: flex;
+  gap: 7px;
+  min-width: max-content;
+}
+.calc-spotlight {
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  color: var(--text);
+  display: flex;
+  gap: 12px;
+  min-width: 152px;
+  padding: 9px 11px;
+  text-align: left;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.calc-spotlight:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-pop);
+  transform: translateY(-2px);
+}
+.calc-spotlight span {
+  flex: 1;
+}
+.calc-spotlight b,
+.calc-spotlight small {
+  display: block;
+}
+.calc-spotlight b {
+  font-size: 11px;
+  font-weight: 950;
+}
+.calc-spotlight small {
+  color: var(--text-3);
+  font-size: 9px;
+  margin-top: 2px;
+}
+.calc-spotlight > svg {
+  color: var(--text-4);
+}
+.calc-spotlight-cyan { border-top: 2px solid #22d3ee; }
+.calc-spotlight-violet { border-top: 2px solid #a78bfa; }
+.calc-spotlight-orange { border-top: 2px solid #fb923c; }
+.calc-spotlight-rose { border-top: 2px solid #fb7185; }
+.calc-spotlight-indigo { border-top: 2px solid #818cf8; }
+.calc-category-nav {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  padding: 11px 13px;
+}
+.calc-filter-title {
+  align-items: center;
+  color: var(--text-3);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 900;
+  gap: 5px;
+  padding-top: 7px;
+}
+.calc-filter-title svg {
+  color: #67e8f9;
+}
+.calc-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.calc-category-chips .chip {
+  font-size: 10px;
+  padding: 6px 10px;
+}
+.calc-focus-banner {
+  align-items: center;
+  background: linear-gradient(110deg, rgba(34,211,238,.1), rgba(99,102,241,.1));
+  border: 1px solid rgba(103,232,249,.28);
+  border-radius: 15px;
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 14px;
+}
+.calc-focus-banner > div,
+.calc-focus-kicker,
+.calc-focus-banner b,
+.calc-focus-banner small {
+  display: block;
+}
+.calc-focus-kicker {
+  color: #67e8f9;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.calc-focus-banner b {
+  color: var(--text);
+  font-size: 13px;
+  margin-top: 3px;
+}
+.calc-focus-banner small {
+  color: var(--text-3);
+  font-size: 9px;
+  margin-top: 2px;
+}
+.calc-focus-banner button {
+  align-items: center;
+  background: rgba(255,255,255,.07);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  gap: 5px;
+  padding: 7px 9px;
+}
+
+.calc-card {
+  border-radius: 17px;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.calc-card-open {
+  border-color: rgba(103,232,249,.34);
+  box-shadow: 0 18px 46px -32px rgba(34,211,238,.8), var(--shadow-card);
+}
+.calc-card-header {
+  align-items: stretch;
+  display: flex;
+  min-height: 76px;
+}
+.calc-card-toggle {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 7px 12px 14px;
+  text-align: left;
+}
+.calc-card-toggle:hover {
+  background: linear-gradient(90deg, rgba(255,255,255,.05), transparent);
+}
+.calc-card-chevron {
+  color: #67e8f9;
+  display: inline-flex;
+}
+.calc-card-mark {
+  align-items: center;
+  border: 1px solid rgba(103,232,249,.24);
+  border-radius: 11px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+.calc-mark-neonatal { background: rgba(34,211,238,.1); color: #67e8f9; }
+.calc-mark-critical { background: rgba(251,113,133,.1); color: #fda4af; }
+.calc-mark-respiratory { background: rgba(96,165,250,.1); color: #93c5fd; }
+.calc-mark-fluid { background: rgba(251,146,60,.1); color: #fdba74; }
+.calc-mark-growth { background: rgba(167,139,250,.1); color: #c4b5fd; }
+.calc-mark-pain,
+.calc-mark-warning,
+.calc-mark-cardio,
+.calc-mark-dosing,
+.calc-mark-trauma,
+.calc-mark-sepsis,
+.calc-mark-neuro,
+.calc-mark-gi,
+.calc-mark-development,
+.calc-mark-skin,
+.calc-mark-endocrine { background: rgba(129,140,248,.1); color: #a5b4fc; }
+.calc-card-eyebrow {
+  color: var(--text-4);
+  display: block;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.calc-card-eyebrow i {
+  color: #67e8f9;
+  font-style: normal;
+  margin: 0 3px;
+}
+.calc-card-name {
+  color: var(--text);
+  display: block;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1.2;
+  margin-top: 5px;
+}
+.calc-card-citation {
+  color: var(--text-4);
+  display: block;
+  font-size: 9px;
+  line-height: 1.2;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calc-card-actions {
+  border-left: 1px solid rgba(148,163,184,.12);
+  flex: 0 0 auto;
+  gap: 7px;
+  padding: 9px 12px 9px 9px;
+}
+.calc-progress-pill {
+  align-items: center;
+  background: rgba(148,163,184,.08);
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 999px;
+  color: var(--text-3);
+  display: inline-flex;
+  font-size: 8px;
+  font-weight: 950;
+  gap: 4px;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+.calc-progress-pill > span {
+  color: #67e8f9;
+}
+.calc-progress-pill.done {
+  background: rgba(52,211,153,.1);
+  border-color: rgba(52,211,153,.3);
+  color: #86efac;
+}
+.calc-progress-pill.done > span {
+  color: #34d399;
+}
+.calc-card-open-label {
+  color: var(--text-4);
+  font-size: 9px;
+  font-weight: 900;
+}
+.calc-card-body {
+  border-top: 1px solid rgba(148,163,184,.15);
+  padding: 14px;
+}
+.calc-card-context {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: space-between;
+}
+.calc-card-context-main {
+  color: var(--text-4);
+  font-size: 9px;
+  font-weight: 800;
+  gap: 5px;
+}
+.calc-card-context-main svg {
+  color: #34d399;
+}
+.calc-card-context-main i {
+  color: var(--text-4);
+  font-style: normal;
+}
+.calc-card-context a {
+  align-items: center;
+  color: #67e8f9;
+  display: inline-flex;
+  font-size: 9px;
+  font-weight: 900;
+  gap: 4px;
+}
+.calc-citation-full {
+  color: var(--text-4);
+  font-size: 9px;
+  line-height: 1.45;
+  margin: 8px 0 13px;
+}
+.calc-workflow-head {
+  align-items: end;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.calc-step-kicker {
+  color: #67e8f9;
+  display: block;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.calc-workflow-head h3 {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 900;
+  margin-top: 3px;
+}
+.calc-workflow-count {
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.calc-progress-track {
+  background: rgba(148,163,184,.13);
+  border-radius: 99px;
+  height: 4px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.calc-progress-track i {
+  background: linear-gradient(90deg, #22d3ee, #818cf8);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width .2s ease;
+}
+.calc-input-card {
+  border: 1px solid rgba(126,165,214,.16);
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.calc-input-card:hover {
+  border-color: rgba(103,232,249,.36);
+  transform: translateY(-1px);
+}
+.calc-input-filled {
+  background: linear-gradient(135deg, rgba(34,211,238,.07), rgba(99,102,241,.04));
+  border-color: rgba(103,232,249,.28);
+}
+.calc-input-label {
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: 850;
+  gap: 6px;
+  justify-content: space-between;
+  line-height: 1.3;
+  margin-bottom: 7px;
+}
+.calc-input-label > span {
+  align-items: flex-start;
+  display: flex;
+  gap: 6px;
+}
+.calc-input-label b {
+  color: #67e8f9;
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+.calc-input-label > svg {
+  color: #34d399;
+  flex: 0 0 auto;
+}
+.calc-input-card select,
+.calc-input-card input {
+  min-height: 38px;
+}
+.calc-incomplete-note {
+  align-items: center;
+  background: rgba(251,191,36,.07);
+  border: 1px solid rgba(251,191,36,.22);
+  border-radius: 9px;
+  color: #fcd34d;
+  display: flex;
+  font-size: 10px;
+  font-weight: 800;
+  gap: 6px;
+  line-height: 1.4;
+  margin-top: 11px;
+  padding: 8px 10px;
+}
+.calc-action-row {
+  gap: 7px;
+  margin-top: 11px;
+}
+.calc-run-button,
+.calc-reset-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+.calc-run-button:disabled {
+  cursor: not-allowed;
+  filter: saturate(.35);
+  opacity: .55;
+}
+.calc-result-panel {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 28px -22px currentColor;
+}
+.calc-result-topline {
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.calc-result-kicker {
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .15em;
+  opacity: .75;
+  text-transform: uppercase;
+}
+.calc-result-state {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  opacity: .7;
+  padding: 3px 6px;
+}
+
+html.light .calculator-hero {
+  background: radial-gradient(600px 220px at 0% 0%, rgba(14,165,233,.13), transparent 65%), radial-gradient(520px 260px at 100% 100%, rgba(124,58,237,.1), transparent 70%), #fff;
+}
+html.light .calculator-hero-search {
+  background: #f5f9fe;
+  border-color: #cbd9ec;
+}
+html.light .calc-search-wrap input {
+  background: #fff;
+  border-color: #a8dceb;
+}
+html.light .calc-hero-overline,
+html.light .calc-step-kicker,
+html.light .calc-card-chevron,
+html.light .calc-input-label b {
+  color: #0369a1;
+}
+html.light .calc-hero-live {
+  color: #047857;
+  border-color: #90e0ba;
+}
+html.light .calc-hero-live i {
+  background: #059669;
+  box-shadow: 0 0 8px rgba(5,150,105,.4);
+}
+html.light .calc-howto-strip,
+html.light .calc-card-actions,
+html.light .calc-card-body {
+  border-color: #d9e4f1;
+}
+html.light .calc-card-open {
+  border-color: #8fd5ec;
+  box-shadow: 0 16px 40px -32px rgba(2,132,199,.55), var(--shadow-card);
+}
+html.light .calc-input-filled {
+  background: linear-gradient(135deg, #effaff, #f5f3ff);
+  border-color: #9bd8e8;
+}
+html.light .calc-incomplete-note {
+  color: #a2550a;
+}
+html.light .calc-focus-banner {
+  background: linear-gradient(110deg, #e8f8fd, #f0efff);
+  border-color: #8fd5ec;
+}
+html.light .calc-focus-kicker {
+  color: #0369a1;
+}
+
+@media (max-width: 760px) {
+  .calculator-hero-grid {
+    grid-template-columns: 1fr;
+  }
+  .calculator-hero {
+    padding: 15px;
+  }
+  .calc-category-nav {
+    display: block;
+  }
+  .calc-filter-title {
+    margin-bottom: 8px;
+    padding-top: 0;
+  }
+  .calc-card-citation {
+    max-width: 180px;
+  }
+  .calc-card-actions {
+    padding-right: 8px;
+  }
+  .calc-progress-pill {
+    display: none;
+  }
+  .calc-workflow-head h3 {
+    font-size: 11px;
+  }
+}
+
+/* ============================================================
+   CLINICAL READABILITY PASS — clear type over decorative effects
+   The calculator workspace is information-dense. Keep the brand colour
+   in the structure and accents, but give every label a solid surface,
+   stronger contrast and a comfortable reading size.
+   ============================================================ */
+:root {
+  --text-3: #a9bbd3;
+  --text-4: #879db9;
+}
+
+html.light {
+  --text-3: #3d5675;
+  --text-4: #5b7190;
+}
+
+body {
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* Avoid translucent blur behind clinical copy. Privacy-mode blur remains
+   untouched because it is an intentional presentation/privacy boundary. */
+.calculator-hero,
+.calc-card,
+.calc-category-nav,
+.calc-spotlight,
+.calculator-visual {
+  backdrop-filter: none;
+}
+
+.calculator-hero,
+.calc-card,
+.calc-category-nav,
+.calc-spotlight {
+  background: var(--card-solid);
+}
+
+.calculator-hero {
+  border-color: var(--border-strong);
+  padding: 24px;
+}
+
+.calculator-hero-copy h1 {
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.calculator-hero-copy p {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.calc-hero-overline {
+  font-size: 12px;
+  letter-spacing: 0.11em;
+}
+
+.calc-hero-live {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+
+.calc-hero-meta {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calculator-hero-search {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  padding: 18px;
+}
+
+.calculator-hero-search label {
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.calculator-hero-search p {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.calc-search-wrap input {
+  background: var(--card-hi);
+  border-color: var(--border-strong);
+  font-size: 15px;
+  min-height: 48px;
+  padding-left: 8px;
+}
+
+.calc-search-wrap kbd {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-howto-strip > span {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-howto-strip b {
+  font-size: 11px;
+}
+
+.calc-spotlight-heading span {
+  font-size: 13px;
+}
+
+.calc-spotlight-heading small,
+.calc-spotlight small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-spotlight b {
+  font-size: 13px;
+}
+
+.calc-spotlight {
+  min-width: 168px;
+  padding: 11px 13px;
+}
+
+.calc-filter-title {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-category-chips .chip {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.calc-focus-kicker {
+  font-size: 10px;
+}
+
+.calc-focus-banner b {
+  font-size: 16px;
+}
+
+.calc-focus-banner small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.calc-focus-banner button {
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 8px 11px;
+}
+
+.calc-card {
+  border-color: var(--border-strong);
+}
+
+.calc-card-toggle {
+  color: var(--text);
+  padding: 15px 10px 15px 16px;
+}
+
+.calc-card-eyebrow {
+  color: var(--text-3);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.calc-card-name {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-top: 6px;
+}
+
+.calc-card-citation {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.calc-progress-pill {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.calc-card-open-label {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.calc-card-body {
+  padding: 18px;
+}
+
+.calc-card-context-main,
+.calc-card-context a {
+  font-size: 11px;
+}
+
+.calc-citation-full {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 10px 0 16px;
+}
+
+.calc-step-kicker {
+  font-size: 10px;
+}
+
+.calc-workflow-head h3 {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.calc-workflow-count {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.calc-input-card {
+  background: color-mix(in srgb, var(--card-solid) 94%, var(--accent-soft));
+  border-color: var(--border);
+}
+
+.calc-input-filled {
+  background: color-mix(in srgb, var(--accent-soft) 68%, var(--card-solid));
+  border-color: var(--accent);
+}
+
+.calc-input-label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.calc-input-label b {
+  font-size: 10px;
+}
+
+.calc-input-card select,
+.calc-input-card input {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.calc-input-card select:focus,
+.calc-input-card input:focus,
+.calc-search-wrap input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+.calc-input-card select option {
+  background: var(--card-solid);
+  color: var(--text);
+}
+
+.calc-incomplete-note {
+  color: #f8d574;
+  font-size: 12px;
+}
+
+.calc-run-button,
+.calc-reset-button {
+  font-size: 13px;
+  min-height: 42px;
+}
+
+.calc-result-kicker,
+.calc-result-state {
+  font-size: 10px;
+}
+
+.calculator-visual {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+}
+
+.calc-visual-kicker {
+  font-size: 10px;
+}
+
+.calc-visual-badge {
+  font-size: 10px;
+}
+
+.calc-visual-subtitle {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.visual-svg-text {
+  fill: var(--text-2);
+  font-size: 10px;
+}
+
+.visual-score-row,
+.visual-total,
+.ballard-domain > div:first-child {
+  font-size: 12px;
+}
+
+.visual-score-label,
+.ballard-domain > div:first-child,
+.visual-total {
+  color: var(--text-2);
+}
+
+.visual-score-number {
+  font-size: 13px;
+}
+
+.visual-callout {
+  color: #d8f3ff;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 9px 11px;
+}
+
+html.light .calculator-hero,
+html.light .calc-card,
+html.light .calc-category-nav,
+html.light .calc-spotlight,
+html.light .calculator-visual,
+html.light .calculator-hero-search {
+  background: #ffffff;
+}
+
+html.light .calculator-hero,
+html.light .calc-card,
+html.light .calc-category-nav,
+html.light .calculator-hero-search {
+  border-color: #b9c9dc;
+}
+
+html.light .calc-card-eyebrow,
+html.light .calc-card-citation,
+html.light .calc-citation-full,
+html.light .calculator-hero-search p,
+html.light .calc-spotlight small,
+html.light .calc-spotlight-heading small {
+  color: #536987;
+}
+
+html.light .calc-card-name,
+html.light .calc-input-label,
+html.light .calc-workflow-head h3,
+html.light .calculator-hero-search label {
+  color: #152a46;
+}
+
+html.light .calc-input-card select,
+html.light .calc-input-card input,
+html.light .calc-search-wrap input {
+  background: #fdfefe;
+  border-color: #aebfd3;
+  color: #152a46;
+}
+
+html.light .calc-input-card select option {
+  background: #ffffff;
+  color: #152a46;
+}
+
+html.light .calc-incomplete-note {
+  color: #8b4b08;
+}
+
+html.light .visual-callout {
+  color: #164e70;
+}
+
+.calc-card-toggle:focus-visible,
+.calc-card-open-label:focus-visible,
+.calc-save-button:focus-visible,
+.calc-spotlight:focus-visible,
+.calc-recent-list button:focus-visible,
+.calc-focus-banner button:focus-visible,
+.calc-category-chips .chip:focus-visible,
+.calc-search-wrap button:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, .55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .calculator-hero {
+    padding: 18px;
+  }
+
+  .calculator-hero-copy h1 {
+    font-size: 32px;
+  }
+
+  .calculator-hero-copy p {
+    font-size: 14px;
+  }
+
+  .calc-card-name {
+    font-size: 14px;
+  }
+
+  .calc-card-citation {
+    font-size: 10px;
+  }
+
+  .calc-card-body {
+    padding: 14px;
+  }
+
+  .calc-workflow-head h3 {
+    font-size: 14px;
+  }
+}
+
+/* Keep the navigation chrome crisp as well as the workspace. */
+header.no-print {
+  background: #0b1424;
+  backdrop-filter: none;
+}
+
+header.no-print nav {
+  background: #08111f;
+}
+
+header.no-print a,
+header.no-print button {
+  text-shadow: none;
+}
+
+html.light header.no-print {
+  background: #ffffff;
+}
+
+html.light header.no-print nav {
+  background: #f7faff;
+}
+
+/* Library controls: favourites and recents keep repeated bedside work short. */
+.calc-search-wrap kbd {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.calc-save-button {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  transition: color .16s ease, border-color .16s ease, background .16s ease, transform .16s ease;
+  width: 30px;
+}
+
+.calc-save-button:hover,
+.calc-save-button.saved {
+  background: rgba(251, 191, 36, .1);
+  border-color: rgba(251, 191, 36, .5);
+  color: #fbbf24;
+}
+
+.calc-save-button:active {
+  transform: scale(.94);
+}
+
+.calc-recent-row {
+  align-items: center;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  overflow: auto hidden;
+  padding: 9px 12px;
+  scrollbar-width: none;
+}
+
+.calc-recent-row::-webkit-scrollbar {
+  display: none;
+}
+
+.calc-recent-heading {
+  align-items: center;
+  color: var(--text-2);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 850;
+  gap: 5px;
+}
+
+.calc-recent-heading svg {
+  color: #67e8f9;
+}
+
+.calc-recent-list {
+  display: flex;
+  gap: 6px;
+  min-width: max-content;
+}
+
+.calc-recent-list button {
+  align-items: center;
+  background: var(--card-hi);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 750;
+  gap: 6px;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.calc-recent-list button > svg:first-child {
+  color: #a78bfa;
+}
+
+.calc-recent-list button > svg:last-child {
+  color: var(--text-4);
+}
+
+.calc-recent-list button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.calc-saved-filter {
+  align-items: center;
+  display: inline-flex;
+}
+
+.calc-empty-state {
+  align-items: center;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 42px 18px;
+  text-align: center;
+}
+
+.calc-empty-state > svg {
+  color: #67e8f9;
+  margin-bottom: 3px;
+}
+
+.calc-empty-state b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.calc-empty-state span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.calc-input-error {
+  border-color: #fb7185 !important;
+  background: rgba(251, 113, 133, .07);
+}
+
+.calc-input-error .calc-input-label {
+  color: #fecdd3;
+}
+
+.calc-field-error {
+  color: #fda4af;
+  display: block;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.3;
+  margin-top: 5px;
+}
+
+html.light .calc-save-button:hover,
+html.light .calc-save-button.saved {
+  background: #fff7df;
+  border-color: #e4b64d;
+  color: #9a6700;
+}
+
+html.light .calc-recent-row,
+html.light .calc-recent-list button {
+  background: #ffffff;
+  border-color: #c3d1e0;
+}
+
+html.light .calc-recent-list button {
+  color: #304c6b;
+}
+
+html.light .calc-input-error {
+  background: #fff5f6;
+  border-color: #e27a8a !important;
+}
+
+html.light .calc-input-error .calc-input-label,
+html.light .calc-field-error {
+  color: #a51d35;
+}
+
+@media (max-width: 760px) {
+  .calc-recent-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+}
+
+/* ============================================================
+   CALCULATOR WORKSPACE — single-pane, uniform clinical layout
+   A compact library on the left feeds one active workflow on the right.
+   This intentionally avoids a long stack of simultaneously expanded tools.
+   ============================================================ */
+.calculator-page {
+  --workspace-rail: 304px;
+}
+
+.calculator-shell {
+  width: 100%;
+}
+
+.calculator-command {
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, .08), transparent 38%),
+    linear-gradient(315deg, rgba(124, 58, 237, .09), transparent 44%),
+    var(--card-solid);
+  border-color: var(--border-strong);
+  margin-bottom: 16px;
+  padding: 22px;
+}
+
+.calculator-command-main {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.calculator-command-title {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.calc-command-mark {
+  align-items: center;
+  background: linear-gradient(145deg, #22d3ee, #6366f1);
+  border-radius: 15px;
+  box-shadow: 0 12px 26px -15px #22d3ee;
+  color: #04121f;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.calc-command-overline,
+.calc-stage-kicker {
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.calculator-command h1 {
+  color: var(--text);
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 850;
+  letter-spacing: -.04em;
+  line-height: 1.05;
+  margin-top: 4px;
+}
+
+.calculator-command-title p {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+
+.calculator-command-stats {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.calculator-command-stats span {
+  background: var(--card-hi);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 750;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.calculator-command-stats b {
+  color: var(--text);
+  font-size: 12px;
+  margin-right: 3px;
+}
+
+.calculator-command-search {
+  border-top: 1px solid var(--border);
+  margin-top: 19px;
+  padding-top: 17px;
+}
+
+.calculator-command-search label {
+  color: var(--text);
+  display: block;
+  font-size: 12px;
+  font-weight: 850;
+  margin-bottom: 8px;
+}
+
+.calculator-command-search > span {
+  color: var(--text-3);
+  display: block;
+  font-size: 11px;
+  margin-top: 7px;
+}
+
+.calculator-command-search .calc-search-wrap input {
+  background: var(--card-hi);
+  font-size: 15px;
+  min-height: 48px;
+}
+
+.calc-workspace-layout {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: var(--workspace-rail) minmax(0, 1fr);
+}
+
+.calc-library-rail {
+  align-self: start;
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  max-height: calc(100vh - 150px);
+  min-height: 520px;
+  overflow: hidden;
+  position: sticky;
+  top: 126px;
+}
+
+.calc-rail-heading {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.calc-rail-heading > div span,
+.calc-rail-heading > div b {
+  display: block;
+}
+
+.calc-rail-heading > div span {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.calc-rail-heading > div b {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.calc-rail-count {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid rgba(34, 211, 238, .3);
+  border-radius: 9px;
+  color: #67e8f9;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.calc-rail-tabs {
+  background: var(--card-hi);
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px;
+}
+
+.calc-rail-tabs button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-3);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  gap: 5px;
+  justify-content: center;
+  min-height: 34px;
+}
+
+.calc-rail-tabs button b {
+  color: var(--text-4);
+  font-size: 10px;
+}
+
+.calc-rail-tabs button.active {
+  background: var(--card-solid);
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: 0 4px 12px -10px rgba(0, 0, 0, .9);
+}
+
+.calc-rail-tabs button.active svg {
+  color: #fbbf24;
+}
+
+.calc-rail-filter {
+  display: block;
+  padding: 12px 12px 8px;
+}
+
+.calc-rail-filter span {
+  color: var(--text-3);
+  display: block;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.calc-rail-filter select {
+  background: var(--card-hi);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  min-height: 38px;
+  padding: 0 9px;
+  width: 100%;
+}
+
+.calc-rail-results {
+  align-items: center;
+  color: var(--text-3);
+  display: flex;
+  font-size: 10px;
+  font-weight: 750;
+  justify-content: space-between;
+  padding: 8px 14px;
+}
+
+.calc-rail-results span:last-child {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.calc-library-list {
+  max-height: calc(100vh - 370px);
+  overflow-y: auto;
+  padding: 0 8px 12px;
+  scrollbar-width: thin;
+}
+
+.calc-library-group + .calc-library-group {
+  margin-top: 10px;
+}
+
+.calc-library-group-title {
+  align-items: center;
+  color: var(--text-4);
+  display: flex;
+  font-size: 9px;
+  font-weight: 900;
+  justify-content: space-between;
+  letter-spacing: .08em;
+  padding: 7px 7px 5px;
+  text-transform: uppercase;
+}
+
+.calc-library-group-title b {
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.calc-library-item {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-2);
+  display: flex;
+  gap: 8px;
+  min-height: 51px;
+  padding: 7px 8px;
+  text-align: left;
+  transition: background .14s ease, border-color .14s ease, color .14s ease;
+  width: 100%;
+}
+
+.calc-library-item:hover {
+  background: var(--card-hi);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.calc-library-item.active {
+  background: linear-gradient(90deg, rgba(34, 211, 238, .13), rgba(99, 102, 241, .08));
+  border-color: rgba(103, 232, 249, .38);
+  color: var(--text);
+}
+
+.calc-library-icon {
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 28px;
+  justify-content: center;
+  opacity: .9;
+  width: 28px;
+}
+
+.calc-library-copy {
+  min-width: 0;
+}
+
+.calc-library-copy b,
+.calc-library-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calc-library-copy b {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.calc-library-copy small {
+  color: var(--text-3);
+  font-size: 9px;
+  line-height: 1.25;
+  margin-top: 3px;
+}
+
+.calc-library-star {
+  color: #fbbf24;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.calc-library-current {
+  color: #67e8f9;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.calc-rail-empty {
+  align-items: center;
+  color: var(--text-3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 30px 15px;
+  text-align: center;
+}
+
+.calc-rail-empty svg {
+  color: #67e8f9;
+}
+
+.calc-rail-empty b {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.calc-rail-empty span {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.calc-workspace-stage {
+  min-width: 0;
+}
+
+.calc-stage-heading {
+  align-items: flex-start;
+  background: var(--card-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 17px 18px;
+}
+
+.calc-stage-heading h2 {
+  color: var(--text);
+  font-size: clamp(18px, 2.3vw, 25px);
+  font-weight: 850;
+  letter-spacing: -.025em;
+  line-height: 1.15;
+  margin-top: 5px;
+}
+
+.calc-stage-heading p {
+  color: var(--text-3);
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+.calc-stage-actions {
+  align-items: flex-end;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.calc-stage-actions > button {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  gap: 5px;
+  padding: 7px 9px;
+}
+
+.calc-stage-actions > button:hover {
+  background: var(--card-hi);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.calc-stage-status {
+  align-items: center;
+  color: #86efac;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 850;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.calc-stage-status i {
+  background: #34d399;
+  border-radius: 50%;
+  box-shadow: 0 0 9px rgba(52, 211, 153, .65);
+  display: inline-block;
+  height: 6px;
+  width: 6px;
+}
+
+.calc-workspace-stage > .calc-card {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-pop);
+}
+
+.calc-workspace-stage > .calc-card .calc-card-header {
+  min-height: 88px;
+}
+
+.calc-stage-placeholder {
+  align-items: center;
+  background: var(--card-solid);
+  border: 1px dashed var(--border-strong);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 430px;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.calc-placeholder-icon {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid rgba(34, 211, 238, .35);
+  border-radius: 14px;
+  color: #67e8f9;
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  margin-bottom: 15px;
+  width: 52px;
+}
+
+.calc-stage-placeholder h2 {
+  color: var(--text);
+  font-size: 21px;
+  font-weight: 850;
+  margin-top: 6px;
+}
+
+.calc-stage-placeholder p {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 7px auto 17px;
+  max-width: 400px;
+}
+
+.calc-stage-recent {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.calc-stage-recent > svg {
+  color: #a78bfa;
+  margin-right: 2px;
+}
+
+.calc-stage-recent > span {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 800;
+  margin-right: 3px;
+}
+
+.calc-stage-recent button {
+  align-items: center;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 10px;
+  gap: 5px;
+  padding: 6px 8px;
+}
+
+.calc-stage-recent button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+html.light .calculator-command,
+html.light .calc-library-rail,
+html.light .calculator-command-search,
+html.light .calc-stage-heading,
+html.light .calc-stage-placeholder,
+html.light .calc-stage-recent button {
+  background: #ffffff;
+}
+
+html.light .calculator-command,
+html.light .calc-library-rail,
+html.light .calc-stage-heading,
+html.light .calc-stage-placeholder {
+  border-color: #b9c9dc;
+}
+
+html.light .calc-library-item.active {
+  background: linear-gradient(90deg, #e8f8fd, #f2efff);
+  border-color: #8bcfe5;
+}
+
+html.light .calc-rail-tabs,
+html.light .calc-library-item:hover,
+html.light .calc-rail-filter select {
+  background: #f6f9fd;
+}
+
+html.light .calc-command-overline,
+html.light .calc-stage-kicker {
+  color: #0369a1;
+}
+
+html.light .calc-stage-status {
+  color: #047857;
+}
+
+@media (max-width: 980px) {
+  .calc-workspace-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .calculator-command-stats span:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .calculator-command {
+    padding: 16px;
+  }
+
+  .calculator-command-main {
+    align-items: flex-start;
+    display: block;
+  }
+
+  .calculator-command-title {
+    align-items: flex-start;
+  }
+
+  .calc-command-mark {
+    height: 40px;
+    width: 40px;
+  }
+
+  .calculator-command h1 {
+    font-size: 27px;
+  }
+
+  .calculator-command-title p {
+    font-size: 12px;
+  }
+
+  .calculator-command-stats {
+    margin: 14px 0 0 54px;
+  }
+
+  .calculator-command-stats span {
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+
+  .calc-workspace-layout {
+    display: block;
+  }
+
+  .calc-library-rail {
+    max-height: none;
+    min-height: 0;
+    position: static;
+  }
+
+  .calc-library-list {
+    max-height: 245px;
+  }
+
+  .calc-library-group-title {
+    padding-top: 9px;
+  }
+
+  .calc-stage-heading {
+    margin-top: 14px;
+    padding: 14px;
+  }
+
+  .calc-stage-heading h2 {
+    font-size: 20px;
+  }
+
+  .calc-stage-actions {
+    gap: 7px;
+  }
+
+  .calc-stage-actions > button {
+    font-size: 10px;
+    padding: 6px 7px;
+  }
+
+  .calc-stage-status {
+    font-size: 9px;
+  }
+
+  .calc-workspace-stage > .calc-card .calc-card-header {
+    min-height: 78px;
+  }
+}
+
+.calc-library-item:focus-visible,
+.calc-rail-tabs button:focus-visible,
+.calc-rail-filter select:focus-visible,
+.calc-stage-actions button:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, .55);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   CLINICAL AREA COLOUR SYSTEM — high-contrast dark-mode library
+   Each area has one stable accent for scanning the rail without making
+   severity colours look like clinical results.
+   ============================================================ */
+.calc-mark-neonatal,
+.calc-area-neonatal,
+.calc-group-neonatal,
+.calc-stage-neonatal { --area-accent: #22d3ee; --area-soft: rgba(34, 211, 238, .14); }
+.calc-mark-critical,
+.calc-area-critical,
+.calc-group-critical,
+.calc-stage-critical { --area-accent: #fb7185; --area-soft: rgba(251, 113, 133, .14); }
+.calc-mark-pain,
+.calc-area-pain,
+.calc-group-pain,
+.calc-stage-pain { --area-accent: #f472b6; --area-soft: rgba(244, 114, 182, .14); }
+.calc-mark-warning,
+.calc-area-warning,
+.calc-group-warning,
+.calc-stage-warning { --area-accent: #fbbf24; --area-soft: rgba(251, 191, 36, .14); }
+.calc-mark-respiratory,
+.calc-area-respiratory,
+.calc-group-respiratory,
+.calc-stage-respiratory { --area-accent: #60a5fa; --area-soft: rgba(96, 165, 250, .14); }
+.calc-mark-cardio,
+.calc-area-cardio,
+.calc-group-cardio,
+.calc-stage-cardio { --area-accent: #f87171; --area-soft: rgba(248, 113, 113, .14); }
+.calc-mark-fluid,
+.calc-area-fluid,
+.calc-group-fluid,
+.calc-stage-fluid { --area-accent: #fb923c; --area-soft: rgba(251, 146, 60, .14); }
+.calc-mark-dosing,
+.calc-area-dosing,
+.calc-group-dosing,
+.calc-stage-dosing { --area-accent: #818cf8; --area-soft: rgba(129, 140, 248, .14); }
+.calc-mark-trauma,
+.calc-area-trauma,
+.calc-group-trauma,
+.calc-stage-trauma { --area-accent: #f59e0b; --area-soft: rgba(245, 158, 11, .14); }
+.calc-mark-sepsis,
+.calc-area-sepsis,
+.calc-group-sepsis,
+.calc-stage-sepsis { --area-accent: #34d399; --area-soft: rgba(52, 211, 153, .14); }
+.calc-mark-growth,
+.calc-area-growth,
+.calc-group-growth,
+.calc-stage-growth { --area-accent: #a78bfa; --area-soft: rgba(167, 139, 250, .14); }
+.calc-mark-neuro,
+.calc-area-neuro,
+.calc-group-neuro,
+.calc-stage-neuro { --area-accent: #c084fc; --area-soft: rgba(192, 132, 252, .14); }
+.calc-mark-gi,
+.calc-area-gi,
+.calc-group-gi,
+.calc-stage-gi { --area-accent: #2dd4bf; --area-soft: rgba(45, 212, 191, .14); }
+.calc-mark-development,
+.calc-area-development,
+.calc-group-development,
+.calc-stage-development { --area-accent: #e879f9; --area-soft: rgba(232, 121, 249, .14); }
+.calc-mark-skin,
+.calc-area-skin,
+.calc-group-skin,
+.calc-stage-skin { --area-accent: #a3e635; --area-soft: rgba(163, 230, 53, .14); }
+.calc-mark-endocrine,
+.calc-area-endocrine,
+.calc-group-endocrine,
+.calc-stage-endocrine { --area-accent: #f472b6; --area-soft: rgba(244, 114, 182, .14); }
+
+.calc-library-item {
+  border-left: 3px solid transparent;
+  color: #d8e6f8;
+}
+
+.calc-library-item.calc-area-neonatal,
+.calc-library-item.calc-area-critical,
+.calc-library-item.calc-area-pain,
+.calc-library-item.calc-area-warning,
+.calc-library-item.calc-area-respiratory,
+.calc-library-item.calc-area-cardio,
+.calc-library-item.calc-area-fluid,
+.calc-library-item.calc-area-dosing,
+.calc-library-item.calc-area-trauma,
+.calc-library-item.calc-area-sepsis,
+.calc-library-item.calc-area-growth,
+.calc-library-item.calc-area-neuro,
+.calc-library-item.calc-area-gi,
+.calc-library-item.calc-area-development,
+.calc-library-item.calc-area-skin,
+.calc-library-item.calc-area-endocrine {
+  border-left-color: color-mix(in srgb, var(--area-accent) 72%, transparent);
+}
+
+.calc-library-item.active {
+  background: linear-gradient(90deg, var(--area-soft), rgba(99, 102, 241, .08));
+  border-color: color-mix(in srgb, var(--area-accent) 58%, var(--border));
+  border-left-color: var(--area-accent);
+}
+
+.calc-library-item.active .calc-library-icon,
+.calc-library-icon {
+  background: var(--area-soft);
+  border-color: color-mix(in srgb, var(--area-accent) 62%, transparent);
+  color: var(--area-accent);
+}
+
+.calc-library-copy b {
+  color: #f4f8ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calc-library-copy small {
+  color: #a9bdd7;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.calc-library-group-title {
+  border-left: 3px solid color-mix(in srgb, var(--area-accent) 72%, transparent);
+  color: #b9cae0;
+  font-size: 10px;
+  padding-left: 8px;
+}
+
+.calc-library-group-title b {
+  color: var(--area-accent);
+}
+
+.calc-rail-heading > div span {
+  color: #f4f8ff;
+}
+
+.calc-rail-heading > div b,
+.calc-rail-results,
+.calc-rail-filter span {
+  color: #a9bdd7;
+}
+
+.calc-rail-tabs button {
+  color: #b6c9df;
+}
+
+.calc-rail-tabs button.active {
+  color: #f4f8ff;
+}
+
+.calc-rail-filter select {
+  color: #e8f1fc;
+}
+
+.calc-stage-heading {
+  border-left: 4px solid var(--area-accent, #22d3ee);
+}
+
+.calc-stage-heading .calc-stage-kicker {
+  color: var(--area-accent, #67e8f9);
+}
+
+.calc-stage-heading p {
+  color: #a9bdd7;
+}
+
+html.light .calc-library-item {
+  color: #294868;
+}
+
+html.light .calc-library-copy b {
+  color: #172f4b;
+}
+
+html.light .calc-library-copy small,
+html.light .calc-library-group-title,
+html.light .calc-rail-heading > div b,
+html.light .calc-rail-results,
+html.light .calc-rail-filter span,
+html.light .calc-stage-heading p {
+  color: #536b88;
+}
+
+html.light .calc-library-group-title b {
+  color: color-mix(in srgb, var(--area-accent) 78%, #24405f);
+}
+
+html.light .calc-library-item.active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--area-soft) 70%, white), #f5f3ff);
+}
+
+html.light .calc-rail-tabs button {
+  color: #48617d;
+}
+
+html.light .calc-rail-tabs button.active {
+  color: #172f4b;
+}
+
+@media (max-width: 760px) {
+  .calc-library-copy b {
+    font-size: 11px;
+  }
+
+  .calc-library-copy small {
+    font-size: 9px;
+  }
+}
+
+/* Blood-pressure centile workflow */
+.bp-calculator-panel { display: grid; gap: 14px; color: var(--text, #dbeafe); }
+.bp-intro, .bp-results-heading, .bp-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.bp-kicker, .bp-section-heading > div > span { display: block; color: #8ba2bf; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.bp-intro h3, .bp-section-heading h4 { margin: 3px 0 0; color: #f4f8ff; font-size: 17px; font-weight: 900; letter-spacing: -.01em; }
+.bp-intro p { max-width: 760px; margin: 6px 0 0; color: #a9bad0; font-size: 11px; line-height: 1.55; }
+.bp-safety-chip, .bp-overall-badge { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; border: 1px solid rgba(251, 146, 60, .35); border-radius: 999px; padding: 6px 9px; color: #fed7aa; background: rgba(251, 146, 60, .1); font-size: 10px; font-weight: 900; }
+.bp-mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; border: 1px solid rgba(125, 150, 190, .18); border-radius: 14px; padding: 6px; background: rgba(12, 23, 43, .72); }
+.bp-mode-switch button { display: grid; gap: 2px; border: 1px solid transparent; border-radius: 10px; padding: 10px 8px; text-align: left; color: #9eb2ca; background: transparent; cursor: pointer; transition: .18s ease; }
+.bp-mode-switch button:hover { border-color: rgba(103, 232, 249, .35); color: #e6f7ff; }
+.bp-mode-switch button.active { border-color: rgba(34, 211, 238, .55); color: #e7fbff; background: linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(99, 102, 241, .22)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03); }
+.bp-mode-switch b { font-size: 12px; font-weight: 900; }
+.bp-mode-switch small { font-size: 9px; font-weight: 700; opacity: .78; }
+.bp-input-section, .bp-results, .bp-evidence { border: 1px solid rgba(125, 150, 190, .18); border-radius: 15px; padding: 14px; background: rgba(10, 21, 40, .56); }
+.bp-input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 10px; }
+.bp-field, .bp-fieldset { display: grid; align-content: start; gap: 5px; min-width: 0; border: 1px solid rgba(125, 150, 190, .18); border-radius: 11px; padding: 9px; background: rgba(17, 32, 57, .62); }
+.bp-field > span, .bp-fieldset legend { padding: 0; color: #d7e6fa; font-size: 10px; font-weight: 900; }
+.bp-field small, .bp-fieldset small { min-height: 12px; color: #8499b5; font-size: 9px; line-height: 1.35; }
+.bp-input-wrap { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(139, 163, 197, .25); border-radius: 8px; padding: 0 8px; background: rgba(5, 13, 27, .65); }
+.bp-input-wrap input, .bp-input-wrap select { min-width: 0; width: 100%; border: 0; outline: 0; padding: 8px 0; color: #f8fbff; background: transparent; font-size: 15px; font-weight: 900; }
+.bp-input-wrap select { cursor: pointer; font-size: 12px; }
+.bp-input-wrap b { flex: 0 0 auto; color: #7dd3fc; font-size: 9px; font-weight: 900; }
+.bp-fieldset { margin: 0; }
+.bp-sex-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.bp-sex-buttons button, .bp-reset { border: 1px solid rgba(139, 163, 197, .24); border-radius: 8px; padding: 8px 7px; color: #adc0d9; background: rgba(5, 13, 27, .52); font-size: 11px; font-weight: 900; cursor: pointer; }
+.bp-sex-buttons button.active { border-color: rgba(217, 70, 239, .7); color: #fff; background: rgba(192, 38, 211, .22); }
+.bp-measure-heading { margin-top: 16px; }
+.bp-measure-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bp-reset { align-self: stretch; color: #a8bad2; }
+.bp-reset:disabled { cursor: not-allowed; opacity: .45; }
+.bp-validation { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; color: #fecaca; font-size: 10px; font-weight: 800; }
+.bp-validation span { border: 1px solid rgba(248, 113, 113, .35); border-radius: 7px; padding: 5px 7px; background: rgba(127, 29, 29, .2); }
+.bp-results-heading { align-items: center; }
+.bp-results-heading h4 { font-size: 15px; }
+.bp-observed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.bp-classification-card { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; border: 1px solid; border-radius: 11px; padding: 10px; }
+.bp-classification-card > div { display: grid; gap: 2px; }
+.bp-classification-card > div span { font-size: 9px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+.bp-classification-card > div b { font-size: 14px; font-weight: 950; }
+.bp-classification-card > strong { align-self: center; font-size: 21px; line-height: 1; }
+.bp-classification-card > strong small { font-size: 9px; }
+.bp-classification-card p { grid-column: 1 / -1; margin: 2px 0 0; font-size: 10px; line-height: 1.4; opacity: .88; }
+.bp-level-low { border-color: rgba(96, 165, 250, .45); color: #bfdbfe; background: rgba(37, 99, 235, .14); }
+.bp-level-normal { border-color: rgba(52, 211, 153, .4); color: #bbf7d0; background: rgba(16, 185, 129, .13); }
+.bp-level-elevated { border-color: rgba(250, 204, 21, .45); color: #fef08a; background: rgba(202, 138, 4, .15); }
+.bp-level-stage1 { border-color: rgba(251, 146, 60, .52); color: #fed7aa; background: rgba(234, 88, 12, .16); }
+.bp-level-stage2 { border-color: rgba(251, 113, 133, .58); color: #fecdd3; background: rgba(225, 29, 72, .2); }
+.bp-table-wrap { overflow-x: auto; border: 1px solid rgba(125, 150, 190, .18); border-radius: 11px; }
+.bp-threshold-table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 11px; }
+.bp-threshold-table caption { padding: 9px 10px; color: #dcecff; background: rgba(31, 52, 83, .55); text-align: left; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.bp-threshold-table th, .bp-threshold-table td { border-top: 1px solid rgba(125, 150, 190, .13); padding: 8px 10px; text-align: right; white-space: nowrap; }
+.bp-threshold-table th:first-child, .bp-threshold-table td:first-child { text-align: left; }
+.bp-threshold-table thead th { color: #93a9c4; font-size: 9px; text-transform: uppercase; }
+.bp-threshold-table tbody th { color: #deebfa; font-weight: 900; }
+.bp-threshold-table tbody th small { display: block; margin-top: 2px; color: #8197b2; font-size: 8px; font-weight: 700; }
+.bp-threshold-table td { color: #b8efff; font-weight: 900; }
+.bp-result-notes { display: grid; gap: 7px; margin-top: 10px; color: #a9bad0; font-size: 10px; line-height: 1.5; }
+.bp-result-notes p { margin: 0; }
+.bp-result-notes b, .bp-evidence-note b { color: #e5f2ff; }
+.bp-empty-result, .bp-limitations { display: flex; gap: 9px; align-items: flex-start; border: 1px dashed rgba(125, 150, 190, .27); border-radius: 11px; padding: 11px; color: #9fb1c9; font-size: 10px; line-height: 1.5; }
+.bp-empty-result svg { flex: 0 0 auto; color: #7dd3fc; }
+.bp-limitations { border-style: solid; border-color: rgba(251, 146, 60, .3); color: #f8d7b1; background: rgba(124, 45, 18, .12); }
+.bp-limitations svg { flex: 0 0 auto; color: #fb923c; }
+.bp-limitations p { margin: 0; }
+.bp-evidence { display: grid; gap: 10px; }
+.bp-evidence .bp-section-heading { align-items: center; }
+.bp-evidence .bp-section-heading svg { color: #67e8f9; }
+.bp-source-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bp-source-grid a, .bp-source-card { position: relative; display: grid; gap: 4px; min-width: 0; border: 1px solid rgba(125, 150, 190, .17); border-radius: 10px; padding: 9px 27px 9px 10px; color: #adc0d9; background: rgba(17, 32, 57, .48); text-decoration: none; }
+.bp-source-grid a:hover { border-color: rgba(103, 232, 249, .45); background: rgba(14, 116, 144, .14); }
+.bp-source-grid a b, .bp-source-card b { color: #e4f5ff; font-size: 10px; }
+.bp-source-grid a span, .bp-source-card span { font-size: 9px; line-height: 1.45; }
+.bp-source-grid a svg { position: absolute; top: 10px; right: 9px; color: #67e8f9; }
+.bp-evidence-note { margin: 0; color: #8fa4bf; font-size: 9px; line-height: 1.55; }
+@media (max-width: 760px) {
+  .bp-intro, .bp-results-heading { display: grid; }
+  .bp-input-grid, .bp-measure-grid, .bp-source-grid { grid-template-columns: 1fr; }
+  .bp-observed-grid { grid-template-columns: 1fr; }
+  .bp-overall-badge { justify-self: start; }
+}
+html.light .bp-calculator-panel { color: #1f3352; }
+html.light .bp-intro h3, html.light .bp-section-heading h4 { color: #152b4c; }
+html.light .bp-intro p, html.light .bp-evidence-note, html.light .bp-result-notes { color: #536985; }
+html.light .bp-mode-switch, html.light .bp-input-section, html.light .bp-results, html.light .bp-evidence { border-color: rgba(54, 80, 116, .2); background: rgba(244, 248, 255, .82); }
+html.light .bp-mode-switch button { color: #45617e; }
+html.light .bp-mode-switch button.active { color: #123c64; background: linear-gradient(135deg, rgba(34, 211, 238, .2), rgba(129, 140, 248, .2)); }
+html.light .bp-field, html.light .bp-fieldset, html.light .bp-source-grid a, html.light .bp-source-card { border-color: rgba(54, 80, 116, .18); background: rgba(255, 255, 255, .8); }
+html.light .bp-field > span, html.light .bp-fieldset legend, html.light .bp-threshold-table tbody th, html.light .bp-source-grid a b, html.light .bp-source-card b { color: #19385d; }
+html.light .bp-field small, html.light .bp-fieldset small { color: #627792; }
+html.light .bp-input-wrap { border-color: rgba(54, 80, 116, .22); background: #f8fbff; }
+html.light .bp-input-wrap input, html.light .bp-input-wrap select { color: #183557; }
+html.light .bp-sex-buttons button, html.light .bp-reset { border-color: rgba(54, 80, 116, .2); color: #385879; background: #f3f7fc; }
+html.light .bp-threshold-table caption { color: #24446a; background: #e6effa; }
+html.light .bp-threshold-table thead th { color: #54718f; }
+html.light .bp-threshold-table td { color: #0e6686; }
+html.light .bp-evidence-note b, html.light .bp-result-notes b { color: #234467; }
+html.light .bp-source-grid a span { color: #57718d; }
+html.light .bp-limitations { color: #7b491d; background: rgba(251, 146, 60, .1); }
+
+/* NICU drugs and doses workspace */
+.drugs-page { background: radial-gradient(circle at 8% 0%, rgba(6, 182, 212, .08), transparent 34rem), radial-gradient(circle at 96% 12%, rgba(217, 70, 239, .07), transparent 30rem); }
+.dose-workspace { display: grid; gap: 14px; color: #dcecff; }
+.dose-hero, .dose-card, .dose-catalog, .dose-disclaimer { border: 1px solid rgba(125, 150, 190, .18); border-radius: 16px; background: rgba(10, 21, 40, .7); }
+.dose-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px; }
+.dose-kicker, .dose-card-heading > div > span, .dose-hero > div > span { display: block; color: #79d9ed; font-size: 10px; font-weight: 950; letter-spacing: .15em; text-transform: uppercase; }
+.dose-hero h1 { margin: 4px 0 0; color: #f8fbff; font-size: clamp(24px, 4vw, 38px); font-weight: 950; letter-spacing: -.04em; }
+.dose-hero p { max-width: 770px; margin: 7px 0 0; color: #a7bad2; font-size: 12px; line-height: 1.6; }
+.dose-safety, .dose-status { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; border: 1px solid rgba(251, 146, 60, .35); border-radius: 999px; padding: 7px 10px; color: #fed7aa; background: rgba(251, 146, 60, .1); font-size: 10px; font-weight: 950; white-space: nowrap; }
+.dose-group-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; border: 1px solid rgba(125, 150, 190, .18); border-radius: 14px; padding: 6px; background: rgba(12, 23, 43, .72); }
+.dose-group-tabs button { display: grid; gap: 2px; border: 1px solid transparent; border-radius: 10px; padding: 11px 10px; color: #9db2cc; background: transparent; text-align: left; font-size: 12px; font-weight: 950; cursor: pointer; }
+.dose-group-tabs button:hover { border-color: rgba(103, 232, 249, .4); color: #e7fbff; }
+.dose-group-tabs button.active { border-color: rgba(34, 211, 238, .58); color: #f1fdff; background: linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(99, 102, 241, .2)); }
+.dose-group-tabs small { color: #8ca4bf; font-size: 9px; font-weight: 700; }
+.dose-main-grid { display: grid; grid-template-columns: minmax(340px, .85fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+.dose-card, .dose-catalog { padding: 15px; }
+.dose-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.dose-card-heading > svg { color: #67e8f9; }
+.dose-card-heading h2 { margin: 3px 0 0; color: #f0f7ff; font-size: 16px; font-weight: 950; letter-spacing: -.02em; }
+.dose-card-heading > small { color: #8399b5; font-size: 9px; font-weight: 800; }
+.dose-select-field, .dose-field, .dose-strength-field { display: grid; gap: 5px; margin-top: 13px; border: 1px solid rgba(125, 150, 190, .18); border-radius: 11px; padding: 10px; background: rgba(17, 32, 57, .62); }
+.dose-select-field > span, .dose-field > span, .dose-strength-field > span { color: #d9e9fb; font-size: 10px; font-weight: 950; }
+.dose-select-field select { width: 100%; border: 1px solid rgba(139, 163, 197, .27); border-radius: 8px; outline: 0; padding: 9px; color: #f7fbff; background: #0b1a30; font-size: 12px; font-weight: 850; }
+.dose-select-field small, .dose-field small, .dose-strength-field small { min-height: 12px; color: #8298b3; font-size: 9px; line-height: 1.35; }
+.dose-subheading { margin-top: 17px; padding-top: 13px; border-top: 1px solid rgba(125, 150, 190, .14); }
+.dose-subheading h2 { font-size: 13px; }
+.dose-input-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
+.dose-field { margin-top: 0; padding: 8px; }
+.dose-field > div, .dose-strength-field > div { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(139, 163, 197, .25); border-radius: 8px; padding: 0 8px; background: rgba(5, 13, 27, .65); }
+.dose-field input, .dose-strength-field input { min-width: 0; width: 100%; border: 0; outline: 0; padding: 8px 0; color: #f8fbff; background: transparent; font-size: 15px; font-weight: 950; }
+.dose-field b, .dose-strength-field b { flex: 0 0 auto; color: #7dd3fc; font-size: 9px; white-space: nowrap; }
+.dose-strength-field { margin-top: 9px; }
+.dose-strength-field > div { max-width: 360px; }
+.dose-clear { margin-top: 10px; border: 1px solid rgba(139, 163, 197, .25); border-radius: 8px; padding: 7px 10px; color: #aec1d8; background: rgba(5, 13, 27, .5); font-size: 10px; font-weight: 900; cursor: pointer; }
+.dose-clear:hover { border-color: rgba(103, 232, 249, .4); color: #e8fbff; }
+.dose-status.ready { border-color: rgba(52, 211, 153, .4); color: #bbf7d0; background: rgba(16, 185, 129, .13); }
+.dose-result-banner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 13px; }
+.dose-result-banner > div { display: grid; gap: 3px; border: 1px solid rgba(34, 211, 238, .28); border-radius: 11px; padding: 11px; background: linear-gradient(145deg, rgba(8, 145, 178, .16), rgba(30, 41, 84, .26)); }
+.dose-result-banner small, .dose-volume span { color: #8ba7c3; font-size: 9px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dose-result-banner strong { color: #dffbff; font-size: 18px; font-weight: 950; line-height: 1.25; }
+.dose-result-banner span { color: #9ab1c9; font-size: 10px; line-height: 1.3; }
+.dose-volume { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px; border: 1px solid rgba(251, 146, 60, .35); border-radius: 10px; padding: 9px 11px; color: #fed7aa; background: rgba(234, 88, 12, .12); }
+.dose-volume b { color: #fff0da; font-size: 16px; font-weight: 950; }
+.dose-result-list { display: grid; gap: 7px; margin: 10px 0 0; }
+.dose-result-list > div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; border-top: 1px solid rgba(125, 150, 190, .12); padding-top: 7px; }
+.dose-result-list dt { color: #7f97b3; font-size: 9px; font-weight: 950; text-transform: uppercase; letter-spacing: .1em; }
+.dose-result-list dd { margin: 0; color: #c6d7eb; font-size: 10px; line-height: 1.5; }
+.dose-awaiting { display: flex; align-items: flex-start; gap: 10px; min-height: 150px; margin-top: 13px; border: 1px dashed rgba(125, 150, 190, .28); border-radius: 11px; padding: 18px; color: #94a9c3; font-size: 11px; line-height: 1.55; }
+.dose-awaiting svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-divider { height: 1px; margin: 15px 0; background: rgba(125, 150, 190, .15); }
+.dose-reference-table-wrap { overflow-x: auto; border: 1px solid rgba(125, 150, 190, .16); border-radius: 10px; }
+.dose-reference-table { width: 100%; border-collapse: collapse; min-width: 430px; font-size: 10px; }
+.dose-reference-table caption { padding: 9px; color: #bdeff8; background: rgba(31, 52, 83, .55); text-align: left; font-size: 9px; font-weight: 950; letter-spacing: .12em; text-transform: uppercase; }
+.dose-reference-table th, .dose-reference-table td { border-top: 1px solid rgba(125, 150, 190, .12); padding: 7px 8px; text-align: left; vertical-align: top; }
+.dose-reference-table thead th { color: #8097b2; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+.dose-reference-table tbody th { width: 45%; color: #d7e8fb; font-weight: 850; }
+.dose-reference-table tbody td { color: #9eeaf5; font-weight: 850; line-height: 1.4; }
+.dose-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.dose-catalog-item { display: grid; gap: 4px; min-width: 0; border: 1px solid rgba(125, 150, 190, .16); border-radius: 9px; padding: 9px; color: #c9daed; background: rgba(17, 32, 57, .5); text-align: left; cursor: pointer; }
+.dose-catalog-item:hover, .dose-catalog-item.active { border-color: rgba(103, 232, 249, .47); background: rgba(8, 145, 178, .13); }
+.dose-catalog-item b { overflow: hidden; color: #edf8ff; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.dose-catalog-item small { color: #8199b5; font-size: 9px; line-height: 1.35; }
+.dose-disclaimer { display: flex; align-items: flex-start; gap: 9px; border-color: rgba(251, 146, 60, .3); padding: 12px 14px; color: #f5d2ab; background: rgba(124, 45, 18, .13); font-size: 10px; line-height: 1.55; }
+.dose-disclaimer svg { flex: 0 0 auto; color: #fb923c; }
+.dose-disclaimer p { margin: 0; }
+.dose-disclaimer b { color: #ffe2be; }
+@media (max-width: 900px) { .dose-main-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dose-hero { display: grid; } .dose-group-tabs { grid-template-columns: 1fr; } .dose-input-grid, .dose-result-banner, .dose-catalog-grid { grid-template-columns: 1fr; } .dose-result-list > div { grid-template-columns: 1fr; gap: 3px; } }
+html.light .drugs-page { background: radial-gradient(circle at 8% 0%, rgba(6, 182, 212, .08), transparent 34rem), #f6f9fe; }
+html.light .dose-hero, html.light .dose-card, html.light .dose-catalog, html.light .dose-disclaimer { border-color: rgba(54, 80, 116, .2); background: rgba(255, 255, 255, .88); }
+html.light .dose-hero h1, html.light .dose-card-heading h2, html.light .dose-catalog-item b { color: #173557; }
+html.light .dose-hero p, html.light .dose-result-list dd { color: #536985; }
+html.light .dose-group-tabs { border-color: rgba(54, 80, 116, .2); background: rgba(231, 239, 249, .8); }
+html.light .dose-group-tabs button { color: #526c89; }
+html.light .dose-group-tabs button.active { color: #143e63; background: rgba(34, 211, 238, .16); }
+html.light .dose-select-field, html.light .dose-field, html.light .dose-strength-field, html.light .dose-catalog-item { border-color: rgba(54, 80, 116, .18); background: rgba(248, 251, 255, .92); }
+html.light .dose-select-field > span, html.light .dose-field > span, html.light .dose-strength-field > span { color: #244567; }
+html.light .dose-select-field select, html.light .dose-field > div, html.light .dose-strength-field > div { border-color: rgba(54, 80, 116, .2); color: #173557; background: #fff; }
+html.light .dose-field input, html.light .dose-strength-field input { color: #173557; }
+html.light .dose-field small, html.light .dose-select-field small, html.light .dose-strength-field small, html.light .dose-catalog-item small { color: #637a94; }
+html.light .dose-result-banner > div { border-color: rgba(14, 116, 144, .25); background: #edfafd; }
+html.light .dose-result-banner strong { color: #0b526e; }
+html.light .dose-reference-table caption { color: #24446a; background: #e6effa; }
+html.light .dose-reference-table thead th { color: #56708c; }
+html.light .dose-reference-table tbody th { color: #234467; }
+html.light .dose-reference-table tbody td { color: #0d6b83; }
+html.light .dose-disclaimer { color: #7b491d; background: rgba(251, 146, 60, .1); }
+html.light .dose-disclaimer b { color: #7b491d; }
+
+
+/* ============================================================
+   DOSE REFERENCE SCOPE SWITCH — NICU and paediatric bedside tools
+   ============================================================ */
+.dose-scope-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(125, 150, 190, .2);
+  border-radius: 13px;
+  padding: 4px;
+  background: rgba(9, 19, 36, .74);
+}
+.dose-scope-switch button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 7px 10px;
+  color: #a1b5cd;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.dose-scope-switch button:hover {
+  border-color: rgba(103, 232, 249, .38);
+  color: #ecfbff;
+}
+.dose-scope-switch button.active {
+  border-color: rgba(34, 211, 238, .56);
+  color: #effcff;
+  background: linear-gradient(135deg, rgba(116, 49, 147, .3), rgba(35, 160, 220, .24));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 8px rgba(0, 0, 0, .12);
+}
+.dose-scope-switch b,
+.dose-scope-switch small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dose-scope-switch b { font-size: 12px; font-weight: 950; }
+.dose-scope-switch small { color: #849bb7; font-size: 8px; font-weight: 750; }
+.dose-scope-switch button.active small { color: #b9ecf5; }
+html.light .dose-scope-switch {
+  border-color: rgba(54, 80, 116, .2);
+  background: rgba(231, 239, 249, .82);
+}
+html.light .dose-scope-switch button { color: #526c89; }
+html.light .dose-scope-switch button.active {
+  border-color: #8dbed9;
+  color: #173557;
+  background: linear-gradient(135deg, rgba(116, 49, 147, .12), rgba(35, 160, 220, .18));
+}
+html.light .dose-scope-switch button.active small { color: #4e6986; }
+
+/* ============================================================
+   PAEDIATRIC DOSE TOOL — simplified navigation and progressive disclosure
+   ============================================================ */
+.pediatric-dose-workspace .dose-hero {
+  align-items: center;
+}
+.pediatric-dose-workspace .dose-hero p {
+  max-width: 820px;
+}
+.dose-howto {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dose-howto li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(10, 21, 40, .55);
+}
+.dose-howto li > b {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  color: #082133;
+  background: linear-gradient(135deg, #67e8f9, #a78bfa);
+  font-size: 12px;
+  font-weight: 950;
+}
+.dose-howto li > span,
+.dose-howto strong,
+.dose-howto small {
+  display: block;
+}
+.dose-howto strong {
+  color: #eaf6ff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.dose-howto small {
+  margin-top: 2px;
+  color: #8da4be;
+  font-size: 9px;
+}
+.dose-picker-card {
+  padding-bottom: 13px;
+}
+.dose-picker-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, .8fr) minmax(260px, 1.2fr);
+  gap: 9px;
+  margin-top: 10px;
+}
+.dose-picker-grid .dose-select-field,
+.dose-picker-grid .dose-search-field {
+  margin-top: 0;
+}
+.dose-search-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 11px;
+  padding: 10px;
+  background: rgba(17, 32, 57, .62);
+}
+.dose-search-field > span {
+  color: #d9e9fb;
+  font-size: 10px;
+  font-weight: 950;
+}
+.dose-search-field > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(139, 163, 197, .27);
+  border-radius: 8px;
+  padding: 0 9px;
+  background: #0b1a30;
+}
+.dose-search-field svg {
+  flex: 0 0 auto;
+  color: #67e8f9;
+}
+.dose-search-field input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 9px 0;
+  color: #f7fbff;
+  background: transparent;
+  font-size: 12px;
+}
+.dose-search-field small {
+  min-height: 12px;
+  color: #8298b3;
+  font-size: 9px;
+}
+.dose-medicine-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 6px;
+  max-height: 166px;
+  margin-top: 9px;
+  overflow-y: auto;
+  padding: 1px 2px 1px 1px;
+}
+.dose-medicine-list button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 9px;
+  padding: 8px 9px;
+  color: #bcd0e5;
+  background: rgba(17, 32, 57, .48);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.dose-medicine-list button:hover {
+  border-color: rgba(103, 232, 249, .4);
+  background: rgba(8, 145, 178, .12);
+  transform: translateY(-1px);
+}
+.dose-medicine-list button.active {
+  border-color: rgba(103, 232, 249, .62);
+  color: #effcff;
+  background: linear-gradient(135deg, rgba(8, 145, 178, .22), rgba(99, 102, 241, .16));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+.dose-medicine-list button b,
+.dose-medicine-list button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-medicine-list button b {
+  font-size: 11px;
+  font-weight: 850;
+}
+.dose-medicine-list button small {
+  color: #8199b5;
+  font-size: 9px;
+}
+.dose-medicine-list button.active small {
+  color: #a6dce7;
+}
+.dose-empty-search {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px dashed rgba(125, 150, 190, .25);
+  border-radius: 9px;
+  padding: 12px;
+  color: #91a7c0;
+  font-size: 10px;
+  text-align: center;
+}
+.dose-catalog summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.dose-catalog summary::-webkit-details-marker {
+  display: none;
+}
+.dose-catalog summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: #67e8f9;
+  font-size: 19px;
+  font-weight: 500;
+}
+.dose-catalog[open] summary::after {
+  content: "–";
+}
+.dose-catalog summary > span,
+.dose-catalog summary b,
+.dose-catalog summary small {
+  display: block;
+}
+.dose-catalog summary b {
+  color: #edf8ff;
+  font-size: 13px;
+  font-weight: 900;
+}
+.dose-catalog summary small {
+  margin-top: 3px;
+  color: #8ca4bf;
+  font-size: 10px;
+}
+.dose-catalog summary > strong {
+  flex: 0 0 auto;
+  color: #9eeaf5;
+  font-size: 11px;
+}
+.dose-catalog[open] .dose-catalog-grid {
+  margin-top: 12px;
+}
+html.light .dose-howto li,
+html.light .dose-search-field,
+html.light .dose-medicine-list button {
+  border-color: rgba(54, 80, 116, .18);
+  background: rgba(248, 251, 255, .92);
+}
+html.light .dose-howto strong,
+html.light .dose-search-field > span,
+html.light .dose-catalog summary b {
+  color: #234467;
+}
+html.light .dose-howto small,
+html.light .dose-search-field small,
+html.light .dose-medicine-list button small,
+html.light .dose-catalog summary small {
+  color: #637a94;
+}
+html.light .dose-search-field > div {
+  border-color: rgba(54, 80, 116, .2);
+  background: #fff;
+}
+html.light .dose-search-field input {
+  color: #173557;
+}
+html.light .dose-medicine-list button {
+  color: #315271;
+}
+html.light .dose-medicine-list button.active {
+  border-color: #83c8df;
+  color: #173557;
+  background: linear-gradient(135deg, #e6f8fc, #f0edff);
+}
+html.light .dose-medicine-list button.active small,
+html.light .dose-catalog summary > strong {
+  color: #3e6b84;
+}
+html.light .dose-empty-search {
+  color: #637a94;
+  border-color: #b8c8d9;
+}
+@media (max-width: 700px) {
+  .dose-howto {
+    grid-template-columns: 1fr;
+  }
+  .dose-picker-grid {
+    grid-template-columns: 1fr;
+  }
+  .dose-medicine-list {
+    max-height: 214px;
+  }
+}
+
+/* ============================================================
+   PAEDIATRIC DOSE NAVIGATOR — focused, progressive bedside workflow
+   ============================================================ */
+.dose-hero-innovative {
+  background:
+    radial-gradient(620px 220px at 0% 0%, rgba(34, 211, 238, .14), transparent 68%),
+    radial-gradient(470px 240px at 100% 100%, rgba(217, 70, 239, .11), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+.dose-hero-innovative h1 {
+  max-width: 680px;
+}
+.dose-hero-badge {
+  display: inline-flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  gap: 8px;
+  border: 1px solid rgba(251, 146, 60, .34);
+  border-radius: 12px;
+  padding: 9px 11px;
+  color: #fed7aa;
+  background: rgba(234, 88, 12, .1);
+}
+.dose-hero-badge svg {
+  flex: 0 0 auto;
+  color: #fb923c;
+  margin-top: 1px;
+}
+.dose-hero-badge span,
+.dose-hero-badge b,
+.dose-hero-badge small {
+  display: block;
+}
+.dose-hero-badge b {
+  font-size: 10px;
+  font-weight: 950;
+}
+.dose-hero-badge small {
+  margin-top: 3px;
+  color: #f2bd8d;
+  font-size: 9px;
+  line-height: 1.3;
+}
+.dose-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(125, 150, 190, .2);
+  border-radius: 15px;
+  padding: 7px;
+  background: rgba(9, 19, 36, .78);
+}
+.dose-progress-step {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #9bb1cb;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.dose-progress-step:hover:not(:disabled) {
+  border-color: rgba(103, 232, 249, .35);
+  color: #e8fbff;
+}
+.dose-progress-step:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+.dose-progress-step > b {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(139, 163, 197, .32);
+  border-radius: 50%;
+  color: #a1b5cd;
+  font-size: 11px;
+  font-weight: 950;
+}
+.dose-progress-step > span,
+.dose-progress-step strong,
+.dose-progress-step small {
+  display: block;
+  min-width: 0;
+}
+.dose-progress-step strong,
+.dose-progress-step small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-progress-step strong {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+.dose-progress-step small {
+  max-width: 170px;
+  margin-top: 2px;
+  color: #8098b4;
+  font-size: 9px;
+}
+.dose-progress-step.active {
+  border-color: rgba(103, 232, 249, .54);
+  color: #effcff;
+  background: linear-gradient(135deg, rgba(8, 145, 178, .25), rgba(99, 102, 241, .18));
+}
+.dose-progress-step.active > b,
+.dose-progress-step.complete > b {
+  border-color: rgba(103, 232, 249, .65);
+  color: #082133;
+  background: #67e8f9;
+}
+.dose-progress-step.complete {
+  color: #c4f4f5;
+}
+.dose-progress-arrow {
+  color: #59728f;
+}
+.dose-navigator-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+  gap: 14px;
+  align-items: start;
+}
+.dose-wizard-panel,
+.dose-live-rail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.dose-step-panel {
+  min-height: 405px;
+  padding: 18px;
+}
+.dose-step-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dose-step-heading > div:first-child > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.dose-step-heading h2 {
+  margin: 4px 0 0;
+  color: #f4faff;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+.dose-step-heading p {
+  max-width: 560px;
+  margin: 5px 0 0;
+  color: #9cb1c9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.dose-step-number {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(103, 232, 249, .35);
+  border-radius: 12px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .1);
+  font-size: 17px;
+  font-weight: 950;
+}
+.dose-step-panel .dose-picker-grid {
+  margin-top: 24px;
+}
+.dose-next-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dose-next-row > span {
+  min-width: 0;
+  overflow: hidden;
+  color: #8fa6bf;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-next-row > span b {
+  color: #e5f7ff;
+}
+.dose-next-button,
+.dose-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 39px;
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.dose-next-button {
+  border: 1px solid rgba(103, 232, 249, .5);
+  color: #052030;
+  background: linear-gradient(135deg, #67e8f9, #a78bfa);
+  box-shadow: 0 9px 20px -14px #67e8f9;
+}
+.dose-next-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.dose-back-button {
+  border: 1px solid rgba(139, 163, 197, .28);
+  color: #b5c8dc;
+  background: rgba(5, 13, 27, .48);
+}
+.dose-back-button:hover {
+  border-color: rgba(103, 232, 249, .4);
+  color: #effcff;
+}
+.dose-selected-medicine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 22px;
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 11px;
+  padding: 9px 10px;
+  background: linear-gradient(135deg, rgba(8, 145, 178, .13), rgba(99, 102, 241, .09));
+}
+.dose-selected-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  color: #082133;
+  background: #67e8f9;
+  font-size: 15px;
+  font-weight: 950;
+}
+.dose-selected-medicine > div {
+  min-width: 0;
+  flex: 1;
+}
+.dose-selected-medicine small,
+.dose-selected-medicine b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-selected-medicine small {
+  color: #85a0bb;
+  font-size: 9px;
+}
+.dose-selected-medicine b {
+  margin-top: 2px;
+  color: #effaff;
+  font-size: 13px;
+  font-weight: 900;
+}
+.dose-selected-medicine button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(139, 163, 197, .26);
+  border-radius: 7px;
+  padding: 6px 7px;
+  color: #b8cadf;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.dose-selected-medicine button:hover {
+  border-color: rgba(103, 232, 249, .45);
+  color: #effcff;
+}
+.dose-row-select {
+  margin-top: 13px;
+}
+.dose-row-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 11px;
+  border-left: 3px solid #67e8f9;
+  border-radius: 0 9px 9px 0;
+  padding: 9px 11px;
+  background: rgba(34, 211, 238, .08);
+}
+.dose-row-preview small,
+.dose-row-preview b {
+  display: block;
+}
+.dose-row-preview small {
+  color: #86a3bd;
+  font-size: 9px;
+}
+.dose-row-preview b {
+  margin-top: 2px;
+  color: #dffaff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.dose-row-preview > span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(52, 211, 153, .34);
+  border-radius: 999px;
+  padding: 4px 6px;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, .1);
+  font-size: 8px;
+  font-weight: 900;
+}
+.dose-patient-grid {
+  margin-top: 20px;
+}
+.dose-strength-field span em {
+  margin-left: 4px;
+  color: #8199b5;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+.dose-live-card {
+  border: 1px solid rgba(103, 232, 249, .25);
+  border-radius: 16px;
+  padding: 16px;
+  background:
+    radial-gradient(390px 180px at 0% 0%, rgba(34, 211, 238, .14), transparent 70%),
+    linear-gradient(145deg, rgba(18, 35, 61, .92), rgba(10, 21, 40, .86));
+  box-shadow: 0 16px 32px -26px rgba(34, 211, 238, .7);
+}
+.dose-live-card.has-result {
+  border-color: rgba(52, 211, 153, .42);
+  background:
+    radial-gradient(390px 180px at 0% 0%, rgba(52, 211, 153, .15), transparent 70%),
+    linear-gradient(145deg, rgba(18, 42, 57, .94), rgba(10, 29, 39, .9));
+}
+.dose-live-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #82ddec;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(139, 163, 197, .28);
+  border-radius: 999px;
+  padding: 4px 6px;
+  color: #9cb2ca;
+  font-size: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dose-live-status.ready {
+  border-color: rgba(52, 211, 153, .38);
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, .1);
+}
+.dose-live-card h2 {
+  margin: 9px 0 0;
+  color: #f5fbff;
+  font-size: 23px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.dose-live-row {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: #9cb4ce;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-live-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  border: 1px dashed rgba(125, 150, 190, .28);
+  border-radius: 10px;
+  padding: 12px;
+  color: #9eb2c9;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.dose-live-empty svg {
+  flex: 0 0 auto;
+  color: #67e8f9;
+}
+.dose-live-amount {
+  display: grid;
+  gap: 3px;
+  margin-top: 16px;
+  border: 1px solid rgba(52, 211, 153, .3);
+  border-radius: 12px;
+  padding: 13px;
+  background: rgba(16, 185, 129, .1);
+}
+.dose-live-amount small,
+.dose-live-facts small {
+  color: #8ec2b2;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.dose-live-amount strong {
+  color: #e1fff1;
+  font-size: 25px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+.dose-live-amount span {
+  color: #a8d6c4;
+  font-size: 10px;
+}
+.dose-live-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 8px;
+}
+.dose-live-facts > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 9px;
+  padding: 8px;
+  background: rgba(5, 13, 27, .28);
+}
+.dose-live-facts b {
+  color: #d8f1ff;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.dose-live-volume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid rgba(251, 146, 60, .35);
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: #f7cda5;
+  background: rgba(234, 88, 12, .1);
+  font-size: 10px;
+  font-weight: 850;
+}
+.dose-live-volume b {
+  color: #fff0dc;
+  font-size: 15px;
+}
+.dose-live-safety {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(125, 150, 190, .16);
+  padding-top: 10px;
+  color: #f2c99f;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.dose-live-safety svg {
+  flex: 0 0 auto;
+  color: #fb923c;
+}
+.dose-reference-drawer {
+  border: 1px solid rgba(125, 150, 190, .18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(10, 21, 40, .7);
+}
+.dose-reference-drawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: #e6f6ff;
+  font-size: 12px;
+  font-weight: 900;
+  list-style: none;
+}
+.dose-reference-drawer summary::-webkit-details-marker {
+  display: none;
+}
+.dose-reference-drawer summary::after {
+  content: "–";
+  color: #67e8f9;
+  font-size: 17px;
+  font-weight: 400;
+}
+.dose-reference-drawer:not([open]) summary::after {
+  content: "+";
+}
+.dose-reference-drawer summary span {
+  margin-left: auto;
+  margin-right: 8px;
+  color: #8ea6c0;
+  font-size: 9px;
+  font-weight: 750;
+}
+.dose-reference-drawer .dose-reference-table-wrap {
+  margin-top: 10px;
+}
+html.light .dose-hero-innovative,
+html.light .dose-live-card,
+html.light .dose-reference-drawer {
+  border-color: rgba(54, 80, 116, .2);
+  background: #fff;
+}
+html.light .dose-hero-badge {
+  border-color: #efc080;
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-hero-badge small {
+  color: #a6672b;
+}
+html.light .dose-progress {
+  border-color: rgba(54, 80, 116, .2);
+  background: #eef4fb;
+}
+html.light .dose-progress-step {
+  color: #526c89;
+}
+html.light .dose-progress-step.active {
+  border-color: #83c8df;
+  color: #173557;
+  background: linear-gradient(135deg, #e5f8fc, #f0edff);
+}
+html.light .dose-progress-step > b {
+  border-color: #a8bed4;
+  color: #526c89;
+}
+html.light .dose-progress-step.active > b,
+html.light .dose-progress-step.complete > b {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-step-heading h2,
+html.light .dose-selected-medicine b,
+html.light .dose-live-card h2,
+html.light .dose-reference-drawer summary {
+  color: #173557;
+}
+html.light .dose-step-heading p,
+html.light .dose-progress-step small,
+html.light .dose-selected-medicine small,
+html.light .dose-live-row {
+  color: #637a94;
+}
+html.light .dose-selected-medicine {
+  border-color: #9ed2e2;
+  background: linear-gradient(135deg, #eaf9fc, #f4f0ff);
+}
+html.light .dose-selected-mark {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-selected-medicine button,
+html.light .dose-back-button {
+  border-color: #b6c7d8;
+  color: #46617c;
+  background: #fff;
+}
+html.light .dose-row-preview {
+  background: #eaf8fc;
+}
+html.light .dose-row-preview small,
+html.light .dose-row-preview b {
+  color: #24506d;
+}
+html.light .dose-live-card.has-result {
+  border-color: #8bd5b3;
+  background: linear-gradient(145deg, #f7fffb, #fff);
+}
+html.light .dose-live-heading {
+  color: #0878b5;
+}
+html.light .dose-live-amount {
+  border-color: #8bd5b3;
+  background: #e8f8ef;
+}
+html.light .dose-live-amount small,
+html.light .dose-live-facts small {
+  color: #287456;
+}
+html.light .dose-live-amount strong,
+html.light .dose-live-facts b {
+  color: #14543c;
+}
+html.light .dose-live-amount span,
+html.light .dose-live-row {
+  color: #527d6a;
+}
+html.light .dose-live-facts > div {
+  border-color: #d2dfeb;
+  background: #f8fbff;
+}
+html.light .dose-live-volume {
+  border-color: #efc080;
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-live-volume b {
+  color: #7b491d;
+}
+html.light .dose-live-safety {
+  color: #8b5b2e;
+  border-color: #dce3eb;
+}
+html.light .dose-reference-drawer summary span {
+  color: #637a94;
+}
+@media (max-width: 920px) {
+  .dose-navigator-layout {
+    grid-template-columns: 1fr;
+  }
+  .dose-live-rail {
+    grid-row: 1;
+  }
+}
+@media (max-width: 680px) {
+  .dose-progress {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .dose-progress-arrow {
+    display: none;
+  }
+  .dose-progress-step {
+    padding: 9px 10px;
+  }
+  .dose-step-panel {
+    min-height: 0;
+    padding: 14px;
+  }
+  .dose-step-heading h2 {
+    font-size: 20px;
+  }
+  .dose-next-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .dose-next-row .dose-next-button,
+  .dose-next-row .dose-back-button,
+  .dose-next-row .dose-clear {
+    width: 100%;
+  }
+  .dose-selected-medicine button {
+    padding: 6px;
+  }
+}
+
+/* ============================================================
+   PAEDIATRIC DOSE DESK — calculator and medicine picker stay together
+   The picker is an in-place modal, so users never need to scroll away from
+   the calculation to change a medicine.
+   ============================================================ */
+.dose-current-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(103, 232, 249, .3);
+  border-radius: 13px;
+  padding: 9px 11px;
+  background: linear-gradient(90deg, rgba(8, 145, 178, .14), rgba(99, 102, 241, .1));
+}
+.dose-current-drug {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.dose-current-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  color: #072333;
+  background: #67e8f9;
+  font-size: 15px;
+  font-weight: 950;
+}
+.dose-current-drug > div,
+.dose-current-drug small,
+.dose-current-drug b,
+.dose-current-drug em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-current-drug small {
+  color: #83a0ba;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.dose-current-drug b {
+  margin-top: 2px;
+  color: #f1fbff;
+  font-size: 13px;
+  font-weight: 950;
+}
+.dose-current-drug em {
+  margin-top: 1px;
+  color: #a4bdd4;
+  font-size: 9px;
+  font-style: normal;
+}
+.dose-change-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  border: 1px solid rgba(103, 232, 249, .4);
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: #dffaff;
+  background: rgba(34, 211, 238, .1);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.dose-change-button:hover {
+  border-color: #67e8f9;
+  background: rgba(34, 211, 238, .18);
+}
+.dose-desk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(330px, .88fr);
+  gap: 14px;
+  align-items: start;
+}
+.dose-calculator-shell {
+  min-width: 0;
+  padding: 17px;
+}
+.dose-calculator-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dose-calculator-title > div > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-calculator-title h2 {
+  margin: 4px 0 0;
+  color: #f2f9ff;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+.dose-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.dose-section-label > b {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  color: #062234;
+  background: #67e8f9;
+  font-size: 11px;
+  font-weight: 950;
+}
+.dose-section-label > span,
+.dose-section-label strong,
+.dose-section-label small {
+  display: block;
+}
+.dose-section-label strong {
+  color: #e8f6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+.dose-section-label small {
+  margin-top: 2px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-section-label-spaced {
+  margin-top: 20px;
+}
+.dose-calculator-shell .dose-row-select {
+  margin-top: 9px;
+}
+.dose-calculator-shell .dose-patient-grid {
+  margin-top: 9px;
+}
+.dose-calculator-shell .dose-strength-field {
+  margin-top: 9px;
+}
+.dose-calculator-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 8px;
+}
+.dose-calculator-actions > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-calculator-actions > span svg {
+  color: #67e8f9;
+}
+.dose-result-sticky {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+}
+.dose-safety-checklist {
+  border: 1px solid rgba(251, 146, 60, .25);
+  border-radius: 13px;
+  padding: 12px 14px;
+  color: #eec49b;
+  background: rgba(124, 45, 18, .12);
+}
+.dose-safety-checklist h3 {
+  margin: 0;
+  color: #ffe0bb;
+  font-size: 12px;
+  font-weight: 950;
+}
+.dose-safety-checklist p {
+  margin: 3px 0 8px;
+  color: #cba77f;
+  font-size: 9px;
+}
+.dose-safety-checklist ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dose-safety-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #f1d4b3;
+  font-size: 9px;
+}
+.dose-check-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(251, 146, 60, .4);
+  border-radius: 50%;
+  color: #fb923c;
+  font-size: 9px;
+  font-weight: 950;
+}
+.dose-reference-inline {
+  margin-top: 16px;
+}
+.dose-medicine-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.dose-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(2, 6, 23, .76);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+.dose-medicine-modal {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(720px, 90vh);
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, .38);
+  border-radius: 18px;
+  padding: 18px;
+  background: linear-gradient(145deg, #142844, #0a1528);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, .55);
+}
+.dose-medicine-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dose-medicine-modal-heading > div > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-medicine-modal-heading h2 {
+  margin: 4px 0 0;
+  color: #f3fbff;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.dose-medicine-modal-heading p {
+  margin: 4px 0 0;
+  color: #9db4cb;
+  font-size: 11px;
+}
+.dose-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(139, 163, 197, .3);
+  border-radius: 8px;
+  color: #c1d2e5;
+  background: rgba(255,255,255,.05);
+  cursor: pointer;
+}
+.dose-modal-close:hover {
+  border-color: #67e8f9;
+  color: #fff;
+}
+.dose-medicine-modal .dose-picker-grid {
+  margin-top: 18px;
+}
+.dose-medicine-modal .dose-select-field,
+.dose-medicine-modal .dose-search-field {
+  margin-top: 0;
+}
+.dose-medicine-modal-list {
+  max-height: 350px;
+  margin-top: 12px;
+  padding-right: 3px;
+}
+.dose-modal-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #829ab5;
+  font-size: 9px;
+}
+.dose-modal-tip svg {
+  color: #67e8f9;
+}
+html.light .dose-current-bar,
+html.light .dose-calculator-shell,
+html.light .dose-safety-checklist,
+html.light .dose-medicine-modal {
+  border-color: rgba(54, 80, 116, .2);
+}
+html.light .dose-current-bar {
+  background: linear-gradient(90deg, #eaf9fc, #f2efff);
+}
+html.light .dose-current-icon {
+  color: #fff;
+  background: #0878b5;
+}
+html.light .dose-current-drug small,
+html.light .dose-current-drug em,
+html.light .dose-section-label small,
+html.light .dose-calculator-actions > span {
+  color: #637a94;
+}
+html.light .dose-current-drug b,
+html.light .dose-section-label strong,
+html.light .dose-calculator-title h2 {
+  color: #173557;
+}
+html.light .dose-change-button {
+  border-color: #83c8df;
+  color: #175577;
+  background: #e5f7fb;
+}
+html.light .dose-safety-checklist {
+  color: #8b4b08;
+  background: #fff5e9;
+}
+html.light .dose-safety-checklist h3,
+html.light .dose-safety-checklist li {
+  color: #7b491d;
+}
+html.light .dose-safety-checklist p {
+  color: #a6672b;
+}
+html.light .dose-check-icon {
+  border-color: #efc080;
+  color: #b45309;
+}
+html.light .dose-medicine-modal {
+  background: #fff;
+  box-shadow: 0 25px 70px rgba(15, 40, 90, .25);
+}
+html.light .dose-medicine-modal-heading h2 {
+  color: #173557;
+}
+html.light .dose-medicine-modal-heading p,
+html.light .dose-modal-tip {
+  color: #637a94;
+}
+html.light .dose-modal-close {
+  border-color: #b6c7d8;
+  color: #46617c;
+  background: #f4f8fc;
+}
+@media (max-width: 920px) {
+  .dose-desk-grid {
+    grid-template-columns: 1fr;
+  }
+  .dose-result-sticky {
+    position: static;
+    grid-row: 1;
+  }
+  .dose-calculator-shell {
+    grid-row: 2;
+  }
+}
+@media (max-width: 600px) {
+  .dose-current-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .dose-change-button {
+    width: 100%;
+    justify-content: center;
+  }
+  .dose-calculator-title {
+    display: grid;
+  }
+  .dose-calculator-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .dose-calculator-actions > span {
+    justify-content: center;
+  }
+  .dose-medicine-overlay {
+    align-items: end;
+    padding: 0;
+  }
+  .dose-medicine-modal {
+    max-height: 90vh;
+    border-radius: 18px 18px 0 0;
+    padding: 15px;
+  }
+  .dose-medicine-modal-list {
+    max-height: 270px;
+  }
+}
+
+/* ============================================================
+   PAEDIATRIC DOSE DESK v2 — compact two-pane interface
+   Medicine search and dose calculation are visible together on desktop.
+   On phones they become two simple tabs instead of a long scrolling page.
+   ============================================================ */
+.dose-redesign-hero {
+  background:
+    radial-gradient(600px 230px at 0% 0%, rgba(34, 211, 238, .14), transparent 68%),
+    radial-gradient(500px 230px at 100% 100%, rgba(217, 70, 239, .1), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+.dose-redesign-hero h1 { font-size: clamp(25px, 4vw, 38px); }
+.dose-mobile-tabs { display: none; }
+.dose-redesign-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, .72fr) minmax(0, 1.28fr);
+  gap: 14px;
+  align-items: start;
+}
+.dose-library-panel,
+.dose-calculator-panel {
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .2);
+  border-radius: 16px;
+  background: rgba(10, 21, 40, .72);
+}
+.dose-library-panel {
+  position: sticky;
+  top: 12px;
+  padding: 14px;
+}
+.dose-redesign-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dose-redesign-panel-heading span,
+.dose-redesign-panel-heading h2 {
+  display: block;
+}
+.dose-redesign-panel-heading span {
+  color: #67e8f9;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-redesign-panel-heading h2 {
+  margin-top: 4px;
+  color: #f2f9ff;
+  font-size: 17px;
+  font-weight: 950;
+  letter-spacing: -.025em;
+}
+.dose-redesign-panel-heading > b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  border: 1px solid rgba(103, 232, 249, .32);
+  border-radius: 9px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .1);
+  font-size: 11px;
+}
+.dose-redesign-control {
+  margin-top: 12px;
+}
+.dose-library-list {
+  display: grid;
+  gap: 5px;
+  max-height: min(440px, calc(100vh - 345px));
+  margin-top: 10px;
+  overflow-y: auto;
+  padding: 1px 3px 1px 1px;
+}
+.dose-library-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .17);
+  border-left: 3px solid transparent;
+  border-radius: 9px;
+  padding: 9px 9px;
+  color: #c4d6e9;
+  background: rgba(17, 32, 57, .48);
+  text-align: left;
+  cursor: pointer;
+  transition: .15s ease;
+}
+.dose-library-list button:hover {
+  border-color: rgba(103, 232, 249, .38);
+  border-left-color: #67e8f9;
+  background: rgba(8, 145, 178, .12);
+}
+.dose-library-list button.active {
+  border-color: rgba(103, 232, 249, .56);
+  border-left-color: #67e8f9;
+  color: #effcff;
+  background: linear-gradient(90deg, rgba(8, 145, 178, .22), rgba(99, 102, 241, .13));
+}
+.dose-library-list button > span,
+.dose-library-list button b,
+.dose-library-list button small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dose-library-list button b { font-size: 11px; font-weight: 900; }
+.dose-library-list button small { margin-top: 2px; color: #8199b5; font-size: 9px; }
+.dose-library-list button.active small { color: #a6dce7; }
+.dose-library-list button em { display: inline-flex; flex: 0 0 auto; color: #67e8f9; font-style: normal; }
+.dose-library-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 11px;
+  border-top: 1px solid rgba(125, 150, 190, .14);
+  padding-top: 10px;
+  color: #829ab5;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.dose-library-tip svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-calculator-panel {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+}
+.dose-calculator-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 2px 5px;
+}
+.dose-calculator-top > div > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-calculator-top h2 {
+  margin-top: 4px;
+  color: #f4faff;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.dose-calculator-top p { margin-top: 2px; color: #94abc4; font-size: 10px; }
+.dose-change-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(103, 232, 249, .35);
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: #bceff7;
+  background: rgba(34, 211, 238, .08);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.dose-change-link:hover { border-color: #67e8f9; background: rgba(34, 211, 238, .15); }
+.dose-redesign-card {
+  border: 1px solid rgba(125, 150, 190, .17);
+  border-radius: 12px;
+  padding: 13px;
+  background: rgba(17, 32, 57, .48);
+}
+.dose-redesign-card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dose-redesign-card-title > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #062234;
+  background: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+}
+.dose-redesign-card-title h3 { color: #eaf6ff; font-size: 12px; font-weight: 900; }
+.dose-redesign-card-title p { margin-top: 2px; color: #829ab5; font-size: 9px; line-height: 1.35; }
+.dose-redesign-card .dose-row-select { margin-top: 11px; }
+.dose-redesign-inputs { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; }
+.dose-redesign-field { padding: 8px; }
+.dose-redesign-card .dose-strength-field { margin-top: 9px; }
+.dose-redesign-clear { margin-top: 9px; }
+.dose-redesign-result {
+  border: 1px solid rgba(103, 232, 249, .3);
+  border-radius: 13px;
+  padding: 14px;
+  background: linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(99, 102, 241, .1));
+}
+.dose-redesign-result.ready {
+  border-color: rgba(52, 211, 153, .42);
+  background: linear-gradient(145deg, rgba(16, 185, 129, .14), rgba(8, 64, 73, .2));
+}
+.dose-result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dose-result-heading span,
+.dose-result-heading h3 { display: block; }
+.dose-result-heading span { color: #67e8f9; font-size: 9px; font-weight: 950; letter-spacing: .13em; text-transform: uppercase; }
+.dose-result-heading h3 { margin-top: 3px; color: #ecfaff; font-size: 14px; font-weight: 900; }
+.dose-result-heading > b { display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(125, 150, 190, .26); border-radius: 999px; padding: 5px 7px; color: #9fb3c9; font-size: 8px; white-space: nowrap; }
+.dose-redesign-result.ready .dose-result-heading > b { border-color: rgba(52, 211, 153, .36); color: #a7f3d0; background: rgba(16, 185, 129, .1); }
+.dose-redesign-result-main { display: grid; gap: 3px; margin-top: 12px; }
+.dose-redesign-result-main small,
+.dose-redesign-result-facts small { color: #87aaa9; font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dose-redesign-result-main strong { color: #e0fff0; font-size: 27px; font-weight: 950; line-height: 1.1; }
+.dose-redesign-result-main span { color: #aad8ca; font-size: 10px; }
+.dose-redesign-result-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 9px; }
+.dose-redesign-result-facts > div { display: grid; gap: 3px; min-width: 0; border: 1px solid rgba(125, 150, 190, .16); border-radius: 8px; padding: 8px; background: rgba(5, 13, 27, .25); }
+.dose-redesign-result-facts b { overflow: hidden; color: #d8f1ff; font-size: 10px; line-height: 1.25; text-overflow: ellipsis; }
+.dose-result-placeholder { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #9eb3c8; font-size: 10px; line-height: 1.4; }
+.dose-result-placeholder svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-redesign-safety { display: flex; align-items: flex-start; gap: 6px; margin-top: 11px; border-top: 1px solid rgba(125, 150, 190, .16); padding-top: 9px; color: #f2c99f; font-size: 9px; line-height: 1.4; }
+.dose-redesign-safety svg { flex: 0 0 auto; color: #fb923c; }
+.dose-redesign-reference { margin-top: 0; }
+html.light .dose-redesign-hero,
+html.light .dose-library-panel,
+html.light .dose-calculator-panel,
+html.light .dose-redesign-card {
+  border-color: rgba(54, 80, 116, .2);
+  background: #fff;
+}
+html.light .dose-redesign-panel-heading h2,
+html.light .dose-calculator-top h2,
+html.light .dose-redesign-card-title h3,
+html.light .dose-result-heading h3 { color: #173557; }
+html.light .dose-redesign-panel-heading span,
+html.light .dose-calculator-top > div > span,
+html.light .dose-result-heading span { color: #0878b5; }
+html.light .dose-redesign-panel-heading > b { border-color: #9ed2e2; color: #0878b5; background: #eaf8fc; }
+html.light .dose-library-list button { border-color: #d5e0eb; color: #315271; background: #f8fbff; }
+html.light .dose-library-list button.active { border-color: #83c8df; border-left-color: #0878b5; color: #173557; background: linear-gradient(90deg, #e5f8fc, #f1efff); }
+html.light .dose-library-list button small,
+html.light .dose-library-tip,
+html.light .dose-calculator-top p,
+html.light .dose-redesign-card-title p { color: #637a94; }
+html.light .dose-library-list button.active small { color: #3e6b84; }
+html.light .dose-change-link { border-color: #83c8df; color: #175577; background: #e5f7fb; }
+html.light .dose-redesign-result { border-color: #9ed2e2; background: linear-gradient(145deg, #eaf9fc, #f3f0ff); }
+html.light .dose-redesign-result.ready { border-color: #8bd5b3; background: linear-gradient(145deg, #effcf5, #f8fbff); }
+html.light .dose-redesign-result-main strong { color: #14543c; }
+html.light .dose-redesign-result-main span,
+html.light .dose-redesign-result-facts small { color: #527d6a; }
+html.light .dose-redesign-result-facts > div { border-color: #d2dfeb; background: #f8fbff; }
+html.light .dose-redesign-result-facts b { color: #24506d; }
+html.light .dose-result-placeholder { color: #637a94; }
+html.light .dose-redesign-safety { color: #8b5b2e; border-color: #dce3eb; }
+@media (max-width: 900px) {
+  .dose-redesign-layout { grid-template-columns: 1fr; }
+  .dose-library-panel,
+  .dose-calculator-panel { position: static; }
+}
+@media (max-width: 680px) {
+  .dose-mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border: 1px solid rgba(125, 150, 190, .2); border-radius: 12px; padding: 5px; background: rgba(9, 19, 36, .76); }
+  .dose-mobile-tabs button { display: grid; grid-template-columns: auto 1fr; gap: 1px 6px; align-items: center; min-height: 43px; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; color: #9cb1c9; background: transparent; text-align: left; font-size: 10px; font-weight: 900; cursor: pointer; }
+  .dose-mobile-tabs button svg { grid-row: span 2; color: #67e8f9; }
+  .dose-mobile-tabs button small { color: #7892ae; font-size: 8px; font-weight: 700; }
+  .dose-mobile-tabs button.active { border-color: rgba(103, 232, 249, .48); color: #effcff; background: linear-gradient(135deg, rgba(8,145,178,.24), rgba(99,102,241,.16)); }
+  .dose-library-panel,
+  .dose-calculator-panel { display: none; }
+  .dose-library-panel.mobile-visible,
+  .dose-calculator-panel.mobile-visible { display: grid; }
+  .dose-redesign-inputs { grid-template-columns: 1fr 1fr; }
+  .dose-redesign-inputs .dose-field:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 450px) {
+  .dose-redesign-inputs { grid-template-columns: 1fr; }
+  .dose-redesign-inputs .dose-field:last-child { grid-column: auto; }
+  .dose-result-heading { align-items: flex-start; flex-direction: column; }
+  .dose-redesign-result-facts { grid-template-columns: 1fr 1fr; }
+  .dose-redesign-result-facts > div:last-child { grid-column: 1 / -1; }
+}
+
+/* Slider-style clinical inputs matching the New Admission steppers. */
+.dose-slider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.dose-slider-grid > div {
+  min-width: 0;
+}
+.dose-slider-grid input[type="range"] {
+  accent-color: #22d3ee;
+  cursor: pointer;
+}
+.dose-slider-grid button {
+  transition: background .15s ease, color .15s ease, transform .12s ease;
+}
+.dose-slider-grid button:hover {
+  background: rgba(34, 211, 238, .14);
+  color: #a5f3fc;
+}
+html.light .dose-slider-grid input[type="range"] {
+  accent-color: #0878b5;
+}
+@media (max-width: 680px) {
+  .dose-slider-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dose-slider-grid > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 450px) {
+  .dose-slider-grid {
+    grid-template-columns: 1fr;
+  }
+  .dose-slider-grid > div:last-child {
+    grid-column: auto;
+  }
+}
+
+/* Mobile fit pass: the dose desk must never create a page-width scrollbar. */
+.pediatric-dose-workspace,
+.pediatric-dose-workspace .dose-redesign-layout,
+.pediatric-dose-workspace .dose-calculator-panel,
+.pediatric-dose-workspace .dose-library-panel,
+.pediatric-dose-workspace .dose-redesign-card,
+.pediatric-dose-workspace .dose-redesign-result {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 680px) {
+  .pediatric-dose-workspace {
+    width: 100%;
+    overflow-x: clip;
+  }
+  .pediatric-dose-workspace .dose-hero,
+  .pediatric-dose-workspace .dose-mobile-tabs,
+  .pediatric-dose-workspace .dose-redesign-layout,
+  .pediatric-dose-workspace .dose-calculator-panel,
+  .pediatric-dose-workspace .dose-library-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-calculator-panel {
+    padding: 10px;
+  }
+  .pediatric-dose-workspace .dose-redesign-card,
+  .pediatric-dose-workspace .dose-redesign-result {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 10px;
+  }
+  .pediatric-dose-workspace .dose-calculator-top {
+    min-width: 0;
+    width: 100%;
+  }
+  .pediatric-dose-workspace .dose-calculator-top h2,
+  .pediatric-dose-workspace .dose-calculator-top p,
+  .pediatric-dose-workspace .dose-redesign-card-title h3,
+  .pediatric-dose-workspace .dose-redesign-card-title p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .pediatric-dose-workspace .dose-redesign-card select,
+  .pediatric-dose-workspace .dose-redesign-card input,
+  .pediatric-dose-workspace .dose-strength-field,
+  .pediatric-dose-workspace .dose-strength-field > div {
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-redesign-card select {
+    min-width: 0;
+    font-size: 11px;
+  }
+  .pediatric-dose-workspace .dose-slider-grid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: 1fr;
+  }
+  .pediatric-dose-workspace .dose-slider-grid > div,
+  .pediatric-dose-workspace .dose-slider-grid > div:last-child {
+    grid-column: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-main strong {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: clamp(21px, 8vw, 27px);
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts {
+    grid-template-columns: 1fr;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts > div,
+  .pediatric-dose-workspace .dose-redesign-result-facts > div:last-child {
+    grid-column: auto;
+    min-width: 0;
+  }
+  .pediatric-dose-workspace .dose-redesign-result-facts b,
+  .pediatric-dose-workspace .dose-redesign-safety span {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .pediatric-dose-workspace .dose-reference-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* ============================================================
+   PAEDIATRIC DOSE DESK — single-flow mobile redesign
+   No hidden panes, fixed-height libraries or sticky mobile columns.
+   ============================================================ */
+.dose-simple {
+  width: min(100%, 980px);
+  max-width: 980px;
+  margin-inline: auto;
+  min-width: 0;
+}
+.dose-simple-hero {
+  background:
+    radial-gradient(640px 220px at 0% 0%, rgba(34, 211, 238, .13), transparent 68%),
+    radial-gradient(460px 220px at 100% 100%, rgba(217, 70, 239, .09), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+.dose-simple-card,
+.dose-simple-result,
+.dose-simple-reference {
+  min-width: 0;
+  border: 1px solid rgba(125, 150, 190, .2);
+  border-radius: 15px;
+  background: rgba(10, 21, 40, .72);
+}
+.dose-simple-card { padding: 15px; }
+.dose-simple-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dose-simple-heading span,
+.dose-simple-heading h2,
+.dose-simple-heading p { display: block; }
+.dose-simple-heading > div > span {
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.dose-simple-heading h2 {
+  margin-top: 4px;
+  color: #f2f9ff;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+.dose-simple-heading p {
+  margin-top: 4px;
+  color: #91a8c0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.dose-simple-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(103, 232, 249, .35);
+  border-radius: 9px;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, .1);
+  font-size: 11px;
+}
+.dose-simple-medicine-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(220px, 1.2fr);
+  gap: 9px;
+  margin-top: 14px;
+}
+.dose-simple-medicine-controls .dose-select-field,
+.dose-simple-medicine-controls .dose-search-field {
+  margin-top: 0;
+}
+.dose-simple-medicine-select { margin-top: 9px; }
+.dose-simple-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  border: 1px solid rgba(103, 232, 249, .24);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: linear-gradient(90deg, rgba(8, 145, 178, .12), rgba(99, 102, 241, .08));
+}
+.dose-simple-selected > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #082333;
+  background: #67e8f9;
+  font-size: 14px;
+  font-weight: 950;
+}
+.dose-simple-selected > div { min-width: 0; flex: 1; }
+.dose-simple-selected small,
+.dose-simple-selected b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dose-simple-selected small { color: #829ab5; font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.dose-simple-selected b { margin-top: 2px; color: #effaff; font-size: 12px; }
+.dose-simple-selected > svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-simple-calculator { margin-top: 12px; }
+.dose-simple-row { margin-top: 13px; }
+.dose-simple-row .dose-select-field { margin-top: 0; }
+.dose-simple-row-preview {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  border-left: 3px solid #67e8f9;
+  border-radius: 0 9px 9px 0;
+  padding: 8px 10px;
+  background: rgba(34, 211, 238, .07);
+}
+.dose-simple-row-preview small { color: #829ab5; font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.dose-simple-row-preview b { color: #dffaff; font-size: 11px; line-height: 1.35; }
+.dose-simple-row-preview span { color: #a7f3d0; font-size: 9px; font-weight: 850; }
+.dose-simple-input-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dose-simple-input-heading b { color: #eaf6ff; font-size: 12px; }
+.dose-simple-input-heading small { color: #829ab5; font-size: 9px; text-align: right; }
+.dose-simple-slider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.dose-simple-slider-grid > div { min-width: 0; }
+.dose-simple-slider-grid input[type="range"] { accent-color: #22d3ee; cursor: pointer; }
+.dose-simple-strength { margin-top: 9px; }
+.dose-simple-strength > span em { margin-left: 4px; color: #8199b5; font-size: 9px; font-style: normal; font-weight: 700; }
+.dose-simple-clear { margin-top: 9px; }
+.dose-simple-result {
+  margin-top: 12px;
+  padding: 15px;
+  border-color: rgba(103, 232, 249, .3);
+  background: linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(99, 102, 241, .1));
+}
+.dose-simple-result.ready {
+  border-color: rgba(52, 211, 153, .42);
+  background: linear-gradient(145deg, rgba(16, 185, 129, .14), rgba(8, 64, 73, .2));
+}
+.dose-simple-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dose-simple-result-heading span,
+.dose-simple-result-heading h2 { display: block; }
+.dose-simple-result-heading span { color: #67e8f9; font-size: 9px; font-weight: 950; letter-spacing: .13em; text-transform: uppercase; }
+.dose-simple-result-heading h2 { margin-top: 3px; color: #ecfaff; font-size: 14px; font-weight: 900; }
+.dose-simple-result-heading > b { display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(125, 150, 190, .26); border-radius: 999px; padding: 5px 7px; color: #9fb3c9; font-size: 8px; white-space: nowrap; }
+.dose-simple-result.ready .dose-simple-result-heading > b { border-color: rgba(52, 211, 153, .36); color: #a7f3d0; background: rgba(16, 185, 129, .1); }
+.dose-simple-result-main { display: grid; gap: 3px; margin-top: 12px; }
+.dose-simple-result-main small { color: #87aaa9; font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dose-simple-result-main strong { color: #e0fff0; font-size: 28px; font-weight: 950; line-height: 1.1; }
+.dose-simple-result-main span { color: #aad8ca; font-size: 10px; }
+.dose-simple-result-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 9px; }
+.dose-simple-result-facts > div { display: grid; gap: 3px; min-width: 0; border: 1px solid rgba(125, 150, 190, .16); border-radius: 8px; padding: 8px; background: rgba(5, 13, 27, .25); }
+.dose-simple-result-facts small { color: #87aaa9; font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dose-simple-result-facts b { overflow-wrap: anywhere; color: #d8f1ff; font-size: 10px; line-height: 1.25; }
+.dose-simple-placeholder { display: flex; align-items: center; gap: 7px; margin-top: 13px; color: #9eb3c8; font-size: 10px; line-height: 1.4; }
+.dose-simple-placeholder svg { flex: 0 0 auto; color: #67e8f9; }
+.dose-simple-safety { display: flex; align-items: flex-start; gap: 6px; margin-top: 11px; border-top: 1px solid rgba(125, 150, 190, .16); padding-top: 9px; color: #f2c99f; font-size: 9px; line-height: 1.4; }
+.dose-simple-safety svg { flex: 0 0 auto; color: #fb923c; }
+.dose-simple-reference { margin-top: 12px; padding: 12px; }
+.dose-simple-reference .dose-reference-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
+html.light .dose-simple-hero,
+html.light .dose-simple-card,
+html.light .dose-simple-result,
+html.light .dose-simple-reference { border-color: rgba(54, 80, 116, .2); background: #fff; }
+html.light .dose-simple-heading h2,
+html.light .dose-simple-heading p,
+html.light .dose-simple-result-heading h2 { color: #173557; }
+html.light .dose-simple-heading > div > span,
+html.light .dose-simple-result-heading span { color: #0878b5; }
+html.light .dose-simple-count { border-color: #9ed2e2; color: #0878b5; background: #eaf8fc; }
+html.light .dose-simple-selected { border-color: #9ed2e2; background: linear-gradient(90deg, #eaf9fc, #f2efff); }
+html.light .dose-simple-selected > span { color: #fff; background: #0878b5; }
+html.light .dose-simple-selected small,
+html.light .dose-simple-heading p,
+html.light .dose-simple-input-heading small { color: #637a94; }
+html.light .dose-simple-selected b,
+html.light .dose-simple-input-heading b { color: #173557; }
+html.light .dose-simple-row-preview { background: #eaf8fc; }
+html.light .dose-simple-row-preview small,
+html.light .dose-simple-row-preview b { color: #24506d; }
+html.light .dose-simple-result { border-color: #9ed2e2; background: linear-gradient(145deg, #eaf9fc, #f3f0ff); }
+html.light .dose-simple-result.ready { border-color: #8bd5b3; background: linear-gradient(145deg, #effcf5, #f8fbff); }
+html.light .dose-simple-result-main strong { color: #14543c; }
+html.light .dose-simple-result-main span,
+html.light .dose-simple-result-facts small { color: #527d6a; }
+html.light .dose-simple-result-facts > div { border-color: #d2dfeb; background: #f8fbff; }
+html.light .dose-simple-result-facts b { color: #24506d; }
+html.light .dose-simple-placeholder { color: #637a94; }
+html.light .dose-simple-safety { color: #8b5b2e; border-color: #dce3eb; }
+@media (max-width: 680px) {
+  .dose-simple { width: 100%; max-width: 100%; overflow-x: clip; }
+  .dose-simple-hero,
+  .dose-simple-card,
+  .dose-simple-result,
+  .dose-simple-reference { width: 100%; max-width: 100%; }
+  .dose-simple-card,
+  .dose-simple-result { padding: 11px; }
+  .dose-simple-medicine-controls { grid-template-columns: 1fr; gap: 0; }
+  .dose-simple-medicine-controls .dose-search-field { margin-top: 9px; }
+  .dose-simple-slider-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .dose-simple-slider-grid > div {
+    width: 100%;
+    min-width: 0;
+  }
+  .dose-simple-slider-grid > div.rounded-xl {
+    border-radius: 10px;
+    padding: 6px;
+  }
+  .dose-simple-slider-grid .lbl {
+    font-size: 9px;
+    line-height: 1.15;
+  }
+  .dose-simple-slider-grid .flex.items-center.gap-1 {
+    gap: 2px;
+  }
+  .dose-simple-slider-grid button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    font-size: 14px;
+  }
+  .dose-simple-slider-grid input:not([type="range"]) {
+    padding-block: 3px;
+    font-size: 12px;
+  }
+  .dose-simple-slider-grid input[type="range"] {
+    height: 4px;
+    margin-top: 3px;
+  }
+  .dose-simple-slider-grid span.text-\[10px\] {
+    font-size: 8px;
+  }
+  .dose-simple-input-heading { align-items: baseline; flex-direction: row; gap: 5px; }
+  .dose-simple-input-heading small { text-align: right; }
+  .dose-simple-result-heading { align-items: flex-start; flex-direction: column; }
+  .dose-simple-result-facts { grid-template-columns: 1fr; }
+  .dose-simple-result-facts > div { width: 100%; }
+  .dose-simple-result-main strong { overflow-wrap: anywhere; font-size: clamp(22px, 8vw, 28px); }
+}
+
+/* Mobile viewport guard for the reference workspace and shared header. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+@media (max-width: 760px) {
+  header.no-print,
+  header.no-print > div,
+  header.no-print nav,
+  main.drugs-page {
+    max-width: 100%;
+    width: 100%;
+  }
+  header.no-print > div:first-child {
+    align-items: flex-start;
+    display: grid;
+    gap: 9px;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    overflow: hidden;
+  }
+  header.no-print > div:first-child > a {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  header.no-print > div:first-child > .ml-auto {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-left: 0;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  header.no-print > div:first-child > .ml-auto::-webkit-scrollbar {
+    display: none;
+  }
+  header.no-print > div:first-child > .ml-auto > * {
+    flex: 0 0 auto;
+  }
+  header.no-print nav > div {
+    max-width: 100%;
+    min-width: 0;
+  }
+  main.drugs-page > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .drugs-page .dose-workspace,
+  .drugs-page .dose-main-grid,
+  .drugs-page .dose-card,
+  .drugs-page .dose-hero,
+  .drugs-page .dose-group-tabs {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .drugs-page .dose-workspace {
+    overflow-x: clip;
+  }
+  .drugs-page .dose-card,
+  .drugs-page .dose-hero {
+    overflow-wrap: anywhere;
+  }
+  .drugs-page select,
+  .drugs-page input {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .drugs-page .dose-reference-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* Cross-platform native select contrast. Windows native menus otherwise inherit
+   a white menu with light text from the dark theme. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  color: #eaf3ff;
+  background-color: #0e1626;
+}
+html.light select {
+  color-scheme: light;
+}
+html.light select option,
+html.light select optgroup {
+  color: #152a46;
+  background-color: #ffffff;
+}
+.calc-stage-fluid {
+  --area-accent: #2dd4bf;
 }
