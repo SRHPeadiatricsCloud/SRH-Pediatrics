@@ -98,8 +98,8 @@ export function WeightInput({
           <span className="text-slate-500">·</span>
           <span className="text-slate-300">
             {displayKg
-              ? `${(grams / 1000).toFixed(2)} kg = ${grams} g`
-              : `${grams} g = ${(grams / 1000).toFixed(2)} kg`}
+              ? `${grams / 1000} kg = ${grams} g`
+              : `${grams} g = ${grams / 1000} kg`}
           </span>
         </label>
         <label className="inline-flex cursor-pointer items-center gap-1 text-slate-400">

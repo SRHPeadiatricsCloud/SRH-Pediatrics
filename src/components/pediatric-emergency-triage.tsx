@@ -10,6 +10,7 @@ import {
   Wind,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { EditableListField } from "@/components/editable-list";
 
 export type PediatricTriageResult = {
   scale: string;
@@ -497,21 +498,14 @@ export function PediatricEmergencyTriage({
                 <input className="inp !py-1 text-xs" value={exposureOther} onChange={(e) => setExposureOther(e.target.value)} placeholder="Other…" />
               </label>
             </div>
-            <div className="lbl mb-1 mt-2">Surface findings (multi-select)</div>
-            <div className="flex flex-wrap gap-1">
-              {SURFACE.map((s) => {
-                const selected = surface.includes(s);
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`chip ${selected ? "chip-on tone-amber" : "chip-off"}`}
-                    onClick={() => setSurface((p) => (selected ? p.filter((x) => x !== s) : [...p, s]))}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
+            <div className="mt-2">
+              <EditableListField
+                options={SURFACE}
+                value={surface}
+                onChange={setSurface}
+                placeholder="Add other surface finding…"
+                emptyLabel="No surface findings added yet."
+              />
             </div>
           </div>
         </div>
