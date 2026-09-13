@@ -462,7 +462,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     : s.enteralMlKgDay;
   const nutrition = calcNutrition({ fluids: { ...s, gir: girValue, enteralMlKgDay: enteralForNutrition } });
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
-  const autoKcal = hasEnergyInputs || s.kcal === undefined ? nutrition.totalKcal : s.kcal;
+  const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
   const setDerived = (key: "gir" | "kcal" | "feedVol") => (value: number) => {
     setManualDerived((current) => ({ ...current, [key]: true }));
@@ -473,56 +473,70 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     setS((p) => ({ ...p, [key]: undefined }));
   };
   const saveFluids = () => patch({ clinical: { fluids: { ...s, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
-  const nutritionFlags: Flag[] = [
-    (kcalValue ?? 0) < 110
-      ? { key: "kcal", label: `Energy ${kcalValue ?? "—"} kcal/kg/d below target 110–135`, sev: "warn" }
-      : (kcalValue ?? 0) <= 135
+  const kcalFlag: Flag = kcalValue === undefined
+    ? { key: "kcal", label: "Energy waiting for feed or TPN inputs", sev: "info" }
+    : kcalValue < 110
+      ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d below target 110–135`, sev: "warn" }
+      : kcalValue <= 135
         ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d within target`, sev: "info" }
-        : { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d above target`, sev: "warn" },
+        : { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d above target`, sev: "warn" };
+  const nutritionFlags: Flag[] = [
+    kcalFlag,
     nutrition.totalProtein < 3.5
       ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d below 3.5–4`, sev: "warn" }
       : { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate`, sev: "info" },
   ];
+  const feedVolumeHint = manualDerived.feedVol
+    ? "Manual override"
+    : intervalHours && wt > 0 && s.enteralMlKgDay !== undefined
+      ? `Auto from ${intervalHours} hourly feeds`
+      : "Choose an hourly frequency and enteral target";
   return (
     <div className="grid gap-3">
       <Section
         title="Fluids, feeds & fortification"
-        sub="Enter the complete bedside prescription in one place. Derived values update automatically; edit any derived value to override it manually."
+        sub="One bedside card: enter source values, check the live calculations, then save the complete prescription."
         right={<button type="button" className="btn-primary" onClick={saveFluids}>Save</button>}
       >
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-          <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-          <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-          <NumField label="Dextrose %" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
-          <div>
-            <NumField label={`GIR mg/kg/min · ${manualDerived.gir ? "manual" : "auto"}`} value={girValue} onChange={setDerived("gir")} min={0} max={20} step={0.1} decimals={2} placeholder="enter or auto" />
-            {manualDerived.gir && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("gir")}>Use automatic GIR</button>}
-          </div>
-          <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-          <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-          <div>
-            <NumField label={`Energy kcal/kg/d · ${manualDerived.kcal ? "manual" : "auto"}`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="auto" />
-            {manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}
-          </div>
-          <div>
-            <NumField label={`Feed volume / feed (ml) · ${manualDerived.feedVol ? "manual" : "auto"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="auto" />
-            {manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}
-          </div>
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm text-cyan-50">Live calculations</b><span className="text-[10px] font-bold text-cyan-200">Edit a calculated value to override it</span></div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">{girValue === undefined ? "GIR is waiting for dextrose percentage and IV volume." : `GIR ${girValue} mg/kg/min`}{kcalValue === undefined ? " · Energy is waiting for feed or TPN inputs." : ` · Energy ${kcalValue} kcal/kg/day`}{feedVolumeValue === undefined ? " · Feed volume is waiting for enteral volume, weight, and frequency." : ` · Feed ${feedVolumeValue} ml/feed`}</p>
         </div>
-        <p className="mt-2 text-[10px] leading-relaxed text-slate-400">Formulas: GIR = dextrose % × IV ml/kg/day × 10 ÷ 1440 · Energy = enteral kcal + GIR × 1.44 × 3.4 + amino acid × 4 + lipid × 9 · Feed volume = enteral ml/kg/day × weight ÷ feeds/day. Edit any derived field to use a manual value.</p>
-        <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">
-          Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Energy {kcalValue ?? "—"} kcal/kg/day · Protein {nutrition.totalProtein} g/kg/day
-        </div>
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          <label className="block"><span className="lbl mb-1 block">Feed type</span><DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" /></label>
-          <label className="block"><span className="lbl mb-1 block">Route</span><DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" /></label>
-          <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
-        </div>
-        <div className="mt-4"><FlagsList flags={nutritionFlags} /></div>
 
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <h3 className="text-base font-black text-slate-100">Fortification</h3>
+        <fieldset className="mt-5">
+          <legend className="text-base font-black text-slate-100">Prescription inputs</legend>
+          <p className="mt-1 text-xs text-slate-400">These are the actual bedside values used by the calculations.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
+            <NumField label="Dextrose %" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
+            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <label className="block"><span className="lbl mb-1 block">Feed type</span><DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Route</span><DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "2 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-6 border-t border-white/10 pt-5">
+          <legend className="text-base font-black text-slate-100">Calculated and editable values</legend>
+          <p className="mt-1 text-xs text-slate-400">Automatic values recalculate when the source inputs change. Manual overrides stay fixed until you choose automatic again.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div><NumField label={`GIR mg/kg/min · ${manualDerived.gir ? "manual" : "automatic"}`} value={girValue} onChange={setDerived("gir")} min={0} max={20} step={0.1} decimals={2} placeholder="waiting for inputs" />{manualDerived.gir && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("gir")}>Use automatic GIR</button>}</div>
+            <div><NumField label={`Energy kcal/kg/d · ${manualDerived.kcal ? "manual" : "automatic"}`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="waiting for inputs" />{manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}</div>
+            <div><NumField label={`Feed volume / feed ml · ${manualDerived.feedVol ? "manual" : "automatic"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="waiting for inputs" />{manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}<span className="mt-1 block text-[10px] text-slate-500">{feedVolumeHint}</span></div>
+          </div>
+          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas: GIR = dextrose % × IV ml/kg/day × 10 ÷ 1440 · Energy = enteral kcal + GIR × 1.44 × 3.4 + amino acid × 4 + lipid × 9 · Feed volume = enteral ml/kg/day × weight ÷ feeds/day.</p>
+        </fieldset>
+
+        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Energy {kcalValue ?? "—"} kcal/kg/day · Protein {nutrition.totalProtein} g/kg/day</div>
+        <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
+
+        <fieldset className="mt-6 border-t border-white/10 pt-5">
+          <legend className="text-base font-black text-slate-100">Fortification</legend>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record it exactly as prepared.</b> Enter the product, amount used, and the feed volume it was mixed into. Changing feed volume does not automatically scale the fortifier.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
@@ -532,7 +546,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional preparation detail" /></label>
           </div>
           <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety note:</b> the recorded amount stays linked to the stated mixed feed volume. Do not infer or auto-adjust fortifier quantity from another feed volume.</div>
-        </div>
+        </fieldset>
       </Section>
     </div>
   );
