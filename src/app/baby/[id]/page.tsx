@@ -52,6 +52,7 @@ import {
   TimelineTab,
   VitalsTab,
 } from "@/components/baby-tabs";
+import { EventLogTab } from "@/components/event-log";
 import { ConsolidatedImpression } from "@/components/interpret-ui";
 import type { Clinical } from "@/lib/clinical";
 import {
@@ -148,6 +149,7 @@ const TABS = [
   "Course & discharge summary",
   "Handover",
   "Timeline",
+  "Event Log",
 ] as const;
 
 export default function BabyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -370,6 +372,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         )}
         {tab === "Handover" && <HandoverTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Timeline" && <TimelineTab d={data} id={id} reload={reload} user={name} />}
+        {tab === "Event Log" && <EventLogTab d={data} id={id} reload={reload} user={name} patch={patch} />}
       </div>
     </main>
   );
