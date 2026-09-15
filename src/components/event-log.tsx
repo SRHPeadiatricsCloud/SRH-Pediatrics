@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Section } from "@/components/ui";
 import type { Detail } from "@/lib/types";
-import { fmtTime } from "@/lib/clinical";
 
 type EventLogEntry = {
   date?: string;
