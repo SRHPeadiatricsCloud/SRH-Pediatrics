@@ -297,9 +297,10 @@ export async function POST() {
     },
 
     /* ------------------------------------------------------------------
-       SAMPLE CASES for the feeds & nutrition plan. Each one mirrors a case
-       in scripts/test-feed-plan.ts, all at 1.5 kg so the per-feed volumes
-       match. Open the Fluids tab to see the plan resolve live.
+       SAMPLE CASES for the enteral feed plan. IV fluids are entered by hand
+       in every case. Each one mirrors a case in scripts/test-feed-plan.ts, all
+       at 1.5 kg so the per-feed volumes match. Open the Fluids tab to see the
+       plan resolve live.
        ------------------------------------------------------------------ */
     {
       uhid: "SAMPLE-A",
@@ -322,7 +323,7 @@ export async function POST() {
         fluids: {
           feedPlan: "increasing",
           increaseAppliesTo: "iv-today",
-          ivSource: "remainder",
+          ivMlKgDay: 20,
           tfiMlKgDay: 150,
           feedIncrementMlKgDay: 20,
           dextrosePct: 10,
@@ -330,7 +331,7 @@ export async function POST() {
           feedRoute: "OG tube",
           feedFreq: "3 hourly",
         },
-        plan: "Expect enteral 130 + IV 20 ml/kg/d, 24.38 ml x 8 feeds, IV energy 6.8 kcal, total 110.8 kcal/kg/d.",
+        plan: "Expect enteral 130 + IV 20 ml/kg/d, 24.38 ml x 8 feeds, IV energy 6.8 kcal, total 110.8 kcal/kg/d. Enteral + IV reconciles to the TFI target 150.",
       },
       problems: [["Growth / Prematurity", "Moderate preterm (32–33+6 weeks)"]],
       vitals: { hr: 138, rr: 44, spo2: 96, temp: 36.8, sbp: 62, dbp: 36, map: 45, crt: 2, rbs: 92, fio2: 21, urineMlKgHr: 3 },
@@ -356,7 +357,6 @@ export async function POST() {
       clinical: {
         fluids: {
           feedPlan: "static",
-          ivSource: "entered",
           tfiMlKgDay: 150,
           ivMlKgDay: 30,
           dextrosePct: 10,
@@ -364,7 +364,7 @@ export async function POST() {
           feedRoute: "OG tube",
           feedFreq: "3 hourly",
         },
-        plan: "Expect enteral 150 + IV 30 ml/kg/d, total 180 ml/kg/d, IV energy 10.2 kcal, total 130.2 kcal/kg/d.",
+        plan: "Expect enteral 150 + IV 30 ml/kg/d, total 180 ml/kg/d, IV energy 10.2 kcal, total 130.2 kcal/kg/d. The plan flags that total fluids exceed the TFI target 150.",
       },
       problems: [["Metabolic / Endocrine", "Neonatal hypoglycaemia"]],
       vitals: { hr: 136, rr: 42, spo2: 97, temp: 36.7, sbp: 66, dbp: 38, map: 47, crt: 2, rbs: 78, fio2: 21, urineMlKgHr: 3.2 },
@@ -391,7 +391,6 @@ export async function POST() {
         fluids: {
           feedPlan: "increasing",
           increaseAppliesTo: "tomorrow-target",
-          ivSource: "entered",
           tfiMlKgDay: 150,
           feedIncrementMlKgDay: 20,
           ivMlKgDay: 25,
@@ -426,7 +425,6 @@ export async function POST() {
       clinical: {
         fluids: {
           feedPlan: "static",
-          ivSource: "remainder",
           tfiMlKgDay: 160,
           feedType: "Preterm formula",
           feedRoute: "Oral",
@@ -440,7 +438,7 @@ export async function POST() {
     },
     {
       uhid: "SAMPLE-E",
-      babyName: "Sample E - guard: entered IV conflicts with plan",
+      babyName: "Sample E - guard: total fluids exceed the TFI target",
       motherName: "Sample E",
       bed: "S5 · Sample bay",
       sex: "Female",
@@ -457,20 +455,21 @@ export async function POST() {
       consultant: "Dr. Sample",
       clinical: {
         fluids: {
-          feedPlan: "static",
-          ivSource: "remainder",
+          feedPlan: "increasing",
+          increaseAppliesTo: "iv-today",
           tfiMlKgDay: 150,
-          ivMlKgDay: 30,
+          feedIncrementMlKgDay: 20,
+          ivMlKgDay: 40,
           dextrosePct: 10,
           feedType: "Preterm formula",
           feedRoute: "OG tube",
           feedFreq: "3 hourly",
         },
-        plan: "IV source is 'remainder' but 30 ml/kg/d IV is typed, so the plan warns that its energy is excluded. Switch IV source to 'entered separately' to count it.",
+        plan: "IV entered is 40 ml/kg/d but the TFI remainder is 20, so total fluids 170 exceed the TFI target 150. The plan flags it and nothing is overwritten.",
       },
       problems: [["Respiratory", "Apnoea of prematurity"]],
       vitals: { hr: 140, rr: 46, spo2: 95, temp: 36.6, sbp: 60, dbp: 34, map: 43, crt: 3, rbs: 82, fio2: 25, urineMlKgHr: 2.8 },
-      tasks: ["Clarify IV prescription", "Switch IV source if IV is running"],
+      tasks: ["Clarify IV prescription", "Recheck total fluids against TFI"],
     },
   ];
 
