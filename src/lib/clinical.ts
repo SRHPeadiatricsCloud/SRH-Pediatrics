@@ -4,7 +4,6 @@ export type GrowthEntry = {
   hc?: number;
   length?: number;
   note?: string;
-  /** Snapshot of nutrition delivered on that day (auto-calculated). */
   kcal?: number;
   protein?: number;
   fluids?: number;
@@ -75,6 +74,7 @@ export type Clinical = {
   antenatal?: string[];
   plan?: string;
   familyNote?: string;
+  eventLog?: Record<string, { date?: string; result?: string; starting?: string; ending?: string; notes?: string }>;
 };
 
 
@@ -130,10 +130,12 @@ export const PROTEIN_G_PER_ML: Record<string, number> = {
 export type NutritionCalc = {
   feedType: string;
   density: number;
+  proteinPerMl: number;
   enteralMl: number;
   enteralKcal: number;
   enteralProtein: number;
   gir: number;
+  girSource: "auto" | "manual" | "none";
   dextroseG: number;
   dextroseKcal: number;
   aaG: number;
@@ -144,11 +146,27 @@ export type NutritionCalc = {
   totalKcal: number;
   totalProtein: number;
   totalFluids: number;
+  ivMl: number;
   kcalTarget: [number, number];
   proteinTarget: [number, number];
   kcalDeficit: number;
   proteinDeficit: number;
+  warnings: string[];
+  isAbnormal: boolean;
 };
+
+/**
+ * Correct GIR calculation:
+ * GIR (mg/kg/min) = Dextrose% × IV rate (ml/kg/day) × 10 / 1440
+ * Dextrose% is g per 100ml, ×10 = g per L, × ml/kg/day /1000 = g/kg/day, ×1000/1440 = mg/kg/min
+ * Physiological range 4-8 mg/kg/min, max 12-14 with central line
+ */
+export function calcGir(dextrosePct: number | undefined, ivMlKgDay: number | undefined): number {
+  if (dextrosePct === undefined || ivMlKgDay === undefined || ivMlKgDay <= 0) return 0;
+  if (dextrosePct <= 0) return 0;
+  const gir = (dextrosePct * 10 * ivMlKgDay) / 1440;
+  return Math.round(gir * 100) / 100;
+}
 
 /** Auto-compute kcal/kg/day and protein g/kg/day from the current feed + TPN prescription. */
 export function calcNutrition(c: Clinical): NutritionCalc {
@@ -157,32 +175,71 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const density = KCAL_PER_ML[feedType] ?? 0.67;
   const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
 
-  const enteralMl = f.enteralMlKgDay ?? 0;
+  // --- Input sanitization with physiological limits ---
+  const rawEnteral = f.enteralMlKgDay ?? 0;
+  const enteralMl = Math.max(0, Math.min(250, rawEnteral)); // cap 250 ml/kg/day
+
+  const rawIv = f.ivMlKgDay ?? 0;
+  const ivMl = Math.max(0, Math.min(250, rawIv));
+
+  const rawGir = f.gir ?? 0;
+  // GIR should be 0-20 mg/kg/min, if >20 likely data entry error
+  const gir = Math.max(0, Math.min(20, rawGir));
+  const girSource: NutritionCalc["girSource"] = f.girManual ? "manual" : f.dextrosePct !== undefined && f.ivMlKgDay !== undefined ? "auto" : rawGir > 0 ? "manual" : "none";
+
+  // Dextrose: mg/kg/min -> g/kg/day = GIR * 1440 /1000 = GIR *1.44
+  const dextroseG = Math.round(gir * 1.44 * 10) / 10;
+  const dextroseKcal = Math.round(dextroseG * 3.4 * 10) / 10; // 3.4 kcal/g dextrose
+
+  const rawAa = f.aminoAcid ?? 0;
+  const aaG = Math.max(0, Math.min(6, rawAa)); // AA max 4-4.5 g/kg/day, cap 6 for safety
+  const aaKcal = Math.round(aaG * 4 * 10) / 10; // 4 kcal/g
+
+  const rawLipid = f.lipid ?? 0;
+  const lipidG = Math.max(0, Math.min(6, rawLipid)); // lipid max 3-4 g/kg/day
+  const lipidKcal = Math.round(lipidG * 9 * 10) / 10; // 9 kcal/g
+
   const enteralKcal = Math.round(enteralMl * density * 10) / 10;
   const enteralProtein = Math.round(enteralMl * protPerMl * 100) / 100;
 
-  const gir = f.gir ?? 0;
-  const dextroseG = Math.round(gir * 1.44 * 10) / 10; // mg/kg/min -> g/kg/day
-  const dextroseKcal = Math.round(dextroseG * 3.4 * 10) / 10;
-  const aaG = f.aminoAcid ?? 0;
-  const aaKcal = Math.round(aaG * 4 * 10) / 10;
-  const lipidG = f.lipid ?? 0;
-  const lipidKcal = Math.round(lipidG * 9 * 10) / 10;
-
+  // Total IV kcal = dextrose + AA + lipid (TPN)
   const ivKcal = Math.round((dextroseKcal + aaKcal + lipidKcal) * 10) / 10;
+  // Total = enteral + IV
   const totalKcal = Math.round((enteralKcal + ivKcal) * 10) / 10;
   const totalProtein = Math.round((enteralProtein + aaG) * 100) / 100;
 
   const kcalTarget: [number, number] = [110, 135];
-  const proteinTarget: [number, number] = [3.5, 4];
+  const proteinTarget: [number, number] = [3.5, 4.5]; // widened to 3.5-4.5 for preterm, was 3.5-4
+
+  const warnings: string[] = [];
+  if (gir > 0 && gir < 4) warnings.push(`Low GIR ${gir} mg/kg/min (<4) — risk hypoglycaemia`);
+  if (gir > 8 && gir <= 12) warnings.push(`High GIR ${gir} mg/kg/min (>8) — monitor glucose, consider central line if >10`);
+  if (gir > 12) warnings.push(`Very high GIR ${gir} mg/kg/min (>12) — requires central line, high osmolarity risk`);
+  if (rawGir > 20) warnings.push(`GIR input ${rawGir} exceeds physiological max 20 — check IV rate / dextrose%`);
+
+  if (aaG > 4) warnings.push(`AA ${aaG} g/kg/day exceeds 4 — check prescription`);
+  if (lipidG > 4) warnings.push(`Lipid ${lipidG} g/kg/day exceeds 4 — check prescription`);
+  if (enteralMl > 200) warnings.push(`Enteral ${enteralMl} ml/kg/day >200 — fluid overload risk`);
+  if (totalKcal > 0 && totalKcal < 80) warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
+  if (totalKcal > 150) warnings.push(`High energy ${totalKcal} kcal/kg/day (>150) — exceeds target 110-135`);
+  if (totalProtein > 0 && totalProtein < 2) warnings.push(`Low protein ${totalProtein} g/kg/day (<2) — inadequate for growth`);
+  if (totalProtein > 5) warnings.push(`High protein ${totalProtein} g/kg/day (>5) — exceeds safe limit, check AA + enteral`);
+
+  // Detect gross errors from old logic: if totalKcal >300 or protein >10 likely data entry error (e.g., ml/day entered as ml/kg/day)
+  if (totalKcal > 300) warnings.push(`Grossly high energy ${totalKcal} — likely ml/day entered as ml/kg/day, please check weight and volumes`);
+  if (totalProtein > 10) warnings.push(`Grossly high protein ${totalProtein} — likely unit error, check AA g/kg/day vs ml/kg/day`);
+
+  const isAbnormal = warnings.length > 0;
 
   return {
     feedType,
     density,
+    proteinPerMl: protPerMl,
     enteralMl,
     enteralKcal,
     enteralProtein,
     gir,
+    girSource,
     dextroseG,
     dextroseKcal,
     aaG,
@@ -193,18 +250,19 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     totalKcal,
     totalProtein,
     totalFluids: f.totalMlKgDay ?? 0,
+    ivMl,
     kcalTarget,
     proteinTarget,
     kcalDeficit: Math.round((totalKcal - kcalTarget[0]) * 10) / 10,
     proteinDeficit: Math.round((totalProtein - proteinTarget[0]) * 100) / 100,
+    warnings,
+    isAbnormal,
   };
 }
 
 /* ------------------------- temperature conversion ------------------------- */
 export type TempUnit = "C" | "F";
 
-// Avoid binary floating-point artefacts (for example 98.24000000000001)
-// without imposing a clinical display precision on the entered value.
 const cleanConversion = (value: number) => Number(value.toPrecision(15));
 
 export function cToF(c: number): number {
@@ -215,31 +273,22 @@ export function fToC(f: number): number {
   return cleanConversion(((f - 32) * 5) / 9);
 }
 
-/** Convert a stored Celsius value for bedside display at standard one-decimal temperature precision. */
 export function tempOut(c: number | null | undefined, unit: TempUnit): number | null {
   if (c === null || c === undefined || Number.isNaN(Number(c))) return null;
   const v = Number(c);
   const displayed = unit === "F" ? (v * 9) / 5 + 32 : v;
-  // Display-only rounding removes binary floating-point noise; storage remains
-  // Celsius and retains the original entered/calculated value.
   return Number(displayed.toFixed(1));
 }
 
-/** Convert a value typed in the display unit back to Celsius for storage. */
 export function tempIn(v: number, unit: TempUnit): number {
   return unit === "F" ? cleanConversion(((v - 32) * 5) / 9) : v;
 }
 
-/** Formatted temperature string with the unit suffix. */
 export function fmtTemp(c: number | null | undefined, unit: TempUnit): string {
   const v = tempOut(c, unit);
   return v === null ? "—" : `${String(v)} °${unit}`;
 }
 
-/**
- * Universal blood-pressure formatter — shows systolic/diastolic (MAP) together
- * in a single value, e.g. "82/56 (72)". Falls back gracefully when parts are missing.
- */
 export function fmtBP(
   sbp: number | string | null | undefined,
   dbp: number | string | null | undefined,
@@ -259,7 +308,6 @@ export function fmtBP(
   return "—";
 }
 
-/** Growth velocity in g/kg/day between two weights. */
 export function gainGPerKgDay(prev: number, cur: number, days: number): number | null {
   if (!prev || !cur || days <= 0) return null;
   const meanKg = ((prev + cur) / 2) / 1000;
@@ -293,7 +341,6 @@ export function relTime(v: string | Date | null | undefined): string {
   return `${Math.floor(h / 24)} d ago`;
 }
 
-// Simple validity flags used to colour the vitals chips (term/preterm ranges)
 export function vitalFlag(key: string, v: number | null | undefined): "ok" | "warn" | "bad" {
   if (v === null || v === undefined || Number.isNaN(v)) return "ok";
   const r: Record<string, [number, number, number, number]> = {

@@ -144,11 +144,15 @@ export function FluidsCalcPanel({ baby, standalone = false }: { baby?: BabyLite;
   const neoRange = baby ? neonatalDayFluidRange(baby) : null;
   const isNeo = baby ? baby.unit === "nicu" || baby.unit === "postnatal" : false;
   const girFlag: Flag[] =
-    gir < 4
-      ? [{ key: "gir", label: "Low GIR (< 4)", sev: "warn", note: `${gir} mg/kg/min` }]
-      : gir > 12
-        ? [{ key: "gir", label: "High GIR (> 12) — central line", sev: "warn", note: `${gir}` }]
-        : [{ key: "gir", label: "GIR within safe range", sev: "info", note: `${gir} mg/kg/min` }];
+    gir === 0
+      ? [{ key: "gir", label: "GIR 0 — enter dextrose% and IV rate", sev: "info", note: `0 mg/kg/min` }]
+      : gir < 4
+        ? [{ key: "gir", label: `Low GIR ${gir} mg/kg/min (<4)`, sev: "warn", note: "hypoglycaemia risk, target 4-8" }]
+        : gir <= 8
+          ? [{ key: "gir", label: `GIR ${gir} mg/kg/min target 4-8`, sev: "info", note: `${(gir*1.44).toFixed(1)} g/kg/day dextrose` }]
+          : gir <= 12
+            ? [{ key: "gir", label: `High GIR ${gir} mg/kg/min (>8)`, sev: "warn", note: "monitor glucose, central line if >10" }]
+            : [{ key: "gir", label: `Very high GIR ${gir} mg/kg/min (>12)`, sev: "crit", note: "central line required, check IV ml/kg/day vs ml/day" }];
   return (
     <Panel title={standalone ? "GIR & fluids calculator" : "Fluids & GIR calculator"}>
       {standalone && <label className="mb-2 block rounded-lg border border-white/10 bg-slate-900/40 p-2">
