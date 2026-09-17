@@ -529,23 +529,27 @@ function Overview({
         </dl>
       </Section>
 
-      <Section title="Active problem list" sub={`${d.problems.filter((p) => p.status !== "resolved").length} active`}>
-        <div className="flex flex-wrap gap-1">
+      <Section title="Active problem list — one below other, easy to read" sub={`${d.problems.filter((p) => p.status !== "resolved").length} active · vertical stacked`}>
+        <div className="flex flex-col gap-2">
           {d.problems
             .filter((p) => p.status !== "resolved")
-            .map((p) => (
-              <span
+            .map((p, idx) => (
+              <div
                 key={p.id}
-                className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 ${
                   p.status === "watch"
-                    ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
-                    : "border-rose-400/30 bg-rose-400/10 text-rose-200"
+                    ? "border-amber-400/30 bg-amber-400/10"
+                    : "border-rose-400/30 bg-rose-400/10"
                 }`}
               >
-                {p.label}
-              </span>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-black ${p.status === "watch" ? "bg-amber-400/20 text-amber-200" : "bg-rose-400/20 text-rose-200"}`}>{idx+1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className={`text-[13px] font-bold leading-snug ${p.status === "watch" ? "text-amber-100" : "text-rose-100"}`}>{p.label}</div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">{p.system ?? ""} · {p.status} · {fmtTime(p.onsetAt)}</div>
+                </div>
+              </div>
             ))}
-          {d.problems.length === 0 && <span className="text-xs text-slate-400">None added</span>}
+          {d.problems.filter((p) => p.status !== "resolved").length === 0 && <span className="text-xs text-slate-400">No active diagnosis — add in Problems tab</span>}
         </div>
         <div className="lbl mt-4 mb-1">Plan</div>
         <p className="text-xs text-slate-300">{d.baby.clinical?.plan || "No plan documented."}</p>

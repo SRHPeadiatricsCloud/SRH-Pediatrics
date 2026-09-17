@@ -209,7 +209,7 @@ export function VitalsTab({
       <div className="lg:col-span-2">
         <Section
           title="Quick observation round"
-          sub="Pre-filled with the last set — tap ± only for what changed, then save."
+          sub="Pre-filled with the last set - tap ± only for what changed, then save."
           right={
             <div className="flex items-center gap-2">
               <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
@@ -247,7 +247,7 @@ export function VitalsTab({
             <span className="text-base font-black tabular-nums text-cyan-200">
               {fmtBP(v.sbp, v.dbp, v.map)}
             </span>
-            <span className="text-[10px] text-slate-400">mmHg · systolic/diastolic (MAP)</span>
+            <span className="text-[10px] text-slate-400">mmHg - systolic/diastolic (MAP)</span>
           </div>
           {d.baby.unit === "nicu" && (
             <div className="mt-3 overflow-hidden rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5">
@@ -288,7 +288,7 @@ export function VitalsTab({
           </div>
           <div className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-2">
             <div className="lbl mb-1.5">
-              Serial anthropometry — {d.baby.unit === "nicu" ? "daily weight · weekly HC & length" : d.baby.unit === "postnatal" ? "daily weight" : "weight on admission & weekly"}
+              Serial anthropometry - {d.baby.unit === "nicu" ? "daily weight - weekly HC & length" : d.baby.unit === "postnatal" ? "daily weight" : "weight on admission & weekly"}
             </div>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
               <WeightInput
@@ -326,14 +326,14 @@ export function VitalsTab({
               {d.vitals.map((r) => (
                 <tr key={String(r.id)} className="border-t border-white/5">
                   <td className="p-1 text-slate-400">{fmtTime(r.recordedAt as string)}</td>
-                  <td>{r.hr ?? "—"}</td>
-                  <td>{r.rr ?? "—"}</td>
-                  <td>{r.spo2 ?? "—"}</td>
-                  <td>{tempOut(r.temp as number | null, unit) ?? "—"}</td>
+                  <td>{r.hr ?? "-"}</td>
+                  <td>{r.rr ?? "-"}</td>
+                  <td>{r.spo2 ?? "-"}</td>
+                  <td>{tempOut(r.temp as number | null, unit) ?? "-"}</td>
                   <td className="whitespace-nowrap">{fmtBP(r.sbp as number | null, r.dbp as number | null, r.map as number | null)}</td>
-                  <td>{r.rbs ?? "—"}</td>
+                  <td>{r.rbs ?? "-"}</td>
                   <td className="whitespace-nowrap">
-                    {r.painRaw ?? r.painScore ?? "—"}
+                    {r.painRaw ?? r.painScore ?? "-"}
                     {(r.painScale as string | null) && (
                       <span className="ml-0.5 text-[9px] text-slate-500">{String(r.painScale)}</span>
                     )}
@@ -410,7 +410,7 @@ export function RespTab({
         <DialWithOther options={SURFACTANT} value={s.surfactant} onChange={(v: string) => setS((p) => ({ ...p, surfactant: v }))} otherPlaceholder="Other surfactant route…" />
         <div className="lbl mt-4 mb-1">SpO₂ target</div>
         <ChipGroup
-          options={["88–92%", "90–95%", "91–95%", "92–97%", "95–100%"]}
+          options={["88-92%", "90-95%", "91-95%", "92-97%", "95-100%"]}
           value={s.spo2Target}
           onChange={(v: string) => setS((p) => ({ ...p, spo2Target: v }))}
         />
@@ -426,8 +426,8 @@ export function RespTab({
       </Section>
       <Section title="Respiratory reference (NNF / AAP)">
         <ul className="space-y-2 text-xs text-slate-300">
-          <li>• CPAP failure: FiO₂ &gt; 0.40 with PEEP 6–7, pH &lt; 7.20 with pCO₂ &gt; 60 → intubate + surfactant.</li>
-          <li>• Target SpO₂ 90–95% for preterm on oxygen (AAP/NNF).</li>
+          <li>• CPAP failure: FiO₂ &gt; 0.40 with PEEP 6-7, pH &lt; 7.20 with pCO₂ &gt; 60 → intubate + surfactant.</li>
+          <li>• Target SpO₂ 90-95% for preterm on oxygen (AAP/NNF).</li>
           <li>• Caffeine citrate for all &lt; 32 wk / &lt; 1250 g.</li>
         </ul>
       </Section>
@@ -450,11 +450,11 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     return match ? Number(match[1]) : undefined;
   })();
   const autoGir = s.dextrosePct !== undefined && s.ivMlKgDay !== undefined && s.ivMlKgDay > 0
-    ? girFromDextrose(s.dextrosePct, s.ivMlKgDay)
+    ? girFromDextrose(s.dextrosePct, Math.min(250, s.ivMlKgDay))
     : s.gir;
   const girValue = manualDerived.gir ? s.gir : autoGir;
   const autoFeedVolume = intervalHours && intervalHours < 24 && wt > 0 && s.enteralMlKgDay !== undefined
-    ? Number(((s.enteralMlKgDay * wt) / (24 / intervalHours)).toFixed(2))
+    ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / (24 / intervalHours)).toFixed(2))
     : s.feedVol;
   const feedVolumeValue = manualDerived.feedVol ? s.feedVol : autoFeedVolume;
   const enteralForNutrition = manualDerived.feedVol && feedVolumeValue !== undefined && intervalHours && intervalHours < 24 && wt > 0
@@ -473,19 +473,43 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     setS((p) => ({ ...p, [key]: undefined }));
   };
   const saveFluids = () => patch({ clinical: { fluids: { ...s, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
+
+  const girFlag: Flag = girValue === undefined || girValue === 0
+    ? { key: "gir", label: "GIR waiting for dextrose% and IV ml/kg/day", sev: "info" }
+    : girValue < 4
+      ? { key: "gir", label: `Low GIR ${girValue} mg/kg/min (<4)`, sev: "warn", note: "hypoglycaemia risk" }
+      : girValue <= 8
+        ? { key: "gir", label: `GIR ${girValue} mg/kg/min (target 4-8)`, sev: "info", note: `${nutrition.dextroseG} g/kg/day dextrose` }
+        : girValue <= 12
+          ? { key: "gir", label: `High GIR ${girValue} mg/kg/min (>8)`, sev: "warn", note: "monitor glucose, central line if >10" }
+          : { key: "gir", label: `Very high GIR ${girValue} mg/kg/min (>12)`, sev: "crit", note: "central line required" };
+
   const kcalFlag: Flag = kcalValue === undefined
     ? { key: "kcal", label: "Energy waiting for feed or TPN inputs", sev: "info" }
-    : kcalValue < 110
-      ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d below target 110–135`, sev: "warn" }
-      : kcalValue <= 135
-        ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d within target`, sev: "info" }
-        : { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d above target`, sev: "warn" };
-  const nutritionFlags: Flag[] = [
-    kcalFlag,
-    nutrition.totalProtein < 3.5
-      ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d below 3.5–4`, sev: "warn" }
-      : { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate`, sev: "info" },
-  ];
+    : kcalValue < 80
+      ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d low (<80)`, sev: "warn", note: "below basal" }
+      : kcalValue < 110
+        ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d below target 110-135`, sev: "warn" }
+        : kcalValue <= 135
+          ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d within target`, sev: "info" }
+          : kcalValue <= 160
+            ? { key: "kcal", label: `Energy ${kcalValue} kcal/kg/d above target`, sev: "warn" }
+            : { key: "kcal", label: `Grossly high ${kcalValue} kcal/kg/d (>160)`, sev: "crit", note: "check ml/day vs ml/kg/day" };
+
+  const protFlag: Flag = nutrition.totalProtein === 0
+    ? { key: "prot", label: "Protein waiting for inputs", sev: "info" }
+    : nutrition.totalProtein < 2
+      ? { key: "prot", label: `Low protein ${nutrition.totalProtein} g/kg/d (<2)`, sev: "warn" }
+      : nutrition.totalProtein < 3.5
+        ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d below 3.5-4.5`, sev: "warn" }
+        : nutrition.totalProtein <= 4.5
+          ? { key: "prot", label: `Protein ${nutrition.totalProtein} g/kg/d adequate (3.5-4.5)`, sev: "info" }
+          : nutrition.totalProtein <= 6
+            ? { key: "prot", label: `High protein ${nutrition.totalProtein} g/kg/d (>4.5)`, sev: "warn" }
+            : { key: "prot", label: `Grossly high protein ${nutrition.totalProtein} g/kg/d (>6)`, sev: "crit", note: "check AA g/kg/d vs ml" };
+
+  const nutritionFlags: Flag[] = [girFlag, kcalFlag, protFlag];
+
   const feedVolumeHint = manualDerived.feedVol
     ? "Manual override"
     : intervalHours && wt > 0 && s.enteralMlKgDay !== undefined
@@ -494,58 +518,86 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   return (
     <div className="grid gap-3">
       <Section
-        title="Fluids, feeds & fortification"
-        sub="One bedside card: enter source values, check the live calculations, then save the complete prescription."
+        title="Fluids, feeds & fortification - corrected GIR & protein"
+        sub="Rectified: GIR = dextrose% x IV ml/kg/day x10 /1440 (0-20 clamp), dextrose g = GIRx1.44, protein = enteral ml x protein/ml + AA (AA 0-4 cap). Gross >300 kcal or >10g protein flagged."
         right={<button type="button" className="btn-primary" onClick={saveFluids}>Save</button>}
       >
         <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite">
-          <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm text-cyan-50">Live calculations</b><span className="text-[10px] font-bold text-cyan-200">Edit a calculated value to override it</span></div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">{girValue === undefined ? "GIR is waiting for dextrose percentage and IV volume." : `GIR ${girValue} mg/kg/min`}{kcalValue === undefined ? " · Energy is waiting for feed or TPN inputs." : ` · Energy ${kcalValue} kcal/kg/day`}{feedVolumeValue === undefined ? " · Feed volume is waiting for enteral volume, weight, and frequency." : ` · Feed ${feedVolumeValue} ml/feed`}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm text-cyan-50">Live calculations - corrected</b><span className="text-[10px] font-bold text-cyan-200">Edit to override, automatic uses clamped physiological ranges</span></div>
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs leading-relaxed text-slate-200 sm:grid-cols-3">
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+              <div className="lbl !mb-1">GIR</div>
+              <div className="text-sm font-black text-white">{girValue ?? "-"} <span className="text-[10px] font-normal">mg/kg/min</span></div>
+              <div className="text-[10px] text-slate-400">{girValue !== undefined ? `${nutrition.dextroseG} g/kg/day dextrose → ${nutrition.dextroseKcal} kcal` : "waiting for dextrose% & IV"}</div>
+              <div className="text-[9px] text-slate-500">source: {nutrition.girSource} - formula (D%xIVx10)/1440</div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+              <div className="lbl !mb-1">Energy</div>
+              <div className="text-sm font-black text-white">{kcalValue ?? "-"} <span className="text-[10px] font-normal">kcal/kg/day</span></div>
+              <div className="text-[10px] text-slate-400">enteral {nutrition.enteralKcal} + IV {nutrition.ivKcal} (dex {nutrition.dextroseKcal} + AA {nutrition.aaKcal} + lipid {nutrition.lipidKcal})</div>
+              <div className="text-[9px] text-slate-500">target 110-135 - density {nutrition.density} kcal/ml ({nutrition.feedType})</div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+              <div className="lbl !mb-1">Protein</div>
+              <div className="text-sm font-black text-white">{nutrition.totalProtein} <span className="text-[10px] font-normal">g/kg/day</span></div>
+              <div className="text-[10px] text-slate-400">enteral {nutrition.enteralProtein} g + AA {nutrition.aaG} g</div>
+              <div className="text-[9px] text-slate-500">target 3.5-4.5 - {nutrition.proteinPerMl} g/ml ({nutrition.feedType})</div>
+            </div>
+          </div>
         </div>
 
+        {nutrition.warnings.length > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
+            <div className="flex items-center gap-2 text-xs font-black text-amber-200"><AlertTriangle size={14} /> Nutrition warnings - rectified limits</div>
+            <ul className="mt-1 list-disc pl-5 text-[11px] text-amber-100">
+              {nutrition.warnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </div>
+        )}
+
         <fieldset className="mt-5">
-          <legend className="text-base font-black text-slate-100">Prescription inputs</legend>
-          <p className="mt-1 text-xs text-slate-400">These are the actual bedside values used by the calculations.</p>
+          <legend className="text-base font-black text-slate-100">Prescription inputs - caps 0-250 ml/kg/day, AA/lipid 0-6 g/kg/day</legend>
+          <p className="mt-1 text-xs text-slate-400">Enter ml/kg/day (not ml/day). AA and lipid are g/kg/day, not ml. Grossly high values flagged.</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <NumField label="Total fluids ml/kg/d" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="Enteral ml/kg/d" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="IV ml/kg/d" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={300} step={1} placeholder="enter" />
-            <NumField label="Dextrose %" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
-            <NumField label="Amino acid g/kg/d" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
-            <NumField label="Lipid g/kg/d" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={5} step={0.1} decimals={1} placeholder="enter" />
+            <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label="Enteral ml/kg/d (0-250)" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label="IV ml/kg/d (0-250)" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label="Dextrose % (0-25) for auto GIR" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
+            <NumField label="Amino acid g/kg/d (0-4.5, cap 6)" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
+            <NumField label="Lipid g/kg/d (0-4, cap 6)" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
           </div>
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <label className="block"><span className="lbl mb-1 block">Feed type</span><DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" /></label>
             <label className="block"><span className="lbl mb-1 block">Route</span><DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" /></label>
-            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "1.5 hourly", "2 hourly", "2.5 hourly", "3 hourly", "4 hourly", "continuous", "2–3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "1.5 hourly", "2 hourly", "2.5 hourly", "3 hourly", "4 hourly", "continuous", "2-3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
           </div>
         </fieldset>
 
         <fieldset className="mt-6 border-t border-white/10 pt-5">
-          <legend className="text-base font-black text-slate-100">Calculated and editable values</legend>
-          <p className="mt-1 text-xs text-slate-400">Automatic values recalculate when the source inputs change. Manual overrides stay fixed until you choose automatic again.</p>
+          <legend className="text-base font-black text-slate-100">Calculated and editable values - manual overrides stay until reset</legend>
+          <p className="mt-1 text-xs text-slate-400">Automatic recalculates from source inputs with clamps.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div><NumField label={`GIR mg/kg/min · ${manualDerived.gir ? "manual" : "automatic"}`} value={girValue} onChange={setDerived("gir")} min={0} max={20} step={0.1} decimals={2} placeholder="waiting for inputs" />{manualDerived.gir && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("gir")}>Use automatic GIR</button>}</div>
-            <div><NumField label={`Energy kcal/kg/d · ${manualDerived.kcal ? "manual" : "automatic"}`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="waiting for inputs" />{manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}</div>
-            <div><NumField label={`Feed volume / feed ml · ${manualDerived.feedVol ? "manual" : "automatic"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="waiting for inputs" />{manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}<span className="mt-1 block text-[10px] text-slate-500">{feedVolumeHint}</span></div>
+            <div><NumField label={`GIR mg/kg/min - ${manualDerived.gir ? "manual" : "automatic"} (0-20)`} value={girValue} onChange={setDerived("gir")} min={0} max={20} step={0.1} decimals={2} placeholder="waiting" />{manualDerived.gir && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("gir")}>Use automatic GIR</button>}</div>
+            <div><NumField label={`Energy kcal/kg/d - ${manualDerived.kcal ? "manual" : "automatic"} (0-300)`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="waiting" />{manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}</div>
+            <div><NumField label={`Feed volume / feed ml - ${manualDerived.feedVol ? "manual" : "automatic"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="waiting" />{manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}<span className="mt-1 block text-[10px] text-slate-500">{feedVolumeHint}</span></div>
           </div>
-          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas: GIR = dextrose % × IV ml/kg/day × 10 ÷ 1440 · Energy = enteral kcal + GIR × 1.44 × 3.4 + amino acid × 4 + lipid × 9 · Feed volume = enteral ml/kg/day × weight ÷ feeds/day.</p>
+          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
         </fieldset>
 
-        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ≈ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day · Energy {kcalValue ?? "—"} kcal/kg/day · Protein {nutrition.totalProtein} g/kg/day</div>
+        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ~ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
         <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
 
         <fieldset className="mt-6 border-t border-white/10 pt-5">
           <legend className="text-base font-black text-slate-100">Fortification</legend>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record it exactly as prepared.</b> Enter the product, amount used, and the feed volume it was mixed into. Changing feed volume does not automatically scale the fortifier.</p>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record exactly as prepared.</b> Product, amount, and mixed volume. Does not auto-scale.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
             <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.1} decimals={2} placeholder="enter" />
             <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml</option><option value="scoop">scoop</option><option value="measure">measure</option></select></label>
             <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="enter" />
-            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional preparation detail" /></label>
+            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional" /></label>
           </div>
-          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety note:</b> the recorded amount stays linked to the stated mixed feed volume. Do not infer or auto-adjust fortifier quantity from another feed volume.</div>
+          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> amount stays linked to stated mixed volume. Do not auto-adjust.</div>
         </fieldset>
       </Section>
     </div>
@@ -585,7 +637,7 @@ export function GrowthTab({
             patch({
               birthWeight: bw,
               currentWeight: cw,
-              logEvent: { kind: "growth", text: `Weights updated — birth ${bw} g, current ${cw} g`, author: user },
+              logEvent: { kind: "growth", text: `Weights updated - birth ${bw} g, current ${cw} g`, author: user },
             })
           }
         >
@@ -623,7 +675,7 @@ export function GrowthTab({
         </button>
       </div>
       <p className="mt-2 text-xs text-slate-400">
-        Change from birth: {pctOfBirth(bw, cw) ?? 0}% · {entries.length} serial entries. Use Daily progress for the full calculator.
+        Change from birth: {pctOfBirth(bw, cw) ?? 0}% - {entries.length} serial entries. Use Daily progress for the full calculator.
       </p>
       <div className="mt-2">
         <GrowthFlagsRow
@@ -683,7 +735,7 @@ export function ProblemsTab({ d, id, reload, user }: { d: Detail; id: string; re
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       <div className="space-y-3 lg:col-span-2">
-        <Section title="Include a diagnosis / problem" right={<input className="inp w-56 text-xs" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />}>
+        <Section title="Include a diagnosis / problem - vertical list easy to read" right={<input className="inp w-56 text-xs" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />}>
           {!results && (
             <div className="mb-3 flex flex-wrap gap-1.5">
               {SYSTEMS.map((s) => (
@@ -691,17 +743,21 @@ export function ProblemsTab({ d, id, reload, user }: { d: Detail; id: string; re
               ))}
             </div>
           )}
-          <div className="grid max-h-[360px] gap-1.5 overflow-auto sm:grid-cols-2">
+          {/* ONE BELOW OTHER vertical stacked list for easy reading */}
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-auto pr-1">
             {options.map((option) => {
               const existing = existingFor(option.label);
               const isIncluded = existing?.status === "active" || existing?.status === "watch";
               return (
-                <div key={option.label} className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/40 p-2">
-                  <span className="min-w-0 flex-1 text-xs text-slate-200">{option.label}</span>
+                <div key={option.label} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2.5 transition hover:border-cyan-400/30 hover:bg-slate-800/60">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-semibold leading-snug text-slate-100">{option.label}</div>
+                    <div className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">{option.system}</div>
+                  </div>
                   {isIncluded ? (
-                    <span className="text-[10px] font-bold text-emerald-300">✓ Included</span>
+                    <span className="shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300">✓ Included</span>
                   ) : (
-                    <button className="btn-primary !px-2 !py-1 text-[10px]" onClick={() => include(option.system, option.label)}>
+                    <button className="btn-primary shrink-0 !px-3 !py-1.5 text-[11px]" onClick={() => include(option.system, option.label)}>
                       {existing?.status === "resolved" ? "Re-open" : "+ Include"}
                     </button>
                   )}
@@ -726,23 +782,36 @@ export function ProblemsTab({ d, id, reload, user }: { d: Detail; id: string; re
           </div>
         </Section>
       </div>
-      <Section title="Baby’s problem record" sub={`${active.length} active`}>
-        <div className="space-y-2">
-          {d.problems.map((p) => (
-            <div key={p.id} className={`rounded-xl border p-2 ${p.status === "resolved" ? "border-emerald-400/30 bg-emerald-400/10" : p.status === "watch" ? "border-amber-400/30 bg-amber-400/10" : "border-rose-400/30 bg-rose-400/10"}`}>
-              <div className="text-xs font-bold text-white">{p.label}</div>
-              <div className="mt-2 flex flex-wrap gap-1">
+      <Section title="Baby’s problem record - one below other" sub={`${active.length} active, vertical stacked`}>
+        <div className="flex flex-col gap-2.5">
+          {d.problems.length === 0 && <p className="text-xs text-slate-400">No diagnosis added yet. Add from left list.</p>}
+          {d.problems.map((p, idx) => (
+            <div key={p.id} className={`rounded-xl border p-3 transition ${p.status === "resolved" ? "border-emerald-400/30 bg-emerald-400/10" : p.status === "watch" ? "border-amber-400/30 bg-amber-400/10" : "border-rose-400/30 bg-rose-400/10"}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex gap-2.5">
+                  <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black ${p.status === "resolved" ? "bg-emerald-400/20 text-emerald-300" : p.status === "watch" ? "bg-amber-400/20 text-amber-300" : "bg-rose-400/20 text-rose-300"}`}>{idx+1}</span>
+                  <div>
+                    <div className="text-[13px] font-bold leading-snug text-white">{p.label}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className={`rounded-full border px-2 py-0.5 font-bold uppercase tracking-wide ${p.status === "resolved" ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200" : p.status === "watch" ? "border-amber-400/30 bg-amber-400/15 text-amber-200" : "border-rose-400/30 bg-rose-400/15 text-rose-200"}`}>{p.status}</span>
+                      <span className="text-slate-400">{p.system ?? ""}</span>
+                      <span className="text-slate-500">- {fmtTime(p.onsetAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {p.status !== "resolved" && (
-                  <button className="btn-ghost !px-2 !py-1 text-[10px]" onClick={() => setStatus(p, "resolved")}>
+                  <button className="btn-ghost !px-2.5 !py-1 text-[11px]" onClick={() => setStatus(p, "resolved")}>
                     ✓ Mark resolved
                   </button>
                 )}
                 {p.status === "resolved" && (
-                  <button className="btn-ghost !px-2 !py-1 text-[10px]" onClick={() => setStatus(p, "active")}>
+                  <button className="btn-ghost !px-2.5 !py-1 text-[11px]" onClick={() => setStatus(p, "active")}>
                     Re-open
                   </button>
                 )}
-                <button className="btn-ghost !px-2 !py-1 text-[10px] text-rose-300" onClick={() => remove(p)}>
+                <button className="btn-ghost !px-2.5 !py-1 text-[11px] text-rose-300" onClick={() => remove(p)}>
                   Remove
                 </button>
               </div>
@@ -786,10 +855,10 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
         <div className="mt-2">
           <EditableListField
             options={[]}
-            value={drugs.map((x) => x.dose ? `${x.name} — ${x.dose}` : x.name)}
+            value={drugs.map((x) => x.dose ? `${x.name} - ${x.dose}` : x.name)}
             onChange={(names: string[]) =>
               setDrugs(names.filter((n) => n.trim()).map((n) => {
-                const existing = drugs.find((x) => x.name === n || `${x.name} — ${x.dose ?? ""}` === n);
+                const existing = drugs.find((x) => x.name === n || `${x.name} - ${x.dose ?? ""}` === n);
                 return existing ?? newDrug(n);
               }))
             }
@@ -800,13 +869,13 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
         <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-[10px] leading-relaxed text-cyan-100">
           <b>Therapy day is medicine-specific.</b> For an existing or transferred case, set the first-dose date for each antibiotic below. A medicine started three days ago will show D4; a medicine started today will show D1.
         </div>
-        <div className="lbl mt-4 mb-1">Running medications · current as of now</div>
+        <div className="lbl mt-4 mb-1">Running medications - current as of now</div>
         <div className="space-y-2">
           {drugs.map((x, i) => {
             const derived = Boolean(x.startedAt && x.dayOverride === undefined);
             return <div key={`${x.name}-${i}`} className="rounded-xl border border-white/10 bg-slate-900/40 p-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 text-slate-100">{x.name}{x.dose ? ` · ${x.dose}` : ""}</span>
+                <span className="min-w-0 flex-1 text-slate-100">{x.name}{x.dose ? ` - ${x.dose}` : ""}</span>
                 {x.ofDays !== undefined && <span className="shrink-0 text-amber-200">D{currentDrugDay(x)}/{x.ofDays}</span>}
                 <button className="shrink-0 text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
               </div>
@@ -815,7 +884,7 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
                 <label className="block"><span className="lbl mb-1 block !text-[9px]">Planned days</span><input className="inp !min-h-0 !py-1 text-[11px]" type="number" min={1} max={365} value={x.ofDays ?? ""} placeholder="e.g. 7" onChange={(event) => updateDrug(i, { ofDays: event.target.value ? Number(event.target.value) : undefined })} /></label>
                 <label className="block"><span className="lbl mb-1 block !text-[9px]">Manual day if date unknown</span><input className="inp !min-h-0 !py-1 text-[11px]" type="number" min={1} max={365} value={x.dayOverride ?? ""} placeholder={derived ? `Auto D${currentDrugDay(x)}` : "e.g. 4"} onChange={(event) => updateDrug(i, { dayOverride: event.target.value ? Number(event.target.value) : undefined })} /></label>
               </div>
-              <div className="mt-1 flex flex-wrap gap-2 text-[9px] text-slate-500"><span>{derived ? "Calculated from first dose" : x.dayOverride !== undefined ? "Manual therapy day" : "Enter first-dose date"}</span>{x.source && <span>· {x.source}</span>}</div>
+              <div className="mt-1 flex flex-wrap gap-2 text-[9px] text-slate-500"><span>{derived ? "Calculated from first dose" : x.dayOverride !== undefined ? "Manual therapy day" : "Enter first-dose date"}</span>{x.source && <span>- {x.source}</span>}</div>
             </div>;
           })}
         </div>
@@ -919,7 +988,7 @@ export function CourseTab({
   const lastVital = d.vitals[0] ?? {};
   const n = calcNutrition(c);
   const course = [
-    ...d.problems.map((p) => ({ at: p.onsetAt, text: `${p.label} — ${p.status}`, author: "Clinical record" })),
+    ...d.problems.map((p) => ({ at: p.onsetAt, text: `${p.label} - ${p.status}`, author: "Clinical record" })),
     ...d.events.map((e) => ({ at: e.at, text: e.text, author: e.author })),
   ].sort((a, z) => +new Date(a.at) - +new Date(z.at));
 
@@ -935,12 +1004,12 @@ export function CourseTab({
               await patch({
                 status: "discharged",
                 acuity: "ready",
-                logEvent: { kind: "discharge", text: `Discharged from NICU — summary by ${user}`, author: user },
+                logEvent: { kind: "discharge", text: `Discharged from NICU - summary by ${user}`, author: user },
               });
               setDischarging(false);
             }}
           >
-            🏥 Discharge baby — finalise summary
+            🏥 Discharge baby - finalise summary
           </button>
         ) : (
           <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
@@ -954,31 +1023,38 @@ export function CourseTab({
           <h2 className="text-lg font-black text-slate-900">Sri Ramakrishna Hospital</h2>
           <p className="text-[11px] font-semibold text-slate-600">Department of Pediatrics</p>
           <p className="text-[10px] font-semibold text-slate-600">Realtime Monitoring and Clinical Handover Suite</p>
-          <p className="text-[11px] font-semibold text-slate-600">Neonatal Discharge Summary · {losDays} days in unit</p>
+          <p className="text-[11px] font-semibold text-slate-600">Neonatal Discharge Summary - {losDays} days in unit</p>
         </div>
         <p className="mt-3 text-xs text-slate-700">
           {b.babyName} ({b.uhid}), {b.sex}, {b.gestWeeks}+{b.gestDays} wk, BW {b.birthWeight} g → {lastWeight} g.
-          Consultant {b.consultant || "—"}. Energy {n.totalKcal} kcal/kg/day · protein {n.totalProtein} g/kg/day.
-          Last vitals: BP {fmtBP(lastVital.sbp as number | null, lastVital.dbp as number | null, lastVital.map as number | null)} · temp {tempOut(lastVital.temp as number | null, "F") ?? "—"} °F.
+          Consultant {b.consultant || "-"}. Energy {n.totalKcal} kcal/kg/day - protein {n.totalProtein} g/kg/day.
+          Last vitals: BP {fmtBP(lastVital.sbp as number | null, lastVital.dbp as number | null, lastVital.map as number | null)} - temp {tempOut(lastVital.temp as number | null, "F") ?? "-"} °F.
           {c.triage && (
             <> Admission triage: {c.triage.label} ({c.triage.scale} {c.triage.score}, {c.triage.band}).</>
           )}
         </p>
-        <h3 className="lbl mt-4 mb-1">Diagnoses</h3>
-        <ul className="text-xs text-slate-700">
-          {d.problems.map((p) => (
-            <li key={p.id}>• {p.label} — {p.status}</li>
+        <h3 className="lbl mt-4 mb-1">Diagnoses - one below other, easy to read</h3>
+        <div className="flex flex-col gap-2">
+          {d.problems.map((p, idx) => (
+            <div key={p.id} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900 text-[10px] font-black text-white">{idx+1}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-bold text-slate-900">{p.label}</div>
+                <div className="text-[10px] text-slate-600">{p.system ?? ""} - {p.status} - onset {fmtTime(p.onsetAt)}</div>
+              </div>
+            </div>
           ))}
-        </ul>
+          {d.problems.length===0 && <div className="text-[11px] text-slate-500">No diagnosis recorded.</div>}
+        </div>
         <h3 className="lbl mt-4 mb-1">Hospital course (day/night)</h3>
         <ol className="max-h-64 space-y-1 overflow-auto text-xs text-slate-700">
           {course.map((e, i) => (
             <li key={i}>
-              Day {Math.max(0, Math.floor((+new Date(e.at) - +new Date(b.dob)) / 86400000))} · {fmtTime(e.at)} · {shiftTag(e.at)} · {e.text} — {e.author}
+              Day {Math.max(0, Math.floor((+new Date(e.at) - +new Date(b.dob)) / 86400000))} - {fmtTime(e.at)} - {shiftTag(e.at)} - {e.text} - {e.author}
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-center text-[9px] text-slate-400">Electronically generated · Dr. Suseender Durairaj</p>
+        <p className="mt-4 text-center text-[9px] text-slate-400">Electronically generated - Dr. Suseender Durairaj</p>
       </div>
     </div>
   );
@@ -986,8 +1062,8 @@ export function CourseTab({
 
 type ComposedAction = {
   text: string;
-  when: string; // YYYY-MM-DD — manual only
-  time: string; // HH:MM — manual only
+  when: string; // YYYY-MM-DD - manual only
+  time: string; // HH:MM - manual only
   priority: string;
   owner: string;
   note: string;
@@ -1027,7 +1103,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
         `Primary consultant: ${b.consultant || "not assigned"}.`,
         `${b.gestWeeks}+${b.gestDays} wk ${b.sex}, BW ${b.birthWeight} g, DOL, wt ${b.currentWeight} g.`,
         `Support: ${c.resp?.mode ?? "room air"} FiO₂ ${c.resp?.settings?.fio2 ?? 21}%.`,
-        `Last vitals: HR ${v.hr ?? "—"}, BP ${fmtBP(v.sbp as number | null, v.dbp as number | null, v.map as number | null)}, T ${tempOut(v.temp as number | null, "F") ?? "—"} °F.`,
+        `Last vitals: HR ${v.hr ?? "-"}, BP ${fmtBP(v.sbp as number | null, v.dbp as number | null, v.map as number | null)}, T ${tempOut(v.temp as number | null, "F") ?? "-"} °F.`,
         `Provisional: ${
           interpretVitals(b, v as unknown as VitalsInput)
             .map((fl) => fl.label)
@@ -1100,7 +1176,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
         </Section>
         <Section
           title="Handover action list"
-          sub="Tap a preset to add it as editable text — alter freely before signing."
+          sub="Tap a preset to add it as editable text - alter freely before signing."
         >
           <div className="lbl mb-1">Quick add (tapped text can be edited below)</div>
           <div className="flex flex-wrap gap-1.5">
@@ -1180,7 +1256,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
       <Section title="Handover history" sub="Patient summary + action list">
         {d.handovers.map((h) => (
           <div key={h.id} className="mb-3 rounded-xl border border-white/10 bg-slate-900/40 p-3 text-xs">
-            <div className="text-[10px] text-slate-400">{h.shift} · {h.fromStaff} → {h.toStaff || "—"} · {fmtTime(h.createdAt)}</div>
+            <div className="text-[10px] text-slate-400">{h.shift} - {h.fromStaff} → {h.toStaff || "-"} - {fmtTime(h.createdAt)}</div>
             <div className="lbl mt-2">Patient summary</div>
             <p className="text-slate-200">{h.summary}</p>
             <div className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/5 p-2">
@@ -1220,7 +1296,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
                           {done && task?.doneAt && (
                             <span className="shrink-0 text-[10px] text-emerald-300/90">
                               ✓ {fmtTime(task.doneAt)}
-                              {task.doneBy ? ` · ${task.doneBy}` : ""}
+                              {task.doneBy ? ` - ${task.doneBy}` : ""}
                             </span>
                           )}
                         </div>
@@ -1268,9 +1344,9 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
 }
 
 const QUICK_EVENTS = [
-  "Desaturation episode – recovered with stimulation",
-  "Apnoea – bag & mask given",
-  "Bradycardia < 100 – self-resolved",
+  "Desaturation episode - recovered with stimulation",
+  "Apnoea - bag & mask given",
+  "Bradycardia < 100 - self-resolved",
   "Seizure episode witnessed",
   "Consultant informed",
   "Parents updated",
@@ -1307,7 +1383,7 @@ export function TimelineTab({ d, id, reload, user }: { d: Detail; id: string; re
               <li key={e.id} className="text-xs">
                 <span className="absolute -left-[5px] mt-1 h-2 w-2 rounded-full bg-cyan-400" />
                 <div className="text-[10px] text-slate-500">
-                  Day {dol} · {fmtTime(e.at)} · {shiftTag(e.at)} shift · {e.author}
+                  Day {dol} - {fmtTime(e.at)} - {shiftTag(e.at)} shift - {e.author}
                 </div>
                 <div className="text-slate-200">{e.text}</div>
               </li>
