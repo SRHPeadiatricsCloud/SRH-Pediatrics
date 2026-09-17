@@ -7029,3 +7029,291 @@ html:not(.light) .bg-\[\#fde68a\],
 html:not(.light) .bg-\[\#fef3c7\],
 html:not(.light) .bg-\[\#d1fae5\],
 html:not(.light) .bg-\[\#fef9c3\] { color: #1e293b !important; }
+
+/* ============================================================
+   MIDNIGHT AURORA — dark mode only.
+
+   Deep ink/navy base with blue, violet and green ambient fields,
+   glass cards carrying a cyan-violet accent rail, cyan-to-indigo
+   controls, and darker inputs with cyan focus rings.
+
+   Every rule below is scoped to html:not(.light). The light
+   palette, all markup, routes, navigation, icons, URLs, scrolling,
+   mobile layout and active-link behaviour are untouched.
+   ============================================================ */
+
+/* --- 1. Aurora tokens ------------------------------------------- */
+html:not(.light) {
+  color-scheme: dark;
+
+  /* Deep ink base */
+  --bg: #05070f;
+  --bg-glow-1: rgba(56, 189, 248, 0.20);   /* blue   */
+  --bg-glow-2: rgba(139, 92, 246, 0.18);   /* violet */
+  --bg-glow-3: rgba(52, 211, 153, 0.12);   /* green  */
+
+  /* Glass surface: bloom + ink gradient */
+  --card:
+    radial-gradient(460px 200px at 8% -14%, rgba(34, 211, 238, 0.11) 0%, transparent 68%),
+    radial-gradient(420px 220px at 96% -8%, rgba(139, 92, 246, 0.11) 0%, transparent 70%),
+    linear-gradient(158deg, rgba(19, 30, 58, 0.88) 0%, rgba(12, 18, 36, 0.92) 52%, rgba(8, 12, 25, 0.95) 100%);
+  --card-solid: #0b1122;
+  --card-hi: rgba(125, 168, 255, 0.06);
+
+  /* Borders that stay legible on ink */
+  --border: rgba(125, 168, 255, 0.17);
+  --border-strong: rgba(139, 190, 255, 0.32);
+
+  /* Text ladder for the deeper base */
+  --text: #eef4ff;
+  --text-2: #d8e4f7;
+  --text-3: #a7bcd9;
+  --text-4: #8298bb;
+
+  /* Cyan -> indigo accent pair */
+  --accent: #22d3ee;
+  --accent-2: #818cf8;
+  --accent-soft: rgba(34, 211, 238, 0.12);
+
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0 1px rgba(125, 168, 255, 0.05),
+    0 18px 40px -26px rgba(0, 0, 0, 0.95);
+  --shadow-pop:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 26px 54px -26px rgba(0, 0, 0, 1),
+    0 0 34px -18px rgba(34, 211, 238, 0.30);
+}
+
+/* --- 2. Layered ambient background ------------------------------ */
+html:not(.light) body {
+  background:
+    radial-gradient(1200px 640px at 4% -14%, var(--bg-glow-1) 0%, transparent 58%),
+    radial-gradient(1020px 560px at 96% -8%, var(--bg-glow-2) 0%, transparent 56%),
+    radial-gradient(900px 620px at 50% 116%, var(--bg-glow-3) 0%, transparent 60%),
+    radial-gradient(760px 460px at 74% 58%, rgba(99, 102, 241, 0.08) 0%, transparent 64%),
+    linear-gradient(180deg, #05070f 0%, #070c19 44%, #05070f 100%);
+  background-attachment: fixed;
+}
+
+/* --- 3. Gradient glass cards + cyan-violet accent rail ---------- */
+html:not(.light) .card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+html:not(.light) .card::before {
+  height: 2px;
+  opacity: 0.9;
+  background: linear-gradient(90deg,
+    rgba(34, 211, 238, 0) 4%,
+    rgba(34, 211, 238, 0.95) 30%,
+    rgba(129, 140, 248, 0.9) 62%,
+    rgba(139, 92, 246, 0) 96%);
+}
+html:not(.light) a.card:hover {
+  border-color: rgba(139, 190, 255, 0.38);
+  box-shadow: var(--shadow-pop);
+}
+
+/* --- 4. Header chrome ------------------------------------------- */
+html:not(.light) header {
+  background: linear-gradient(180deg, rgba(9, 14, 28, 0.92) 0%, rgba(6, 10, 21, 0.86) 100%);
+  border-bottom: 1px solid rgba(125, 168, 255, 0.18);
+  box-shadow: inset 0 -1px 0 rgba(34, 211, 238, 0.10), 0 14px 32px -26px rgba(0, 0, 0, 1);
+}
+
+/* --- 5. Buttons & chips: cyan -> indigo ------------------------- */
+html:not(.light) .btn-primary,
+html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald) {
+  background: linear-gradient(135deg, #22d3ee 0%, #38bdf8 44%, #818cf8 100%);
+  border-color: transparent;
+  color: #04101c;
+  font-weight: 800;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 10px 26px -14px rgba(34, 211, 238, 0.8);
+}
+html:not(.light) .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1) saturate(1.06);
+  transform: translateY(-1px);
+}
+html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald):hover {
+  filter: brightness(1.08);
+}
+
+/* Tone chips keep their clinical meaning instead of flattening to cyan */
+html:not(.light) .chip-on.tone-rose {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 22px -14px rgba(225, 29, 72, 0.9);
+}
+html:not(.light) .chip-on.tone-amber {
+  background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%);
+  color: #231000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 22px -14px rgba(217, 119, 6, 0.9);
+}
+html:not(.light) .chip-on.tone-emerald {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  color: #02180f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 22px -14px rgba(5, 150, 105, 0.9);
+}
+
+/* Idle chips */
+html:not(.light) .chip,
+html:not(.light) .chip-off {
+  background: rgba(125, 168, 255, 0.06);
+  border-color: rgba(125, 168, 255, 0.18);
+  color: #c6d6ee;
+}
+html:not(.light) .chip:hover,
+html:not(.light) .chip-off:hover {
+  background: rgba(34, 211, 238, 0.10);
+  border-color: rgba(34, 211, 238, 0.45);
+  color: #eef4ff;
+  box-shadow: 0 0 18px -10px rgba(34, 211, 238, 0.9);
+}
+
+/* Ghost / secondary */
+html:not(.light) .btn-ghost,
+html:not(.light) .btn-secondary {
+  background: rgba(125, 168, 255, 0.05);
+  border-color: rgba(125, 168, 255, 0.18);
+  color: #d8e4f7;
+}
+html:not(.light) .btn-ghost:hover:not(:disabled),
+html:not(.light) .btn-secondary:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.10);
+  border-color: rgba(34, 211, 238, 0.45);
+  color: #eef4ff;
+}
+
+/* --- 6. Inputs: darker well + cyan focus ring ------------------- */
+html:not(.light) .inp {
+  background: linear-gradient(180deg, rgba(4, 7, 16, 0.88) 0%, rgba(6, 10, 22, 0.78) 100%);
+  border-color: rgba(125, 168, 255, 0.18);
+  color: #eef4ff;
+}
+html:not(.light) .inp::placeholder { color: #7f95b6; }
+html:not(.light) .inp:hover { border-color: rgba(125, 168, 255, 0.30); }
+html:not(.light) .inp:focus {
+  border-color: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.22), 0 0 24px -10px rgba(34, 211, 238, 0.75);
+}
+html:not(.light) .lbl { color: #93a8c8; }
+
+/* --- 7. Diagnosis cards ----------------------------------------- */
+html:not(.light) .diagnosis-vertical-item {
+  position: relative;
+  background: linear-gradient(135deg, rgba(21, 33, 63, 0.78) 0%, rgba(11, 17, 34, 0.72) 100%);
+  border: 1px solid rgba(125, 168, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 12px 26px -22px rgba(0, 0, 0, 0.95);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+html:not(.light) .diagnosis-vertical-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #22d3ee 0%, #818cf8 62%, rgba(139, 92, 246, 0.3) 100%);
+  box-shadow: 0 0 16px -3px rgba(34, 211, 238, 0.7);
+}
+html:not(.light) .diagnosis-vertical-item:hover {
+  border-color: rgba(139, 190, 255, 0.34);
+  background: linear-gradient(135deg, rgba(25, 39, 74, 0.84) 0%, rgba(13, 20, 40, 0.78) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 30px -22px rgba(0, 0, 0, 1);
+}
+
+/* Clinical tone tiles keep their meaning, tuned for ink */
+html:not(.light) .bg-rose-400\/10 { background: rgba(251, 113, 133, 0.11) !important; }
+html:not(.light) .border-rose-400\/30 { border-color: rgba(251, 113, 133, 0.34) !important; }
+html:not(.light) .bg-amber-400\/10 { background: rgba(251, 191, 36, 0.11) !important; }
+html:not(.light) .border-amber-400\/30 { border-color: rgba(251, 191, 36, 0.32) !important; }
+html:not(.light) .bg-emerald-400\/10 { background: rgba(52, 211, 153, 0.10) !important; }
+html:not(.light) .border-emerald-400\/30 { border-color: rgba(52, 211, 153, 0.30) !important; }
+html:not(.light) .bg-cyan-400\/10 { background: rgba(34, 211, 238, 0.10) !important; }
+html:not(.light) .border-cyan-400\/20 { border-color: rgba(34, 211, 238, 0.28) !important; }
+
+/* --- 8. Nested panels & hairlines on ink ------------------------ */
+html:not(.light) .bg-slate-900\/40,
+html:not(.light) .bg-slate-900\/50,
+html:not(.light) .bg-slate-900\/60 { background: rgba(13, 21, 42, 0.72) !important; }
+html:not(.light) .bg-slate-900\/90,
+html:not(.light) .bg-slate-900\/95 { background: rgba(10, 16, 33, 0.88) !important; }
+html:not(.light) .bg-slate-950\/60,
+html:not(.light) .bg-slate-950\/70,
+html:not(.light) .bg-slate-950\/80,
+html:not(.light) .bg-slate-950\/95 { background: rgba(7, 11, 24, 0.9) !important; }
+html:not(.light) .bg-white\/5,
+html:not(.light) .bg-white\/\[0\.03\],
+html:not(.light) .bg-white\/\[0\.04\],
+html:not(.light) .bg-white\/\[0\.07\] { background: rgba(125, 168, 255, 0.055) !important; }
+html:not(.light) .bg-white\/10 { background: rgba(125, 168, 255, 0.09) !important; }
+html:not(.light) .border-white\/5 { border-color: rgba(125, 168, 255, 0.10) !important; }
+html:not(.light) .border-white\/10 { border-color: rgba(125, 168, 255, 0.16) !important; }
+html:not(.light) .border-white\/20 { border-color: rgba(125, 168, 255, 0.24) !important; }
+
+/* --- 9. Text ladder --------------------------------------------- */
+html:not(.light) .text-slate-100,
+html:not(.light) .text-white { color: #eef4ff !important; }
+html:not(.light) .text-slate-200 { color: #d8e4f7 !important; }
+html:not(.light) .text-slate-300 { color: #b9cbe6 !important; }
+html:not(.light) .text-slate-400 { color: #a7bcd9 !important; }
+html:not(.light) .text-slate-500 { color: #8298bb !important; }
+
+/* --- 10. Theme switch ------------------------------------------- */
+html:not(.light) .theme-switch {
+  background: linear-gradient(180deg, rgba(10, 16, 33, 0.9) 0%, rgba(6, 10, 22, 0.84) 100%) !important;
+  border-color: rgba(125, 168, 255, 0.26) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -18px rgba(0, 0, 0, 1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html:not(.light) .theme-switch button { color: #a7bcd9 !important; }
+html:not(.light) .theme-switch button:hover {
+  color: #eef4ff !important;
+  background: rgba(125, 168, 255, 0.12) !important;
+}
+html:not(.light) .theme-switch button.theme-on.bg-indigo-500 {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 0 1px rgba(34, 211, 238, 0.5),
+    0 0 20px -6px rgba(99, 102, 241, 0.95);
+}
+html:not(.light) .theme-switch button.theme-on.bg-indigo-500:hover {
+  filter: brightness(1.12);
+}
+
+/* --- 11. Scrollbars --------------------------------------------- */
+html:not(.light) ::-webkit-scrollbar-track {
+  background: rgba(6, 10, 22, 0.55);
+}
+html:not(.light) ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.55) 0%, rgba(129, 140, 248, 0.55) 100%);
+  border-radius: 999px;
+}
+html:not(.light) ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.85) 0%, rgba(129, 140, 248, 0.85) 100%);
+}
+
+/* --- 12. Tables & interpretation panels ------------------------- */
+html:not(.light) table thead th {
+  background: rgba(7, 11, 24, 0.72);
+  color: #93a8c8;
+}
+html:not(.light) table tbody tr { border-color: rgba(125, 168, 255, 0.10); }
+html:not(.light) table tbody tr:hover { background: rgba(125, 168, 255, 0.05); }
+
+html:not(.light) .rounded-xl.border.border-cyan-400\/25,
+html:not(.light) .rounded-xl.border.border-cyan-400\/35 {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.09) 0%, rgba(129, 140, 248, 0.07) 100%);
+  border-color: rgba(34, 211, 238, 0.3) !important;
+}
