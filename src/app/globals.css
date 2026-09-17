@@ -7029,426 +7029,335 @@ html:not(.light) .bg-\[\#fde68a\],
 html:not(.light) .bg-\[\#fef3c7\],
 html:not(.light) .bg-\[\#d1fae5\],
 html:not(.light) .bg-\[\#fef9c3\] { color: #1e293b !important; }
-
 /* ============================================================
-   NOCTURNE PLUM — dark mode only.
+   SLATE & TEAL — dark mode only.  (neutral charcoal · restrained teal)
 
-   A complete recolor away from the previous navy/cyan/indigo
-   scheme: plum-charcoal ink, fuchsia and pink accents, warm
-   plum-tinted neutrals, and a fuchsia focus language.
-
-   Clinical status hues (rose = active, amber = watch,
-   emerald = resolved) are deliberately preserved so triage
-   meaning never shifts with the theme.
+   Brand accent is kept clear of red / orange / green so the
+   clinical triage hues stay unambiguous: rose = active,
+   amber = watch, emerald = resolved. Those three are never
+   restyled by this theme.
 
    Every rule below is scoped to html:not(.light). Light mode,
    markup, routes, navigation, icons, URLs, scrolling, mobile
    layout and active-link behaviour are untouched.
    ============================================================ */
 
-/* --- 1. Plum tokens --------------------------------------------- */
+/* --- 1. Tokens --------------------------------------------------- */
 html:not(.light) {
   color-scheme: dark;
-
-  --bg: #0a0810;
-  --bg-glow-1: rgba(232, 121, 249, 0.17);   /* fuchsia */
-  --bg-glow-2: rgba(244, 114, 182, 0.13);   /* pink    */
-  --bg-glow-3: rgba(45, 212, 191, 0.08);    /* teal, depth only */
-
+  --bg: #0d1011;
+  --bg-glow-1: rgba(45,212,191,0.14);
+  --bg-glow-2: rgba(56,130,180,0.12);
+  --bg-glow-3: rgba(148,163,184,0.05);
   --card:
-    radial-gradient(460px 200px at 8% -14%, rgba(232, 121, 249, 0.12) 0%, transparent 68%),
-    radial-gradient(420px 220px at 96% -8%, rgba(244, 114, 182, 0.10) 0%, transparent 70%),
-    linear-gradient(158deg, rgba(30, 23, 42, 0.90) 0%, rgba(20, 15, 30, 0.93) 52%, rgba(13, 10, 20, 0.96) 100%);
-  --card-solid: #15101f;
-  --card-hi: rgba(232, 180, 249, 0.06);
-
-  --border: rgba(232, 180, 249, 0.17);
-  --border-strong: rgba(240, 190, 252, 0.32);
-
-  --text: #f8f3fb;
-  --text-2: #e7dcf0;
-  --text-3: #bfaecf;
-  --text-4: #9c8bb0;
-
-  --accent: #e879f9;
-  --accent-2: #f472b6;
-  --accent-soft: rgba(232, 121, 249, 0.13);
-
-  --shadow-card:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(232, 180, 249, 0.05),
-    0 18px 40px -26px rgba(0, 0, 0, 0.95);
-  --shadow-pop:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 26px 54px -26px rgba(0, 0, 0, 1),
-    0 0 34px -18px rgba(232, 121, 249, 0.30);
+    radial-gradient(460px 200px at 8% -14%, rgba(45,212,191,0.09) 0%, transparent 68%),
+    radial-gradient(420px 220px at 96% -8%, rgba(120,170,190,0.07) 0%, transparent 70%),
+    linear-gradient(158deg, rgba(24,32,34,0.92) 0%, rgba(15,20,22,0.95) 52%, rgba(0, 0, 0, 0.30) 100%);
+  --card-solid: #101416;
+  --card-hi: rgba(255, 255, 255, 0.05);
+  --border: rgba(150,190,195,0.18);
+  --border-strong: rgba(170,210,215,0.34);
+  --text: #eef2f2;
+  --text-2: #dbe3e4;
+  --text-3: #aebcbe;
+  --text-4: #8b9a9c;
+  --accent: #2dd4bf;
+  --accent-2: #7dd3c8;
+  --accent-soft: rgba(45, 212, 191, 0.13);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(45, 212, 191, 0.05), 0 18px 40px -26px rgba(0, 0, 0, 0.95);
+  --shadow-pop: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 26px 54px -26px rgba(0, 0, 0, 1), 0 0 34px -18px rgba(45, 212, 191, 0.3);
 }
 
-/* --- 2. Layered plum background --------------------------------- */
+/* --- 2. Layered background --------------------------------------- */
 html:not(.light) body {
   background:
     radial-gradient(1200px 640px at 4% -14%, var(--bg-glow-1) 0%, transparent 58%),
     radial-gradient(1020px 560px at 96% -8%, var(--bg-glow-2) 0%, transparent 56%),
     radial-gradient(900px 620px at 50% 116%, var(--bg-glow-3) 0%, transparent 60%),
-    radial-gradient(760px 460px at 74% 58%, rgba(192, 132, 252, 0.07) 0%, transparent 64%),
-    linear-gradient(180deg, #0a0810 0%, #100b18 44%, #0a0810 100%);
+    linear-gradient(180deg, #0d1011 0%, #101416 44%, #0d1011 100%);
   background-attachment: fixed;
 }
 
-/* --- 3. Cards + fuchsia-pink accent rail ------------------------ */
+/* --- 3. Cards + accent rail -------------------------------------- */
 html:not(.light) .card {
   background: var(--card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
 }
 html:not(.light) .card::before {
   height: 2px;
-  opacity: 0.9;
-  background: linear-gradient(90deg,
-    rgba(232, 121, 249, 0) 4%,
-    rgba(232, 121, 249, 0.95) 30%,
-    rgba(244, 114, 182, 0.9) 62%,
-    rgba(244, 114, 182, 0) 96%);
+  opacity: 0.85;
+  background: linear-gradient(90deg, transparent 4%, rgba(45,212,191,0.95) 32%, rgba(125,211,200,0.85) 66%, transparent 96%);
 }
-html:not(.light) a.card:hover {
-  border-color: rgba(240, 190, 252, 0.38);
-  box-shadow: var(--shadow-pop);
-}
+html:not(.light) a.card:hover { border-color: rgba(170,210,215,0.34); box-shadow: var(--shadow-pop); }
 
-/* --- 4. Header chrome ------------------------------------------- */
+/* --- 4. Header ---------------------------------------------------- */
 html:not(.light) header {
-  background: linear-gradient(180deg, rgba(17, 12, 26, 0.93) 0%, rgba(11, 8, 17, 0.88) 100%);
-  border-bottom: 1px solid rgba(232, 180, 249, 0.18);
-  box-shadow: inset 0 -1px 0 rgba(232, 121, 249, 0.10), 0 14px 32px -26px rgba(0, 0, 0, 1);
+  background: linear-gradient(180deg, rgba(16, 20, 22, 0.93) 0%, rgba(13, 16, 17, 0.88) 100%);
+  border-bottom: 1px solid rgba(150,190,195,0.18);
+  box-shadow: inset 0 -1px 0 rgba(45, 212, 191, 0.1), 0 14px 32px -26px rgba(0, 0, 0, 1);
 }
 
-/* --- 5. Buttons & chips: fuchsia -> pink ------------------------ */
+/* --- 5. Buttons & chips ------------------------------------------ */
 html:not(.light) .btn-primary,
 html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald) {
-  background: linear-gradient(135deg, #e879f9 0%, #f0abfc 44%, #f472b6 100%);
+  background: linear-gradient(135deg, #2dd4bf 0%, #7dd3c8 100%);
   border-color: transparent;
-  color: #1a0722;
+  color: #04140f;
   font-weight: 800;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 10px 26px -14px rgba(232, 121, 249, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 10px 26px -14px rgba(45, 212, 191, 0.8);
 }
-html:not(.light) .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08) saturate(1.06);
-  transform: translateY(-1px);
-}
-html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald):hover {
-  filter: brightness(1.07);
-}
+html:not(.light) .btn-primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald):hover { filter: brightness(1.06); }
 
-/* Clinical tone chips keep their meaning (they were being flattened before) */
-html:not(.light) .chip-on.tone-rose {
-  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
-  color: #ffffff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 22px -14px rgba(225, 29, 72, 0.9);
-}
-html:not(.light) .chip-on.tone-amber {
-  background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%);
-  color: #231000;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 22px -14px rgba(217, 119, 6, 0.9);
-}
-html:not(.light) .chip-on.tone-emerald {
-  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
-  color: #02180f;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 22px -14px rgba(5, 150, 105, 0.9);
-}
+/* Clinical tone chips keep their hue (they were being flattened before) */
+html:not(.light) .chip-on.tone-rose { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); color: #ffffff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 8px 22px -14px rgba(225,29,72,0.9); }
+html:not(.light) .chip-on.tone-amber { background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%); color: #231000; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 22px -14px rgba(217,119,6,0.9); }
+html:not(.light) .chip-on.tone-emerald { background: linear-gradient(135deg, #34d399 0%, #059669 100%); color: #02180f; box-shadow: inset 0 1px 0 rgba(255,255,255,0.26), 0 8px 22px -14px rgba(5,150,105,0.9); }
 
-/* Idle chips */
 html:not(.light) .chip,
-html:not(.light) .chip-off {
-  background: rgba(232, 180, 249, 0.06);
-  border-color: rgba(232, 180, 249, 0.18);
-  color: #ded2ea;
-}
+html:not(.light) .chip-off { background: rgba(255, 255, 255, 0.045); border-color: rgba(150,190,195,0.18); color: #dbe3e4; }
 html:not(.light) .chip:hover,
-html:not(.light) .chip-off:hover {
-  background: rgba(232, 121, 249, 0.11);
-  border-color: rgba(232, 121, 249, 0.48);
-  color: #f8f3fb;
-  box-shadow: 0 0 18px -10px rgba(232, 121, 249, 0.9);
-}
-
-/* Ghost / secondary */
+html:not(.light) .chip-off:hover { background: rgba(45, 212, 191, 0.1); border-color: rgba(45, 212, 191, 0.45); color: #eef2f2; box-shadow: 0 0 18px -10px rgba(45, 212, 191, 0.9); }
 html:not(.light) .btn-ghost,
-html:not(.light) .btn-secondary {
-  background: rgba(232, 180, 249, 0.05);
-  border-color: rgba(232, 180, 249, 0.18);
-  color: #e7dcf0;
-}
+html:not(.light) .btn-secondary { background: rgba(255, 255, 255, 0.035); border-color: rgba(150,190,195,0.18); color: #dbe3e4; }
 html:not(.light) .btn-ghost:hover:not(:disabled),
-html:not(.light) .btn-secondary:hover:not(:disabled) {
-  background: rgba(232, 121, 249, 0.11);
-  border-color: rgba(232, 121, 249, 0.48);
-  color: #f8f3fb;
-}
+html:not(.light) .btn-secondary:hover:not(:disabled) { background: rgba(45, 212, 191, 0.1); border-color: rgba(45, 212, 191, 0.45); color: #eef2f2; }
 
-/* --- 6. Inputs: darker plum well + fuchsia focus ring ----------- */
-html:not(.light) .inp {
-  background: linear-gradient(180deg, rgba(9, 6, 14, 0.90) 0%, rgba(14, 10, 21, 0.80) 100%);
-  border-color: rgba(232, 180, 249, 0.18);
-  color: #f8f3fb;
-}
-html:not(.light) .inp::placeholder { color: #9c8bb0; }
-html:not(.light) .inp:hover { border-color: rgba(232, 180, 249, 0.32); }
-html:not(.light) .inp:focus {
-  border-color: rgba(232, 121, 249, 0.85);
-  box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.22), 0 0 24px -10px rgba(232, 121, 249, 0.75);
-}
-html:not(.light) .lbl { color: #b3a1c4; }
+/* --- 6. Inputs ---------------------------------------------------- */
+html:not(.light) .inp { background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.34) 100%); border-color: rgba(150,190,195,0.18); color: #eef2f2; }
+html:not(.light) .inp::placeholder { color: #8b9a9c; }
+html:not(.light) .inp:hover { border-color: rgba(170,210,215,0.34); }
+html:not(.light) .inp:focus { border-color: rgba(45, 212, 191, 0.85); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.22), 0 0 24px -10px rgba(45, 212, 191, 0.7); }
+html:not(.light) .lbl { color: #aebcbe; }
 
-/* --- 7. Clinical status tiles: meaning preserved, tuned to plum - */
+/* --- 7. Triage tiles: hue preserved, tuned to the new base ------- */
 html:not(.light) .bg-rose-400\/10 { background: rgba(251, 113, 133, 0.12) !important; }
 html:not(.light) .border-rose-400\/30 { border-color: rgba(251, 113, 133, 0.36) !important; }
 html:not(.light) .bg-amber-400\/10 { background: rgba(251, 191, 36, 0.12) !important; }
 html:not(.light) .border-amber-400\/30 { border-color: rgba(251, 191, 36, 0.34) !important; }
 html:not(.light) .bg-emerald-400\/10 { background: rgba(52, 211, 153, 0.11) !important; }
 html:not(.light) .border-emerald-400\/30 { border-color: rgba(52, 211, 153, 0.32) !important; }
-html:not(.light) .bg-cyan-400\/10 { background: rgba(232, 121, 249, 0.09) !important; }
-html:not(.light) .border-cyan-400\/20 { border-color: rgba(232, 121, 249, 0.26) !important; }
-html:not(.light) .bg-violet-400\/10 { background: rgba(192, 132, 252, 0.11) !important; }
-html:not(.light) .border-violet-400\/30 { border-color: rgba(192, 132, 252, 0.30) !important; }
+html:not(.light) .bg-cyan-400\/10 { background: rgba(45, 212, 191, 0.09) !important; }
+html:not(.light) .border-cyan-400\/20 { border-color: rgba(45, 212, 191, 0.26) !important; }
+html:not(.light) .bg-violet-400\/10 { background: rgba(125, 211, 200, 0.1) !important; }
+html:not(.light) .border-violet-400\/30 { border-color: rgba(125, 211, 200, 0.28) !important; }
 
-/* --- 8. Nested panels & hairlines on plum ----------------------- */
+/* --- 8. Panels & hairlines --------------------------------------- */
 html:not(.light) .bg-slate-900\/40,
 html:not(.light) .bg-slate-900\/50,
-html:not(.light) .bg-slate-900\/60 { background: rgba(24, 18, 34, 0.74) !important; }
+html:not(.light) .bg-slate-900\/60 { background: rgba(16, 20, 22, 0.74) !important; }
 html:not(.light) .bg-slate-900\/90,
-html:not(.light) .bg-slate-900\/95 { background: rgba(19, 14, 28, 0.90) !important; }
+html:not(.light) .bg-slate-900\/95 { background: rgba(16, 20, 22, 0.9) !important; }
 html:not(.light) .bg-slate-950\/60,
 html:not(.light) .bg-slate-950\/70,
 html:not(.light) .bg-slate-950\/80,
-html:not(.light) .bg-slate-950\/95 { background: rgba(13, 10, 20, 0.92) !important; }
+html:not(.light) .bg-slate-950\/95 { background: rgba(13, 16, 17, 0.92) !important; }
 html:not(.light) .bg-white\/5,
 html:not(.light) .bg-white\/\[0\.03\],
 html:not(.light) .bg-white\/\[0\.04\],
-html:not(.light) .bg-white\/\[0\.07\] { background: rgba(232, 180, 249, 0.055) !important; }
-html:not(.light) .bg-white\/10 { background: rgba(232, 180, 249, 0.09) !important; }
-html:not(.light) .border-white\/5 { border-color: rgba(232, 180, 249, 0.10) !important; }
-html:not(.light) .border-white\/10 { border-color: rgba(232, 180, 249, 0.16) !important; }
-html:not(.light) .border-white\/20 { border-color: rgba(232, 180, 249, 0.24) !important; }
+html:not(.light) .bg-white\/\[0\.07\] { background: rgba(255, 255, 255, 0.045) !important; }
+html:not(.light) .bg-white\/10 { background: rgba(255, 255, 255, 0.075) !important; }
+html:not(.light) .border-white\/5 { border-color: rgba(255, 255, 255, 0.08) !important; }
+html:not(.light) .border-white\/10 { border-color: rgba(150,190,195,0.18) !important; }
+html:not(.light) .border-white\/20 { border-color: rgba(170,210,215,0.34) !important; }
 
-/* --- 9. Text ladder: warm plum-tinted neutrals ------------------ */
+/* --- 9. Text ladder ---------------------------------------------- */
 html:not(.light) .text-slate-100,
-html:not(.light) .text-white { color: #f8f3fb !important; }
-html:not(.light) .text-slate-200 { color: #e7dcf0 !important; }
-html:not(.light) .text-slate-300 { color: #d3c5e0 !important; }
-html:not(.light) .text-slate-400 { color: #bfaecf !important; }
-html:not(.light) .text-slate-500 { color: #9c8bb0 !important; }
+html:not(.light) .text-white { color: #eef2f2 !important; }
+html:not(.light) .text-slate-200 { color: #dbe3e4 !important; }
+html:not(.light) .text-slate-300 { color: #dbe3e4 !important; }
+html:not(.light) .text-slate-400 { color: #aebcbe !important; }
+html:not(.light) .text-slate-500 { color: #8b9a9c !important; }
 html:not(.light) .text-cyan-200,
-html:not(.light) .text-cyan-300 { color: #f0abfc !important; }
-html:not(.light) .text-sky-300 { color: #e9b8f5 !important; }
+html:not(.light) .text-cyan-300,
+html:not(.light) .text-sky-300 { color: #7dd3c8 !important; }
 html:not(.light) .text-indigo-300,
 html:not(.light) .text-violet-200,
-html:not(.light) .text-violet-300 { color: #d8b4fe !important; }
+html:not(.light) .text-violet-300 { color: #7dd3c8 !important; }
 
-/* --- 10. Theme switch ------------------------------------------- */
+/* --- 10. Theme switch -------------------------------------------- */
 html:not(.light) .theme-switch {
-  background: linear-gradient(180deg, rgba(21, 15, 31, 0.92) 0%, rgba(13, 10, 20, 0.86) 100%) !important;
-  border-color: rgba(232, 180, 249, 0.26) !important;
+  background: linear-gradient(180deg, rgba(16, 20, 22, 0.92) 0%, rgba(13, 16, 17, 0.86) 100%) !important;
+  border-color: rgba(170,210,215,0.34) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -18px rgba(0, 0, 0, 1);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-html:not(.light) .theme-switch button { color: #bfaecf !important; }
-html:not(.light) .theme-switch button:hover {
-  color: #f8f3fb !important;
-  background: rgba(232, 180, 249, 0.12) !important;
-}
+html:not(.light) .theme-switch button { color: #aebcbe !important; }
+html:not(.light) .theme-switch button:hover { color: #eef2f2 !important; background: rgba(45, 212, 191, 0.1) !important; }
 html:not(.light) .theme-switch button.theme-on.bg-indigo-500 {
-  background: linear-gradient(135deg, #e879f9 0%, #f472b6 100%) !important;
-  color: #1a0722 !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.30),
-    0 0 0 1px rgba(240, 171, 252, 0.55),
-    0 0 20px -6px rgba(232, 121, 249, 0.95);
+  background: linear-gradient(135deg, #2dd4bf 0%, #7dd3c8 100%) !important;
+  color: #04140f !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 0 0 1px rgba(45, 212, 191, 0.5), 0 0 20px -6px rgba(45, 212, 191, 0.9);
 }
-html:not(.light) .theme-switch button.theme-on.bg-indigo-500:hover {
-  filter: brightness(1.1);
-}
+html:not(.light) .theme-switch button.theme-on.bg-indigo-500:hover { filter: brightness(1.08); }
 
-/* --- 11. Scrollbars --------------------------------------------- */
-html:not(.light) ::-webkit-scrollbar-track {
-  background: rgba(13, 10, 20, 0.6);
-}
-html:not(.light) ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(232, 121, 249, 0.55) 0%, rgba(244, 114, 182, 0.55) 100%);
-  border-radius: 999px;
-}
-html:not(.light) ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(232, 121, 249, 0.85) 0%, rgba(244, 114, 182, 0.85) 100%);
-}
+/* --- 11. Scrollbars ---------------------------------------------- */
+html:not(.light) ::-webkit-scrollbar-track { background: rgba(13, 16, 17, 0.6); }
+html:not(.light) ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(45, 212, 191, 0.5) 0%, rgba(125, 211, 200, 0.5) 100%); border-radius: 999px; }
+html:not(.light) ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(45, 212, 191, 0.8) 0%, rgba(125, 211, 200, 0.8) 100%); }
 
-/* --- 12. Tables & interpretation panels ------------------------- */
-html:not(.light) table thead th {
-  background: rgba(13, 10, 20, 0.74);
-  color: #b3a1c4;
-}
-html:not(.light) table tbody tr { border-color: rgba(232, 180, 249, 0.10); }
-html:not(.light) table tbody tr:hover { background: rgba(232, 180, 249, 0.05); }
-
+/* --- 12. Tables & interpretation panels -------------------------- */
+html:not(.light) table thead th { background: rgba(13, 16, 17, 0.74); color: #aebcbe; }
+html:not(.light) table tbody tr { border-color: rgba(150,190,195,0.18); }
+html:not(.light) table tbody tr:hover { background: rgba(45, 212, 191, 0.05); }
 html:not(.light) .rounded-xl.border.border-cyan-400\/25,
 html:not(.light) .rounded-xl.border.border-cyan-400\/35 {
-  background: linear-gradient(135deg, rgba(232, 121, 249, 0.09) 0%, rgba(244, 114, 182, 0.06) 100%);
-  border-color: rgba(232, 121, 249, 0.30) !important;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.08) 0%, rgba(125, 211, 200, 0.05) 100%);
+  border-color: rgba(45, 212, 191, 0.28) !important;
 }
 
-/* --- 13. Component accent remap: cool hues -> plum/fuchsia -------- */
+/* --- 13. Component accent remap: legacy cool hues -> this palette --- */
 /* Dark-scoped overrides so charts, meters, SVG strokes and calculator
-   chrome follow Nocturne Plum instead of the legacy cyan/indigo.
-   Selectors already restyled by the Nocturne Plum block are skipped
-   so this layer never fights it. Light mode untouched. */
+   chrome follow the theme. Selectors already restyled above are skipped
+   so the two layers never fight. Light mode untouched. */
 html:not(.light) .anthro-hologram::before {
-  background:  linear-gradient(115deg, rgba(255,255,255,0.08), transparent 18%, transparent 72%, rgba(232, 121, 249,0.06));
+  background:  linear-gradient(115deg, rgba(255,255,255,0.08), transparent 18%, transparent 72%, rgba(45, 212, 191,0.06));
 }
 html:not(.light) .anthro-hologram:hover .anthro-chart {
-  filter:  drop-shadow(0 0 12px rgba(232, 121, 249,0.11));
+  filter:  drop-shadow(0 0 12px rgba(45, 212, 191,0.11));
 }
 html:not(.light) .anthro-callout-leader {
-  stroke:  rgba(232, 121, 249,0.75);
+  stroke:  rgba(45, 212, 191,0.75);
 }
 html:not(.light) .anthro-callout-bg {
-  stroke:  rgba(232, 121, 249,0.75);
+  stroke:  rgba(45, 212, 191,0.75);
 }
 html:not(.light) .calculator-visual {
-  border:  1px solid rgba(232, 121, 249, 0.2);
+  border:  1px solid rgba(45, 212, 191, 0.2);
 }
 html:not(.light) .calc-visual-kicker {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-visual-badge {
-  border:  1px solid rgba(240, 171, 252, .25);
-  background:  rgba(232, 121, 249, .08);
+  border:  1px solid rgba(125, 211, 200, .25);
+  background:  rgba(45, 212, 191, .08);
 }
 html:not(.light) .visual-airway,
 html:not(.light) .visual-rib {
-  stroke:  #f0abfc;
+  stroke:  #7dd3c8;
 }
 html:not(.light) .visual-lung {
-  fill:  rgba(232, 121, 249, .13);
-  stroke:  #e879f9;
+  fill:  rgba(45, 212, 191, .13);
+  stroke:  #2dd4bf;
 }
 html:not(.light) .visual-score-dots i.on {
-  background:  #e879f9;
-  border-color:  #f0abfc;
-  box-shadow:  0 0 7px rgba(232, 121, 249, .4);
+  background:  #2dd4bf;
+  border-color:  #7dd3c8;
+  box-shadow:  0 0 7px rgba(45, 212, 191, .4);
 }
 html:not(.light) .visual-callout {
-  background:  rgba(219, 39, 119, .08);
-  border:  1px solid rgba(219, 39, 119, .24);
+  background:  rgba(125, 211, 200, .08);
+  border:  1px solid rgba(125, 211, 200, .24);
 }
 html:not(.light) .ballard-domain b {
-  color:  #f5d0fe;
+  color:  #7dd3c8;
 }
 html:not(.light) .domain-track i,
 html:not(.light) .tbsa-track i {
-  background:  linear-gradient(90deg, #e879f9, #f472b6);
+  background:  linear-gradient(90deg, #2dd4bf, #7dd3c8);
 }
 html:not(.light) .retina-zone {
-  fill:  rgba(232, 121, 249, .04);
-  stroke:  rgba(240, 171, 252, .5);
+  fill:  rgba(45, 212, 191, .04);
+  stroke:  rgba(125, 211, 200, .5);
 }
 html:not(.light) .retina-zone.zone-two {
-  fill:  rgba(244, 114, 182, .07);
+  fill:  rgba(45, 212, 191, .07);
 }
 html:not(.light) .visual-pill.active {
-  background:  rgba(232, 121, 249, .12);
-  border-color:  rgba(240, 171, 252, .4);
+  background:  rgba(45, 212, 191, .12);
+  border-color:  rgba(125, 211, 200, .4);
 }
 html:not(.light) .burn-region.limb {
-  fill:  rgba(244, 114, 182, .18);
+  fill:  rgba(125, 211, 200, .18);
 }
 html:not(.light) .burn-region.leg {
-  fill:  rgba(244, 114, 182, .2);
+  fill:  rgba(45, 212, 191, .2);
 }
 html:not(.light) .bed-dial-item-selected {
-  text-shadow:  0 0 12px rgba(232, 121, 249, .28);
+  text-shadow:  0 0 12px rgba(45, 212, 191, .28);
 }
 html:not(.light) .burn-region-chip:hover {
-  border-color:  rgba(232, 121, 249, .55);
+  border-color:  rgba(45, 212, 191, .55);
 }
 html:not(.light) .burn-region-chip.active {
-  background:  rgba(232, 121, 249, .14);
-  border-color:  rgba(240, 171, 252, .7);
+  background:  rgba(45, 212, 191, .14);
+  border-color:  rgba(125, 211, 200, .7);
 }
 html:not(.light) .scale-summary-meter {
-  background:  conic-gradient(#e879f9 var(--meter), rgba(148, 163, 184, .14) 0);
+  background:  conic-gradient(#2dd4bf var(--meter), rgba(148, 163, 184, .14) 0);
 }
 html:not(.light) .scale-summary-row i b {
-  background:  linear-gradient(90deg, #e879f9, #f472b6);
+  background:  linear-gradient(90deg, #2dd4bf, #7dd3c8);
 }
 html:not(.light) .calculator-hero {
   background: 
-    radial-gradient(600px 220px at 0% 0%, rgba(232, 121, 249, .15), transparent 65%),
+    radial-gradient(600px 220px at 0% 0%, rgba(45, 212, 191, .15), transparent 65%),
     radial-gradient(520px 260px at 100% 100%, rgba(168, 85, 247, .13), transparent 70%),
     var(--card);
 }
 html:not(.light) .calc-hero-overline {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-hero-icon {
-  background:  linear-gradient(135deg, #e879f9, #db2777);
-  box-shadow:  0 8px 25px -12px #e879f9;
+  background:  linear-gradient(135deg, #2dd4bf, #2dd4bf);
+  box-shadow:  0 8px 25px -12px #2dd4bf;
 }
 html:not(.light) .calc-hero-meta svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-search-wrap > svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-search-wrap input {
-  border-color:  rgba(240, 171, 252,.28);
+  border-color:  rgba(125, 211, 200,.28);
 }
 html:not(.light) .calc-howto-strip b {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-spotlight-cyan {
-  border-top:  2px solid #e879f9;
+  border-top:  2px solid #2dd4bf;
 }
 html:not(.light) .calc-spotlight-violet {
-  border-top:  2px solid #f472b6;
+  border-top:  2px solid #7dd3c8;
 }
 html:not(.light) .calc-spotlight-indigo {
-  border-top:  2px solid #f472b6;
+  border-top:  2px solid #7dd3c8;
 }
 html:not(.light) .calc-filter-title svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-focus-banner {
-  background:  linear-gradient(110deg, rgba(232, 121, 249,.1), rgba(219, 39, 119,.1));
-  border:  1px solid rgba(240, 171, 252,.28);
+  background:  linear-gradient(110deg, rgba(45, 212, 191,.1), rgba(125, 211, 200,.1));
+  border:  1px solid rgba(125, 211, 200,.28);
 }
 html:not(.light) .calc-focus-kicker {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-card-open {
-  border-color:  rgba(240, 171, 252,.34);
-  box-shadow:  0 18px 46px -32px rgba(232, 121, 249,.8), var(--shadow-card);
+  border-color:  rgba(125, 211, 200,.34);
+  box-shadow:  0 18px 46px -32px rgba(45, 212, 191,.8), var(--shadow-card);
 }
 html:not(.light) .calc-card-chevron {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-card-mark {
-  border:  1px solid rgba(240, 171, 252,.24);
+  border:  1px solid rgba(125, 211, 200,.24);
 }
 html:not(.light) .calc-mark-neonatal {
-  background:  rgba(232, 121, 249,.1);
-  color:  #f0abfc;
+  background:  rgba(45, 212, 191,.1);
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-mark-respiratory {
-  background:  rgba(244, 114, 182,.1);
-  color:  #f9a8d4;
+  background:  rgba(125, 211, 200,.1);
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-mark-growth {
-  background:  rgba(244, 114, 182,.1);
-  color:  #f5d0fe;
+  background:  rgba(45, 212, 191,.1);
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-mark-pain,
 html:not(.light) .calc-mark-warning,
@@ -7461,32 +7370,32 @@ html:not(.light) .calc-mark-gi,
 html:not(.light) .calc-mark-development,
 html:not(.light) .calc-mark-skin,
 html:not(.light) .calc-mark-endocrine {
-  background:  rgba(244, 114, 182,.1);
+  background:  rgba(45, 212, 191,.1);
 }
 html:not(.light) .calc-card-eyebrow i {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-progress-pill > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-card-context a {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-step-kicker {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-progress-track i {
-  background:  linear-gradient(90deg, #e879f9, #f472b6);
+  background:  linear-gradient(90deg, #2dd4bf, #7dd3c8);
 }
 html:not(.light) .calc-input-card:hover {
-  border-color:  rgba(240, 171, 252,.36);
+  border-color:  rgba(125, 211, 200,.36);
 }
 html:not(.light) .calc-input-filled {
-  background:  linear-gradient(135deg, rgba(232, 121, 249,.07), rgba(219, 39, 119,.04));
-  border-color:  rgba(240, 171, 252,.28);
+  background:  linear-gradient(135deg, rgba(45, 212, 191,.07), rgba(125, 211, 200,.04));
+  border-color:  rgba(125, 211, 200,.28);
 }
 html:not(.light) .calc-input-label b {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-card-toggle:focus-visible,
 html:not(.light) .calc-card-open-label:focus-visible,
@@ -7496,381 +7405,381 @@ html:not(.light) .calc-recent-list button:focus-visible,
 html:not(.light) .calc-focus-banner button:focus-visible,
 html:not(.light) .calc-category-chips .chip:focus-visible,
 html:not(.light) .calc-search-wrap button:focus-visible {
-  outline:  3px solid rgba(232, 121, 249, .55);
+  outline:  3px solid rgba(45, 212, 191, .55);
 }
 html:not(.light) .calc-recent-heading svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-recent-list button > svg:first-child {
-  color:  #f472b6;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-empty-state > svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calculator-command {
   background: 
-    linear-gradient(135deg, rgba(232, 121, 249, .08), transparent 38%),
+    linear-gradient(135deg, rgba(45, 212, 191, .08), transparent 38%),
     linear-gradient(315deg, rgba(124, 58, 237, .09), transparent 44%),
     var(--card-solid);
 }
 html:not(.light) .calc-command-mark {
-  background:  linear-gradient(145deg, #e879f9, #db2777);
-  box-shadow:  0 12px 26px -15px #e879f9;
+  background:  linear-gradient(145deg, #2dd4bf, #2dd4bf);
+  box-shadow:  0 12px 26px -15px #2dd4bf;
 }
 html:not(.light) .calc-command-overline,
 html:not(.light) .calc-stage-kicker {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-rail-count {
-  border:  1px solid rgba(232, 121, 249, .3);
-  color:  #f0abfc;
+  border:  1px solid rgba(45, 212, 191, .3);
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-library-item.active {
-  background:  linear-gradient(90deg, rgba(232, 121, 249, .13), rgba(219, 39, 119, .08));
-  border-color:  rgba(240, 171, 252, .38);
+  background:  linear-gradient(90deg, rgba(45, 212, 191, .13), rgba(125, 211, 200, .08));
+  border-color:  rgba(125, 211, 200, .38);
 }
 html:not(.light) .calc-library-current {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-rail-empty svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-placeholder-icon {
-  border:  1px solid rgba(232, 121, 249, .35);
-  color:  #f0abfc;
+  border:  1px solid rgba(45, 212, 191, .35);
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-stage-recent > svg {
-  color:  #f472b6;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-library-item:focus-visible,
 html:not(.light) .calc-rail-tabs button:focus-visible,
 html:not(.light) .calc-rail-filter select:focus-visible,
 html:not(.light) .calc-stage-actions button:focus-visible {
-  outline:  3px solid rgba(232, 121, 249, .55);
+  outline:  3px solid rgba(45, 212, 191, .55);
 }
 html:not(.light) .calc-mark-neonatal,
 html:not(.light) .calc-area-neonatal,
 html:not(.light) .calc-group-neonatal,
 html:not(.light) .calc-stage-neonatal {
-  --area-accent:  #e879f9;
-  --area-soft:  rgba(232, 121, 249, .14);
+  --area-accent:  #2dd4bf;
+  --area-soft:  rgba(45, 212, 191, .14);
 }
 html:not(.light) .calc-mark-respiratory,
 html:not(.light) .calc-area-respiratory,
 html:not(.light) .calc-group-respiratory,
 html:not(.light) .calc-stage-respiratory {
-  --area-accent:  #f472b6;
-  --area-soft:  rgba(244, 114, 182, .14);
+  --area-accent:  #7dd3c8;
+  --area-soft:  rgba(125, 211, 200, .14);
 }
 html:not(.light) .calc-mark-dosing,
 html:not(.light) .calc-area-dosing,
 html:not(.light) .calc-group-dosing,
 html:not(.light) .calc-stage-dosing {
-  --area-accent:  #f472b6;
-  --area-soft:  rgba(244, 114, 182, .14);
+  --area-accent:  #7dd3c8;
+  --area-soft:  rgba(45, 212, 191, .14);
 }
 html:not(.light) .calc-mark-growth,
 html:not(.light) .calc-area-growth,
 html:not(.light) .calc-group-growth,
 html:not(.light) .calc-stage-growth {
-  --area-accent:  #f472b6;
-  --area-soft:  rgba(244, 114, 182, .14);
+  --area-accent:  #7dd3c8;
+  --area-soft:  rgba(45, 212, 191, .14);
 }
 html:not(.light) .calc-mark-gi,
 html:not(.light) .calc-area-gi,
 html:not(.light) .calc-group-gi,
 html:not(.light) .calc-stage-gi {
-  --area-accent:  #e879f9;
-  --area-soft:  rgba(232, 121, 249, .14);
+  --area-accent:  #2dd4bf;
+  --area-soft:  rgba(45, 212, 191, .14);
 }
 html:not(.light) .calc-library-item.active {
-  background:  linear-gradient(90deg, var(--area-soft), rgba(219, 39, 119, .08));
+  background:  linear-gradient(90deg, var(--area-soft), rgba(125, 211, 200, .08));
 }
 html:not(.light) .calc-stage-heading {
-  border-left:  4px solid var(--area-accent, #e879f9);
+  border-left:  4px solid var(--area-accent, #2dd4bf);
 }
 html:not(.light) .calc-stage-heading .calc-stage-kicker {
-  color:  var(--area-accent, #f0abfc);
+  color:  var(--area-accent, #7dd3c8);
 }
 html:not(.light) .bp-mode-switch button:hover {
-  border-color:  rgba(240, 171, 252, .35);
+  border-color:  rgba(125, 211, 200, .35);
 }
 html:not(.light) .bp-mode-switch button.active {
-  border-color:  rgba(232, 121, 249, .55);
-  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(219, 39, 119, .22));
+  border-color:  rgba(45, 212, 191, .55);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(125, 211, 200, .22));
 }
 html:not(.light) .bp-input-wrap b {
-  color:  #f9a8d4;
+  color:  #7dd3c8;
 }
 html:not(.light) .bp-level-low {
-  border-color:  rgba(244, 114, 182, .45);
+  border-color:  rgba(125, 211, 200, .45);
 }
 html:not(.light) .bp-empty-result svg {
-  color:  #f9a8d4;
+  color:  #7dd3c8;
 }
 html:not(.light) .bp-evidence .bp-section-heading svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .bp-source-grid a:hover {
-  border-color:  rgba(240, 171, 252, .45);
+  border-color:  rgba(125, 211, 200, .45);
 }
 html:not(.light) .bp-source-grid a svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-group-tabs button:hover {
-  border-color:  rgba(240, 171, 252, .4);
+  border-color:  rgba(125, 211, 200, .4);
 }
 html:not(.light) .dose-group-tabs button.active {
-  border-color:  rgba(232, 121, 249, .58);
-  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(219, 39, 119, .2));
+  border-color:  rgba(45, 212, 191, .58);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(125, 211, 200, .2));
 }
 html:not(.light) .dose-card-heading > svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-field b,
 html:not(.light) .dose-strength-field b {
-  color:  #f9a8d4;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-clear:hover {
-  border-color:  rgba(240, 171, 252, .4);
+  border-color:  rgba(125, 211, 200, .4);
 }
 html:not(.light) .dose-result-banner > div {
-  border:  1px solid rgba(232, 121, 249, .28);
+  border:  1px solid rgba(45, 212, 191, .28);
 }
 html:not(.light) .dose-awaiting svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-catalog-item:hover,
 html:not(.light) .dose-catalog-item.active {
-  border-color:  rgba(240, 171, 252, .47);
+  border-color:  rgba(125, 211, 200, .47);
 }
 html:not(.light) .dose-scope-switch button:hover {
-  border-color:  rgba(240, 171, 252, .38);
+  border-color:  rgba(125, 211, 200, .38);
 }
 html:not(.light) .dose-scope-switch button.active {
-  border-color:  rgba(232, 121, 249, .56);
+  border-color:  rgba(45, 212, 191, .56);
 }
 html:not(.light) .dose-howto li > b {
-  background:  linear-gradient(135deg, #f0abfc, #f472b6);
+  background:  linear-gradient(135deg, #7dd3c8, #7dd3c8);
 }
 html:not(.light) .dose-search-field svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-medicine-list button:hover {
-  border-color:  rgba(240, 171, 252, .4);
+  border-color:  rgba(125, 211, 200, .4);
 }
 html:not(.light) .dose-medicine-list button.active {
-  border-color:  rgba(240, 171, 252, .62);
-  background:  linear-gradient(135deg, rgba(8, 145, 178, .22), rgba(219, 39, 119, .16));
+  border-color:  rgba(125, 211, 200, .62);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .22), rgba(125, 211, 200, .16));
 }
 html:not(.light) .dose-catalog summary::after {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-hero-innovative {
   background: 
-    radial-gradient(620px 220px at 0% 0%, rgba(232, 121, 249, .14), transparent 68%),
+    radial-gradient(620px 220px at 0% 0%, rgba(45, 212, 191, .14), transparent 68%),
     radial-gradient(470px 240px at 100% 100%, rgba(217, 70, 239, .11), transparent 70%),
     rgba(10, 21, 40, .72);
 }
 html:not(.light) .dose-progress-step:hover:not(:disabled) {
-  border-color:  rgba(240, 171, 252, .35);
+  border-color:  rgba(125, 211, 200, .35);
 }
 html:not(.light) .dose-progress-step.active {
-  border-color:  rgba(240, 171, 252, .54);
-  background:  linear-gradient(135deg, rgba(8, 145, 178, .25), rgba(219, 39, 119, .18));
+  border-color:  rgba(125, 211, 200, .54);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .25), rgba(125, 211, 200, .18));
 }
 html:not(.light) .dose-progress-step.active > b,
 html:not(.light) .dose-progress-step.complete > b {
-  border-color:  rgba(240, 171, 252, .65);
-  background:  #f0abfc;
+  border-color:  rgba(125, 211, 200, .65);
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-step-heading > div:first-child > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-step-number {
-  border:  1px solid rgba(240, 171, 252, .35);
-  background:  rgba(232, 121, 249, .1);
+  border:  1px solid rgba(125, 211, 200, .35);
+  background:  rgba(45, 212, 191, .1);
 }
 html:not(.light) .dose-next-button {
-  border:  1px solid rgba(240, 171, 252, .5);
-  background:  linear-gradient(135deg, #f0abfc, #f472b6);
-  box-shadow:  0 9px 20px -14px #f0abfc;
+  border:  1px solid rgba(125, 211, 200, .5);
+  background:  linear-gradient(135deg, #7dd3c8, #7dd3c8);
+  box-shadow:  0 9px 20px -14px #7dd3c8;
 }
 html:not(.light) .dose-back-button:hover {
-  border-color:  rgba(240, 171, 252, .4);
+  border-color:  rgba(125, 211, 200, .4);
 }
 html:not(.light) .dose-selected-medicine {
-  border:  1px solid rgba(240, 171, 252, .25);
-  background:  linear-gradient(135deg, rgba(8, 145, 178, .13), rgba(219, 39, 119, .09));
+  border:  1px solid rgba(125, 211, 200, .25);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .13), rgba(125, 211, 200, .09));
 }
 html:not(.light) .dose-selected-mark {
-  background:  #f0abfc;
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-selected-medicine button:hover {
-  border-color:  rgba(240, 171, 252, .45);
+  border-color:  rgba(125, 211, 200, .45);
 }
 html:not(.light) .dose-row-preview {
-  border-left:  3px solid #f0abfc;
-  background:  rgba(232, 121, 249, .08);
+  border-left:  3px solid #7dd3c8;
+  background:  rgba(45, 212, 191, .08);
 }
 html:not(.light) .dose-live-card {
-  border:  1px solid rgba(240, 171, 252, .25);
+  border:  1px solid rgba(125, 211, 200, .25);
   background: 
-    radial-gradient(390px 180px at 0% 0%, rgba(232, 121, 249, .14), transparent 70%),
+    radial-gradient(390px 180px at 0% 0%, rgba(45, 212, 191, .14), transparent 70%),
     linear-gradient(145deg, rgba(18, 35, 61, .92), rgba(10, 21, 40, .86));
-  box-shadow:  0 16px 32px -26px rgba(232, 121, 249, .7);
+  box-shadow:  0 16px 32px -26px rgba(45, 212, 191, .7);
 }
 html:not(.light) .dose-live-empty svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-reference-drawer summary::after {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-current-bar {
-  border:  1px solid rgba(240, 171, 252, .3);
-  background:  linear-gradient(90deg, rgba(8, 145, 178, .14), rgba(219, 39, 119, .1));
+  border:  1px solid rgba(125, 211, 200, .3);
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .14), rgba(125, 211, 200, .1));
 }
 html:not(.light) .dose-current-icon {
-  background:  #f0abfc;
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-change-button {
-  border:  1px solid rgba(240, 171, 252, .4);
-  background:  rgba(232, 121, 249, .1);
+  border:  1px solid rgba(125, 211, 200, .4);
+  background:  rgba(45, 212, 191, .1);
 }
 html:not(.light) .dose-change-button:hover {
-  border-color:  #f0abfc;
-  background:  rgba(232, 121, 249, .18);
+  border-color:  #7dd3c8;
+  background:  rgba(45, 212, 191, .18);
 }
 html:not(.light) .dose-calculator-title > div > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-section-label > b {
-  background:  #f0abfc;
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-calculator-actions > span svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-medicine-modal {
-  border:  1px solid rgba(240, 171, 252, .38);
+  border:  1px solid rgba(125, 211, 200, .38);
 }
 html:not(.light) .dose-medicine-modal-heading > div > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-modal-close:hover {
-  border-color:  #f0abfc;
+  border-color:  #7dd3c8;
 }
 html:not(.light) .dose-modal-tip svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-redesign-hero {
   background: 
-    radial-gradient(600px 230px at 0% 0%, rgba(232, 121, 249, .14), transparent 68%),
+    radial-gradient(600px 230px at 0% 0%, rgba(45, 212, 191, .14), transparent 68%),
     radial-gradient(500px 230px at 100% 100%, rgba(217, 70, 239, .1), transparent 70%),
     rgba(10, 21, 40, .72);
 }
 html:not(.light) .dose-redesign-panel-heading span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-redesign-panel-heading > b {
-  border:  1px solid rgba(240, 171, 252, .32);
-  background:  rgba(232, 121, 249, .1);
+  border:  1px solid rgba(125, 211, 200, .32);
+  background:  rgba(45, 212, 191, .1);
 }
 html:not(.light) .dose-library-list button:hover {
-  border-color:  rgba(240, 171, 252, .38);
-  border-left-color:  #f0abfc;
+  border-color:  rgba(125, 211, 200, .38);
+  border-left-color:  #7dd3c8;
 }
 html:not(.light) .dose-library-list button.active {
-  border-color:  rgba(240, 171, 252, .56);
-  border-left-color:  #f0abfc;
-  background:  linear-gradient(90deg, rgba(8, 145, 178, .22), rgba(219, 39, 119, .13));
+  border-color:  rgba(125, 211, 200, .56);
+  border-left-color:  #7dd3c8;
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .22), rgba(125, 211, 200, .13));
 }
 html:not(.light) .dose-library-list button em {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-library-tip svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-calculator-top > div > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-change-link {
-  border:  1px solid rgba(240, 171, 252, .35);
-  background:  rgba(232, 121, 249, .08);
+  border:  1px solid rgba(125, 211, 200, .35);
+  background:  rgba(45, 212, 191, .08);
 }
 html:not(.light) .dose-change-link:hover {
-  border-color:  #f0abfc;
-  background:  rgba(232, 121, 249, .15);
+  border-color:  #7dd3c8;
+  background:  rgba(45, 212, 191, .15);
 }
 html:not(.light) .dose-redesign-card-title > span {
-  background:  #f0abfc;
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-redesign-result {
-  border:  1px solid rgba(240, 171, 252, .3);
-  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(219, 39, 119, .1));
+  border:  1px solid rgba(125, 211, 200, .3);
+  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(125, 211, 200, .1));
 }
 html:not(.light) .dose-result-heading span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-result-placeholder svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-mobile-tabs button svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-mobile-tabs button.active {
-  border-color:  rgba(240, 171, 252, .48);
-  background:  linear-gradient(135deg, rgba(8,145,178,.24), rgba(219, 39, 119,.16));
+  border-color:  rgba(125, 211, 200, .48);
+  background:  linear-gradient(135deg, rgba(8,145,178,.24), rgba(125, 211, 200,.16));
 }
 html:not(.light) .dose-slider-grid input[type="range"] {
-  accent-color:  #e879f9;
+  accent-color:  #2dd4bf;
 }
 html:not(.light) .dose-slider-grid button:hover {
-  background:  rgba(232, 121, 249, .14);
+  background:  rgba(45, 212, 191, .14);
 }
 html:not(.light) .dose-simple-hero {
   background: 
-    radial-gradient(640px 220px at 0% 0%, rgba(232, 121, 249, .13), transparent 68%),
+    radial-gradient(640px 220px at 0% 0%, rgba(45, 212, 191, .13), transparent 68%),
     radial-gradient(460px 220px at 100% 100%, rgba(217, 70, 239, .09), transparent 70%),
     rgba(10, 21, 40, .72);
 }
 html:not(.light) .dose-simple-heading > div > span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-simple-count {
-  border:  1px solid rgba(240, 171, 252, .35);
-  background:  rgba(232, 121, 249, .1);
+  border:  1px solid rgba(125, 211, 200, .35);
+  background:  rgba(45, 212, 191, .1);
 }
 html:not(.light) .dose-simple-selected {
-  border:  1px solid rgba(240, 171, 252, .24);
-  background:  linear-gradient(90deg, rgba(8, 145, 178, .12), rgba(219, 39, 119, .08));
+  border:  1px solid rgba(125, 211, 200, .24);
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .12), rgba(125, 211, 200, .08));
 }
 html:not(.light) .dose-simple-selected > span {
-  background:  #f0abfc;
+  background:  #7dd3c8;
 }
 html:not(.light) .dose-simple-selected > svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-simple-row-preview {
-  border-left:  3px solid #f0abfc;
-  background:  rgba(232, 121, 249, .07);
+  border-left:  3px solid #7dd3c8;
+  background:  rgba(45, 212, 191, .07);
 }
 html:not(.light) .dose-simple-slider-grid input[type="range"] {
-  accent-color:  #e879f9;
+  accent-color:  #2dd4bf;
 }
 html:not(.light) .dose-simple-result {
-  border-color:  rgba(240, 171, 252, .3);
-  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(219, 39, 119, .1));
+  border-color:  rgba(125, 211, 200, .3);
+  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(125, 211, 200, .1));
 }
 html:not(.light) .dose-simple-result-heading span {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .dose-simple-placeholder svg {
-  color:  #f0abfc;
+  color:  #7dd3c8;
 }
 html:not(.light) .calc-stage-fluid {
-  --area-accent:  #e879f9;
+  --area-accent:  #2dd4bf;
 }
 html:not(.light) .chip-on {
-  background:  linear-gradient(135deg, #f472b6 0%, #f472b6 100%);
-  box-shadow:  0 6px 16px -12px rgba(244, 114, 182, 0.7);
+  background:  linear-gradient(135deg, #7dd3c8 0%, #7dd3c8 100%);
+  box-shadow:  0 6px 16px -12px rgba(125, 211, 200, 0.7);
 }
