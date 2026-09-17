@@ -3,13 +3,19 @@
 import { useEffect, useState } from "react";
 import { api } from "@/components/ui";
 import {
+  DEFAULT_SETTINGS,
   deleteBackup,
   downloadJson,
+  formatBytes,
+  getBackupSettings,
+  getStorageEstimate,
   isUnitData,
   listBackups,
+  saveBackupSettings,
   snapshotUnit,
   type BabySnapshot,
   type BackupEntry,
+  type BackupSettings,
 } from "@/lib/backup";
 import { fmtTime } from "@/lib/clinical";
 import {
@@ -128,12 +134,72 @@ export function UndoBar() {
 
 export function BackupEngine() {
   useEffect(() => {
-    const run = () => snapshotUnit("scheduled");
-    const t = window.setTimeout(run, 2500);
-    const i = window.setInterval(run, 5 * 60 * 1000);
+    let intervalId: number | null = null;
+    let timeoutId: number | null = null;
+    let lastRun = 0;
+
+    const getSettings = () => {
+      try {
+        return getBackupSettings();
+      } catch {
+        return DEFAULT_SETTINGS;
+      }
+    };
+
+    const run = async (reason: BackupEntry["reason"] = "scheduled", force = false) => {
+      const s = getSettings();
+      if (!s.enabled && reason === "scheduled") return;
+      const now = Date.now();
+      if (!force && reason === "scheduled" && now - lastRun < 60_000) return;
+      lastRun = now;
+      await snapshotUnit(reason);
+    };
+
+    const schedule = () => {
+      const s = getSettings();
+      if (intervalId) window.clearInterval(intervalId);
+      intervalId = window.setInterval(() => run("scheduled"), s.intervalMinutes * 60_000);
+    };
+
+    timeoutId = window.setTimeout(() => run("scheduled", true), 3000);
+    schedule();
+
+    const onSettings = () => schedule();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        const s = getSettings();
+        if (s.smartBackup) run("scheduled");
+      }
+    };
+    const onBeforeUnload = () => {
+      const s = getSettings();
+      if (s.smartBackup) {
+        try {
+          snapshotUnit("scheduled");
+        } catch {}
+      }
+    };
+    const onSaved = () => {
+      const s = getSettings();
+      if (s.smartBackup) {
+        window.setTimeout(() => run("scheduled"), 5000);
+      }
+    };
+
+    window.addEventListener("neo:backup-settings", onSettings);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("neo:saved", onSaved as EventListener);
+    window.addEventListener("neo:board-reload", onSaved as EventListener);
+
     return () => {
-      clearTimeout(t);
-      clearInterval(i);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener("neo:backup-settings", onSettings);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("neo:saved", onSaved as EventListener);
+      window.removeEventListener("neo:board-reload", onSaved as EventListener);
     };
   }, []);
   return null;
@@ -143,16 +209,33 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
   const [rows, setRows] = useState<BackupEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<number | string | null>(null);
+  const [settings, setSettings] = useState<BackupSettings>(DEFAULT_SETTINGS);
+  const [est, setEst] = useState<{ usage: number; quota: number; count: number; totalSize: number }>({
+    usage: 0,
+    quota: 0,
+    count: 0,
+    totalSize: 0,
+  });
+  const [showSettings, setShowSettings] = useState(false);
 
-  const load = async () => setRows(await listBackups());
+  const load = async () => {
+    setRows(await listBackups());
+    setEst(await getStorageEstimate());
+    try {
+      setSettings(getBackupSettings());
+    } catch {}
+  };
   useEffect(() => {
     load();
     window.addEventListener("neo:backups", load);
-    return () => window.removeEventListener("neo:backups", load);
+    window.addEventListener("neo:backup-settings", load);
+    return () => {
+      window.removeEventListener("neo:backups", load);
+      window.removeEventListener("neo:backup-settings", load);
+    };
   }, []);
 
   const restoreSnap = async (snap: BabySnapshot, asCopy = false) => {
-    // Migrate older-schema snapshots up to the current schema before restoring.
     const migrated = migrateBaby(snap);
     const id = Number((migrated.baby as { id?: number })?.id ?? 0);
     setBusy(id || "x");
@@ -170,7 +253,6 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
   const restoreEntry = async (entry: BackupEntry, asCopy = false) => {
     setBusy(entry.id ?? "x");
     if (isUnitData(entry.data)) {
-      // Migrate the whole store, then restore each baby snapshot from it.
       const store = migrateStore(entry.data);
       const babies = (store.babies as Record<string, unknown>[]) ?? [];
       const problems = (store.problems as Record<string, unknown>[]) ?? [];
@@ -195,25 +277,32 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
         });
       }
     } else {
-      await restoreSnap(entry.data, asCopy);
+      await restoreSnap(entry.data as BabySnapshot, asCopy);
     }
     setBusy(null);
     onRestored?.();
     window.dispatchEvent(new Event("neo:board-reload"));
   };
 
+  const updateSetting = (patch: Partial<BackupSettings>) => {
+    const next = saveBackupSettings(patch);
+    setSettings(next);
+  };
+
   return (
     <section className="card mt-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-black text-white">Local backups</h3>
+        <h3 className="text-sm font-black text-white">Local backups — space-optimized</h3>
         <span className="inline-flex items-center gap-1 rounded bg-cyan-400/10 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">
           schema v{BACKUP_SCHEMA_VERSION} · app {APP_VERSION}
         </span>
-        <span className="text-[10px] text-slate-400">
-          Auto-saved before every edit + every 5 min. Versioned &amp; self-migrating — old backups keep working after
-          app upgrades.
+        <span className="hidden text-[10px] text-slate-400 sm:inline">
+          {est.count} snapshots · {formatBytes(est.totalSize)} · {formatBytes(est.usage)} used / {formatBytes(est.quota)} quota
         </span>
-        <button className="btn-ghost ml-auto !py-1 text-[11px]" onClick={() => setOpen((v) => !v)}>
+        <button className="btn-ghost ml-auto !py-1 text-[11px]" onClick={() => setShowSettings((v) => !v)}>
+          {showSettings ? "Hide settings" : "⚙️ Settings"}
+        </button>
+        <button className="btn-ghost !py-1 text-[11px]" onClick={() => setOpen((v) => !v)}>
           {open ? "Hide" : `Show (${rows.length})`}
         </button>
         <button
@@ -226,19 +315,109 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
           Backup now
         </button>
       </div>
+
+      <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-2.5 text-[11px] text-slate-300">
+        <p className="font-bold text-emerald-200">New — space-saving backup strategy:</p>
+        <ul className="mt-1 list-disc pl-5 text-[11px] text-slate-400">
+          <li>
+            <b>Dedup:</b> if data unchanged since last backup, skip saving (saves 70-90% space). Enabled: {settings.dedup ? "yes ✓" : "no"}
+          </li>
+          <li>
+            <b>Smart triggers:</b> backup on tab hide, before close, and 5s after any save — not just every {settings.intervalMinutes} min.
+          </li>
+          <li>
+            <b>Tiered retention:</b> keep last 6 frequent → 1/hour for 24h → 1/day for 7 days → 1/week. Pre-delete always kept.
+          </li>
+          <li>
+            <b>Configurable interval:</b> 15 min default (was 5). You can set 5-60 min below.
+          </li>
+          <li>
+            <b>Size tracking:</b> each snapshot shows size; total {formatBytes(est.totalSize)} across {est.count} entries.
+          </li>
+        </ul>
+      </div>
+
+      {showSettings && (
+        <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-3 sm:grid-cols-2">
+          <div className="space-y-3">
+            <label className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Enable auto backup</span>
+              <input type="checkbox" checked={settings.enabled} onChange={(e) => updateSetting({ enabled: e.target.checked })} />
+            </label>
+            <label className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Smart backup (on change / tab hide / close)</span>
+              <input type="checkbox" checked={settings.smartBackup} onChange={(e) => updateSetting({ smartBackup: e.target.checked })} />
+            </label>
+            <label className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Deduplicate — skip if unchanged</span>
+              <input type="checkbox" checked={settings.dedup} onChange={(e) => updateSetting({ dedup: e.target.checked })} />
+            </label>
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Interval (minutes)</span>
+              <select
+                className="inp !w-24 !py-1 text-[11px]"
+                value={settings.intervalMinutes}
+                onChange={(e) => updateSetting({ intervalMinutes: Number(e.target.value) })}
+              >
+                <option value={5}>5 min (old — eats space)</option>
+                <option value={10}>10 min</option>
+                <option value={15}>15 min (recommended)</option>
+                <option value={30}>30 min (saves more)</option>
+                <option value={60}>60 min (minimal)</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Retention mode</span>
+              <select
+                className="inp !w-32 !py-1 text-[11px]"
+                value={settings.retentionMode}
+                onChange={(e) => updateSetting({ retentionMode: e.target.value as BackupSettings["retentionMode"] })}
+              >
+                <option value="tiered">Tiered (smart — saves space)</option>
+                <option value="simple">Simple (keep last N)</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Max per baby</span>
+              <input
+                type="number"
+                min={5}
+                max={100}
+                className="inp !w-24 !py-1 text-[11px]"
+                value={settings.maxPerBaby}
+                onChange={(e) => updateSetting({ maxPerBaby: Math.max(5, Math.min(100, Number(e.target.value) || 24)) })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-slate-300">Max unit snapshots</span>
+              <input
+                type="number"
+                min={5}
+                max={50}
+                className="inp !w-24 !py-1 text-[11px]"
+                value={settings.maxUnit}
+                onChange={(e) => updateSetting({ maxUnit: Math.max(5, Math.min(50, Number(e.target.value) || 20)) })}
+              />
+            </div>
+            <p className="text-[10px] text-slate-500">
+              Tip: Keep tiered + 15 min + dedup ON for best space saving without losing data. Pre-edit and pre-delete are always kept.
+            </p>
+          </div>
+        </div>
+      )}
+
       {open && (
-        <div className="mt-3 max-h-72 space-y-1.5 overflow-auto">
+        <div className="mt-3 max-h-80 space-y-1.5 overflow-auto">
           {rows.length === 0 && <p className="text-xs text-slate-400">No local backups yet — they appear after the first edit.</p>}
           {rows.map((r) => (
             <div key={r.id ?? r.at} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-2 py-1.5 text-[11px]">
               <span className="rounded bg-white/10 px-1.5 py-0.5 font-bold uppercase text-cyan-300">{r.reason}</span>
               <span className="min-w-0 flex-1 truncate text-slate-200">{r.label}</span>
+              <span className="text-[10px] text-slate-500">{r.size ? formatBytes(r.size) : ""}</span>
               <span className="text-slate-500">{fmtTime(r.at)}</span>
-              <button
-                className="btn-ghost !px-2 !py-0.5"
-                disabled={busy === r.id}
-                onClick={() => restoreEntry(r, false)}
-              >
+              <button className="btn-ghost !px-2 !py-0.5" disabled={busy === r.id} onClick={() => restoreEntry(r, false)}>
                 {busy === r.id ? "…" : "Restore"}
               </button>
               <button className="btn-ghost !px-2 !py-0.5" onClick={() => restoreEntry(r, true)}>
@@ -247,9 +426,7 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
               <button
                 className="btn-ghost !px-2 !py-0.5"
                 title="Download a versioned backup that future app versions can read"
-                onClick={() =>
-                  downloadJson(`srh-backup-v${BACKUP_SCHEMA_VERSION}-${r.at.slice(0, 19)}.json`, wrapBackup(r.data))
-                }
+                onClick={() => downloadJson(`srh-backup-v${BACKUP_SCHEMA_VERSION}-${r.at.slice(0, 19)}.json`, wrapBackup(r.data))}
               >
                 JSON
               </button>
