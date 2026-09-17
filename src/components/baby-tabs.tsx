@@ -33,6 +33,7 @@ import {
   fmtTime,
   gainGPerKgDay,
   pctOfBirth,
+  resolveFeedPlan,
   tempIn,
   tempOut,
   type Clinical,
@@ -445,22 +446,47 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   });
   const wt = d.baby.currentWeight / 1000;
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
+  // The feed plan resolves today's enteral + IV volumes from the TFI target.
+  // The same resolver runs inside calcNutrition, so the energy panel and the
+  // feed volume can never disagree.
+  const plan = resolveFeedPlan(s, wt);
+  const planMode = s.feedPlan === "increasing" ? "increasing" : "static";
   const intervalHours = (() => {
     const match = s.feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
     return match ? Number(match[1]) : undefined;
   })();
-  const autoGir = s.dextrosePct !== undefined && s.ivMlKgDay !== undefined && s.ivMlKgDay > 0
-    ? girFromDextrose(s.dextrosePct, Math.min(250, s.ivMlKgDay))
+  const feedsToday = intervalHours && intervalHours < 24 ? 24 / intervalHours : undefined;
+  const planIv = plan.active ? plan.ivMlKgDay : s.ivMlKgDay;
+  const autoGir = s.dextrosePct !== undefined && planIv !== undefined && planIv > 0
+    ? girFromDextrose(s.dextrosePct, Math.min(250, planIv))
     : s.gir;
   const girValue = manualDerived.gir ? s.gir : autoGir;
-  const autoFeedVolume = intervalHours && intervalHours < 24 && wt > 0 && s.enteralMlKgDay !== undefined
-    ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / (24 / intervalHours)).toFixed(2))
-    : s.feedVol;
+  const autoFeedVolume = plan.active
+    ? plan.perFeedMl ?? s.feedVol
+    : feedsToday && wt > 0 && s.enteralMlKgDay !== undefined
+      ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / feedsToday).toFixed(2))
+      : s.feedVol;
   const feedVolumeValue = manualDerived.feedVol ? s.feedVol : autoFeedVolume;
-  const enteralForNutrition = manualDerived.feedVol && feedVolumeValue !== undefined && intervalHours && intervalHours < 24 && wt > 0
-    ? Number((feedVolumeValue * (24 / intervalHours) / wt).toFixed(4))
-    : s.enteralMlKgDay;
-  const nutrition = calcNutrition({ fluids: { ...s, gir: girValue, enteralMlKgDay: enteralForNutrition } });
+  // A manual per-feed volume converts back to ml/kg/day, but only when the plan
+  // is not driving the volumes — there the plan stays authoritative.
+  const manualEnteralFromVolume =
+    !plan.active && manualDerived.feedVol && feedVolumeValue !== undefined && feedsToday && wt > 0
+      ? Number(((feedVolumeValue * feedsToday) / wt).toFixed(4))
+      : undefined;
+  const enteralForNutrition = plan.active
+    ? plan.enteralMlKgDay
+    : manualEnteralFromVolume !== undefined
+      ? manualEnteralFromVolume
+      : s.enteralMlKgDay;
+  const nutrition = calcNutrition({
+    fluids: {
+      ...s,
+      gir: girValue,
+      girManual: manualDerived.gir,
+      ivMlKgDay: planIv,
+      ...(manualEnteralFromVolume !== undefined ? { enteralMlKgDay: manualEnteralFromVolume } : {}),
+    },
+  });
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
   const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
@@ -555,13 +581,81 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         )}
 
+        <fieldset className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+          <legend className="px-1 text-base font-black text-slate-100">Feed plan - static or increasing</legend>
+          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+            <b className="text-slate-200">Increasing:</b> enter the total fluid target (TFI) and the planned
+            increase. Todays feeds run at TFI minus the increase and the remainder is given IV, so the feed
+            steps up by that amount over the next 24 h. <b className="text-slate-200">Static:</b> the whole TFI
+            is enteral and simply divided across the day by the chosen frequency.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Chip
+              label="Static - whole 24 h divided"
+              on={planMode !== "increasing"}
+              onClick={() => setS((p) => ({ ...p, feedPlan: "static" }))}
+            />
+            <Chip
+              label="Increasing - step up over 24 h"
+              on={planMode === "increasing"}
+              onClick={() => setS((p) => ({ ...p, feedPlan: "increasing" }))}
+            />
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <NumField
+              label="TFI target ml/kg/d (0-250)"
+              value={s.tfiMlKgDay ?? undefined}
+              onChange={set("tfiMlKgDay")}
+              min={0}
+              max={250}
+              step={1}
+              placeholder="e.g. 150"
+            />
+            {planMode === "increasing" && (
+              <NumField
+                label="Increase over next 24 h ml/kg/d"
+                value={s.feedIncrementMlKgDay ?? undefined}
+                onChange={set("feedIncrementMlKgDay")}
+                min={0}
+                max={250}
+                step={1}
+                placeholder="e.g. 20"
+              />
+            )}
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
+              <div className="lbl !mb-1">Plan result</div>
+              {plan.active ? (
+                <>
+                  <div className="font-black text-white">
+                    Enteral {plan.enteralMlKgDay} + IV {plan.ivMlKgDay} ml/kg/d
+                  </div>
+                  <div className="text-slate-400">
+                    {plan.perFeedMl !== undefined && plan.feedsPerDay !== undefined
+                      ? `${plan.perFeedMl} ml per feed x ${plan.feedsPerDay} feeds/24 h`
+                      : "Choose an hourly frequency to split the day"}
+                  </div>
+                </>
+              ) : (
+                <div className="text-slate-400">Enter a TFI target to drive feeds and IV from the plan</div>
+              )}
+            </div>
+          </div>
+          {plan.notes.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-[11px] text-amber-100">
+              {plan.notes.map((note, i) => (
+                <li key={i}>{note}</li>
+              ))}
+            </ul>
+          )}
+        </fieldset>
+
         <fieldset className="mt-5">
           <legend className="text-base font-black text-slate-100">Prescription inputs - caps 0-250 ml/kg/day, AA/lipid 0-6 g/kg/day</legend>
           <p className="mt-1 text-xs text-slate-400">Enter ml/kg/day (not ml/day). AA and lipid are g/kg/day, not ml. Grossly high values flagged.</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
-            <NumField label="Enteral ml/kg/d (0-250)" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
-            <NumField label="IV ml/kg/d (0-250)" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label={`Enteral ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.enteralMlKgDay}` : ""}`} value={plan.active ? plan.enteralMlKgDay : s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label={`IV ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.ivMlKgDay}` : ""}`} value={plan.active ? plan.ivMlKgDay : s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             <NumField label="Dextrose % (0-25) for auto GIR" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
             <NumField label="Amino acid g/kg/d (0-4.5, cap 6)" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
             <NumField label="Lipid g/kg/d (0-4, cap 6)" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
