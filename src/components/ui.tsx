@@ -513,6 +513,68 @@ export function ThemeToggle() {
   );
 }
 
+/** Dark-mode colour schemes. Values must match the data-palette selectors in globals.css. */
+const DARK_PALETTES = [
+  { id: "slate-teal", label: "Slate & Teal" },
+  { id: "graphite-copper", label: "Graphite & Copper" },
+  { id: "deep-forest", label: "Deep Forest & Sage" },
+  { id: "ink-orchid", label: "Ink & Orchid" },
+  { id: "midnight-aurora", label: "Midnight Aurora" },
+  { id: "nocturne-plum", label: "Nocturne Plum" },
+  { id: "monochrome", label: "Monochrome" },
+] as const;
+
+const DEFAULT_PALETTE = DARK_PALETTES[0].id;
+
+/**
+ * Persisted dark-mode palette picker. Writes <html data-palette="…"> and
+ * localStorage("srh_palette"); the inline bootstrap in layout.tsx replays it
+ * before first paint. Dark only — the control hides itself in light mode,
+ * because the light palette is deliberately not user-themeable.
+ */
+export function PalettePicker() {
+  const [dark, setDark] = useState(true);
+  const [palette, setPalette] = useState<string>(DEFAULT_PALETTE);
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => {
+      setDark(!el.classList.contains("light"));
+      setPalette(el.getAttribute("data-palette") || DEFAULT_PALETTE);
+    };
+    read();
+    // Track the light/dark switch and any external palette change.
+    const mo = new MutationObserver(read);
+    mo.observe(el, { attributes: true, attributeFilter: ["class", "data-palette"] });
+    return () => mo.disconnect();
+  }, []);
+  const apply = (next: string) => {
+    document.documentElement.setAttribute("data-palette", next);
+    try {
+      localStorage.setItem("srh_palette", next);
+    } catch {
+      // Storage can be unavailable (private mode); the session still themes.
+    }
+    setPalette(next);
+  };
+  if (!dark) return null;
+  return (
+    <label className="palette-picker" title="Choose dark colour scheme">
+      <span className="pp-dot" aria-hidden="true" />
+      <select
+        value={palette}
+        onChange={(e) => apply(e.target.value)}
+        aria-label="Dark colour scheme"
+      >
+        {DARK_PALETTES.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /* ============================================================
    FONT SIZE CONTROL — replaces the old Refresh button.
    A- / A+ adjusts the root font-size (85%–170%, 10% steps),
@@ -647,6 +709,7 @@ export function TopBar({
           <StaffNameInput />
           <ShareButton />
           <ThemeToggle />
+          <PalettePicker />
           <FontSizeControl />
         </div>
       </div>
