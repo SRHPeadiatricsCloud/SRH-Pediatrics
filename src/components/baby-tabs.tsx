@@ -451,6 +451,8 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   // feed volume can never disagree.
   const plan = resolveFeedPlan(s, wt);
   const planMode = s.feedPlan === "increasing" ? "increasing" : "static";
+  const ivSource = s.ivSource === "entered" ? "entered" : "remainder";
+  const increaseAppliesTo = s.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
   const intervalHours = (() => {
     const match = s.feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
     return match ? Number(match[1]) : undefined;
@@ -585,9 +587,10 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <legend className="px-1 text-base font-black text-slate-100">Feed plan - static or increasing</legend>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
             <b className="text-slate-200">Increasing:</b> enter the total fluid target (TFI) and the planned
-            increase. Todays feeds run at TFI minus the increase and the remainder is given IV, so the feed
-            steps up by that amount over the next 24 h. <b className="text-slate-200">Static:</b> the whole TFI
-            is enteral and simply divided across the day by the chosen frequency.
+            increase, then choose whether the increase is given IV today or becomes tomorrow&apos;s feed target.{" "}
+            <b className="text-slate-200">Static:</b> the whole TFI is enteral and simply divided across the day by
+            the chosen frequency. Either way, pick whether IV fluids are the remainder of the TFI or are entered
+            separately.
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Chip
@@ -601,9 +604,54 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               onClick={() => setS((p) => ({ ...p, feedPlan: "increasing" }))}
             />
           </div>
+
+          <div className="mt-3">
+            <span className="lbl mb-1 block">IV fluids</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Chip
+                label="IV = remainder of TFI"
+                on={ivSource !== "entered"}
+                onClick={() => setS((p) => ({ ...p, ivSource: "remainder" }))}
+              />
+              <Chip
+                label="IV entered separately"
+                on={ivSource === "entered"}
+                onClick={() => setS((p) => ({ ...p, ivSource: "entered" }))}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {ivSource === "entered"
+                ? "Feeds run at the TFI target and IV fluids are typed alongside, so their energy is counted. TFI is then the enteral target and total fluids are shown below."
+                : "IV is derived as TFI minus feeds: the increment in an increasing plan, zero in a static plan."}
+            </p>
+          </div>
+
+          {planMode === "increasing" && (
+            <div className="mt-3">
+              <span className="lbl mb-1 block">Increase applies to</span>
+              <div className="flex flex-wrap gap-1.5">
+                <Chip
+                  label="Given IV today"
+                  on={increaseAppliesTo !== "tomorrow-target"}
+                  onClick={() => setS((p) => ({ ...p, increaseAppliesTo: "iv-today" }))}
+                />
+                <Chip
+                  label="Tomorrow's feed target"
+                  on={increaseAppliesTo === "tomorrow-target"}
+                  onClick={() => setS((p) => ({ ...p, increaseAppliesTo: "tomorrow-target" }))}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                {increaseAppliesTo === "tomorrow-target"
+                  ? "Feeds run at the full TFI today and step up to TFI plus the increase over the next 24 h."
+                  : "Feeds run at TFI minus the increase today, and the increase is given IV."}
+              </p>
+            </div>
+          )}
+
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <NumField
-              label="TFI target ml/kg/d (0-250)"
+              label={ivSource === "entered" ? "Enteral target (TFI) ml/kg/d" : "TFI target ml/kg/d (0-250)"}
               value={s.tfiMlKgDay ?? undefined}
               onChange={set("tfiMlKgDay")}
               min={0}
@@ -622,24 +670,62 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                 placeholder="e.g. 20"
               />
             )}
-            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
-              <div className="lbl !mb-1">Plan result</div>
-              {plan.active ? (
-                <>
-                  <div className="font-black text-white">
-                    Enteral {plan.enteralMlKgDay} + IV {plan.ivMlKgDay} ml/kg/d
-                  </div>
-                  <div className="text-slate-400">
-                    {plan.perFeedMl !== undefined && plan.feedsPerDay !== undefined
-                      ? `${plan.perFeedMl} ml per feed x ${plan.feedsPerDay} feeds/24 h`
-                      : "Choose an hourly frequency to split the day"}
-                  </div>
-                </>
-              ) : (
-                <div className="text-slate-400">Enter a TFI target to drive feeds and IV from the plan</div>
-              )}
-            </div>
+            {ivSource === "entered" && (
+              <NumField
+                label="IV fluids ml/kg/d (0-250)"
+                value={s.ivMlKgDay ?? undefined}
+                onChange={set("ivMlKgDay")}
+                min={0}
+                max={250}
+                step={1}
+                placeholder="e.g. 30"
+              />
+            )}
           </div>
+
+          {plan.active && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
+                <div className="lbl !mb-1">Today</div>
+                <div className="font-black text-white">
+                  Enteral {plan.enteralMlKgDay} + IV {plan.ivMlKgDay} ml/kg/d
+                </div>
+                <div className="text-slate-400">
+                  {plan.perFeedMl !== undefined && plan.feedsPerDay !== undefined
+                    ? `${plan.perFeedMl} ml per feed x ${plan.feedsPerDay} feeds/24 h`
+                    : "Choose an hourly frequency to split the day"}
+                </div>
+                <div className="text-slate-400">Total fluids {plan.totalFluidsMlKgDay} ml/kg/d</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
+                <div className="lbl !mb-1">Next 24 h</div>
+                <div className="font-black text-white">Enteral {plan.tomorrowEnteralMlKgDay} ml/kg/d</div>
+                <div className="text-slate-400">
+                  {plan.mode === "increasing" && plan.increment !== undefined
+                    ? `step up of ${plan.increment} ml/kg/d`
+                    : "unchanged - static plan"}
+                </div>
+                <div
+                  className={
+                    plan.ivSource === "remainder" && !plan.reconciled
+                      ? "font-bold text-amber-200"
+                      : "text-slate-400"
+                  }
+                >
+                  {plan.ivSource === "remainder"
+                    ? plan.reconciled
+                      ? `reconciles to TFI ${plan.tfi} ml/kg/d`
+                      : `does not reconcile to TFI ${plan.tfi} ml/kg/d`
+                    : `TFI is the enteral target; total ${plan.totalFluidsMlKgDay} ml/kg/d`}
+                </div>
+              </div>
+            </div>
+          )}
+          {!plan.active && (
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] text-slate-400">
+              Enter a TFI target to drive feeds and IV from the plan
+            </div>
+          )}
           {plan.notes.length > 0 && (
             <ul className="mt-2 list-disc pl-5 text-[11px] text-amber-100">
               {plan.notes.map((note, i) => (
@@ -655,7 +741,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             <NumField label={`Enteral ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.enteralMlKgDay}` : ""}`} value={plan.active ? plan.enteralMlKgDay : s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
-            <NumField label={`IV ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.ivMlKgDay}` : ""}`} value={plan.active ? plan.ivMlKgDay : s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label={`IV ml/kg/d (0-250)${plan.active && plan.ivSource === "remainder" ? ` - plan sets ${plan.ivMlKgDay}` : ""}`} value={plan.active ? plan.ivMlKgDay : s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             <NumField label="Dextrose % (0-25) for auto GIR" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
             <NumField label="Amino acid g/kg/d (0-4.5, cap 6)" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
             <NumField label="Lipid g/kg/d (0-4, cap 6)" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />

@@ -45,6 +45,22 @@ export type Clinical = {
     tfiMlKgDay?: number;
     /** Planned feed increase over the next 24 h, ml/kg/day ("increasing" plan). */
     feedIncrementMlKgDay?: number;
+    /**
+     * Where today's IV volume comes from:
+     *  - "remainder": derived as TFI - enteral (the increment in an
+     *    increasing plan, 0 in a static plan).
+     *  - "entered":  typed directly, so a baby on feeds can still have IV
+     *    fluids running and have their energy counted.
+     */
+    ivSource?: "remainder" | "entered";
+    /**
+     * What the increase number means:
+     *  - "iv-today":       feeds run at TFI - increment and the increment is
+     *                      given IV today (steps up over the next 24 h).
+     *  - "tomorrow-target": today's feeds are the full TFI and the increase
+     *                      is the enteral target for the next 24 h.
+     */
+    increaseAppliesTo?: "iv-today" | "tomorrow-target";
     dextrosePct?: number;
     gir?: number;
     girManual?: boolean;
@@ -201,11 +217,19 @@ export type FeedPlan = {
   /** False when no TFI target is entered — callers fall back to raw enteral/IV. */
   active: boolean;
   mode: "static" | "increasing";
+  ivSource: "remainder" | "entered";
+  increaseAppliesTo: "iv-today" | "tomorrow-target";
   tfi?: number;
   /** Only set for the "increasing" plan. */
   increment?: number;
   enteralMlKgDay?: number;
   ivMlKgDay?: number;
+  /** Enteral volume planned for the next 24 h (the step-up target). */
+  tomorrowEnteralMlKgDay?: number;
+  /** Enteral + IV actually prescribed today. */
+  totalFluidsMlKgDay?: number;
+  /** True when today's enteral + IV equals the TFI target. */
+  reconciled: boolean;
   perFeedMl?: number;
   feedsPerDay?: number;
   notes: string[];
@@ -214,10 +238,14 @@ export type FeedPlan = {
 /**
  * Resolve today's enteral/IV split from the total fluid intake target.
  *
- *  increasing: TFI 150 with a 20 ml/kg/day increase means today's feeds run at
- *              130 ml/kg/day and the remaining 20 ml/kg/day is given IV, so the
- *              feed steps up by that increment over the next 24 h.
- *  static:     the whole TFI is enteral and simply divided across the day.
+ *  static + remainder       whole TFI is enteral, IV 0
+ *  static + entered         whole TFI is enteral, IV typed alongside
+ *  increasing + iv-today    feeds run at TFI - increment, increment given IV
+ *  increasing + tomorrow    feeds run at the full TFI today and step up to
+ *                           TFI + increment over the next 24 h
+ *
+ * A prescribed IV volume is never silently discarded: in remainder mode a
+ * typed IV that differs from the remainder raises a note instead of vanishing.
  *
  * Pure function — used by calcNutrition and the feed UI so both always agree.
  */
@@ -226,41 +254,84 @@ export function resolveFeedPlan(
   weightKg?: number,
 ): FeedPlan {
   const mode: FeedPlan["mode"] = f.feedPlan === "increasing" ? "increasing" : "static";
+  const ivSource: FeedPlan["ivSource"] = f.ivSource === "entered" ? "entered" : "remainder";
+  const increaseAppliesTo: FeedPlan["increaseAppliesTo"] =
+    f.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
   const notes: string[] = [];
-  if (f.tfiMlKgDay === undefined || !(f.tfiMlKgDay > 0)) {
-    return { active: false, mode, notes };
-  }
+  const inactive: FeedPlan = {
+    active: false,
+    mode,
+    ivSource,
+    increaseAppliesTo,
+    reconciled: false,
+    notes,
+  };
+  if (f.tfiMlKgDay === undefined || !(f.tfiMlKgDay > 0)) return inactive;
   if (f.tfiMlKgDay > 250) notes.push(`TFI ${f.tfiMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
   const tfi = clampMl(f.tfiMlKgDay);
+  const enteredIv = f.ivMlKgDay !== undefined ? clampMl(f.ivMlKgDay) : 0;
 
+  // --- today's enteral volume, plus the step-up target for the next 24 h ---
   let enteral = tfi;
-  let iv = 0;
+  let tomorrow = tfi;
   let increment: number | undefined;
   if (mode === "increasing") {
     const rawInc = f.feedIncrementMlKgDay ?? 0;
     increment = clampMl(rawInc);
     if (rawInc > 250) notes.push(`Increase ${rawInc} ml/kg/day exceeds the 250 cap — clamped`);
-    if (increment > tfi) notes.push(`Increase ${increment} exceeds TFI ${tfi} — enteral floored at 0`);
-    enteral = Math.max(0, tfi - increment);
-    iv = Math.min(increment, tfi);
+    if (increaseAppliesTo === "iv-today") {
+      if (increment > tfi) notes.push(`Increase ${increment} exceeds TFI ${tfi} — enteral floored at 0`);
+      enteral = Math.max(0, tfi - increment);
+      tomorrow = tfi;
+    } else {
+      enteral = tfi;
+      const next = tfi + increment;
+      tomorrow = clampMl(next);
+      if (next > 250) notes.push(`Next 24 h target ${Math.round(next)} ml/kg/day exceeds the 250 cap — clamped`);
+    }
   }
+
+  // --- today's IV volume ---
+  const remainder = Math.max(0, Math.round((tfi - enteral) * 100) / 100);
+  let iv = remainder;
+  if (ivSource === "entered") {
+    iv = enteredIv;
+  } else if (enteredIv > 0 && Math.abs(enteredIv - remainder) > 0.01) {
+    notes.push(
+      `Entered IV ${enteredIv} ml/kg/day differs from the plan remainder ${remainder} — its energy is currently excluded. Set IV source to "entered separately" to count it.`,
+    );
+  }
+  if (mode === "increasing" && increaseAppliesTo === "tomorrow-target" && ivSource === "remainder" && remainder === 0) {
+    notes.push(
+      `The increase applies to tomorrow's feeds, so the TFI remainder is 0 — set IV source to "entered separately" if IV fluids are running.`,
+    );
+  }
+
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  const totalFluids = round2(enteral + iv);
+  const reconciled = Math.abs(totalFluids - tfi) < 0.01;
 
   const fpd = feedsPerDay(f.feedFreq);
   const perFeedMl =
     fpd !== undefined && weightKg !== undefined && weightKg > 0
-      ? Math.round(((enteral * weightKg) / fpd) * 100) / 100
+      ? round2((enteral * weightKg) / fpd)
       : undefined;
-  if (fpd === undefined && mode !== undefined && enteral > 0) {
+  if (fpd === undefined && enteral > 0) {
     notes.push("Choose an hourly frequency to split the day's volume into feeds");
   }
 
   return {
     active: true,
     mode,
+    ivSource,
+    increaseAppliesTo,
     tfi,
     increment,
-    enteralMlKgDay: Math.round(enteral * 100) / 100,
-    ivMlKgDay: Math.round(iv * 100) / 100,
+    enteralMlKgDay: round2(enteral),
+    ivMlKgDay: round2(iv),
+    tomorrowEnteralMlKgDay: round2(tomorrow),
+    totalFluidsMlKgDay: totalFluids,
+    reconciled,
     perFeedMl,
     feedsPerDay: fpd,
     notes,
