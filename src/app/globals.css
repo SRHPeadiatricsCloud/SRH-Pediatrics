@@ -699,173 +699,7 @@ body.view-only button[title="Delete card"] {
   cursor: not-allowed;
 }
 
-/* ============================================================
-   PRINT
-   ============================================================ */
-@media print {
-  /* Without this the browser drops every background colour and the sheet comes
-     out greyscale. Keep colour, but drop shadows which print as grey smudges. */
-  *,
-  *::before,
-  *::after {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    box-shadow: none !important;
-  }
 
-  html,
-  body,
-  html.light body {
-    background: #ffffff !important;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  .card {
-    background: #ffffff !important;
-    border-color: #cbd5e1 !important;
-    break-inside: avoid;
-  }
-  .card::before {
-    display: none;
-  }
-
-  /* The dark theme's near-white text would print as white-on-white. Turn the
-     neutral text ramp into ink — but leave the clinical accent colours alone,
-     because cyan / emerald / amber / rose carry meaning on the sheet. */
-  .text-white,
-  .text-slate-50,
-  .text-slate-100,
-  .text-slate-200,
-  .text-slate-300,
-  .text-slate-400,
-  .text-slate-500 {
-    color: #111827 !important;
-  }
-
-  /* Dark translucent panels -> light neutral panels so ink stays readable. */
-  .bg-slate-900\/30,
-  .bg-slate-900\/40,
-  .bg-slate-900\/50,
-  .bg-slate-900\/60,
-  .bg-slate-900\/90,
-  .bg-slate-900\/95,
-  .bg-slate-950\/40,
-  .bg-slate-950\/60,
-  .bg-slate-950\/70,
-  .bg-slate-950\/80,
-  .bg-white\/5,
-  .bg-white\/10,
-  .bg-white\/\[0\.02\],
-  .bg-white\/\[0\.03\],
-  .bg-white\/\[0\.04\],
-  .bg-white\/\[0\.07\] {
-    background-color: #f1f5f9 !important;
-  }
-
-  /* Keep the coloured panels, lightened for paper rather than flattened. */
-  .bg-cyan-400\/5,
-  .bg-cyan-400\/10,
-  .bg-cyan-400\/15,
-  .bg-sky-400\/10 {
-    background-color: #e0f2fe !important;
-  }
-  .bg-emerald-400\/5,
-  .bg-emerald-400\/10 {
-    background-color: #dcfce7 !important;
-  }
-  .bg-amber-400\/5,
-  .bg-amber-400\/10,
-  .bg-amber-500\/15 {
-    background-color: #fef3c7 !important;
-  }
-  .bg-rose-400\/5,
-  .bg-rose-400\/10,
-  .bg-rose-500\/10,
-  .bg-rose-500\/15 {
-    background-color: #ffe4e6 !important;
-  }
-  .bg-violet-400\/10 {
-    background-color: #ede9fe !important;
-  }
-  .bg-indigo-400\/10 {
-    background-color: #e0e7ff !important;
-  }
-
-  /* Accent text: darkened for contrast on paper, hue preserved. */
-  .text-cyan-50,
-  .text-cyan-100,
-  .text-cyan-200,
-  .text-cyan-300 {
-    color: #0e7490 !important;
-  }
-  .text-emerald-100,
-  .text-emerald-200,
-  .text-emerald-300 {
-    color: #047857 !important;
-  }
-  .text-amber-100,
-  .text-amber-200,
-  .text-amber-300 {
-    color: #b45309 !important;
-  }
-  .text-rose-200,
-  .text-rose-300 {
-    color: #be123c !important;
-  }
-  .text-violet-200,
-  .text-violet-300 {
-    color: #6d28d9 !important;
-  }
-
-  .border-white\/5,
-  .border-white\/10,
-  .border-white\/20 {
-    border-color: #cbd5e1 !important;
-  }
-  .border-cyan-400\/20,
-  .border-cyan-400\/25,
-  .border-cyan-400\/30,
-  .border-cyan-400\/40 {
-    border-color: #7cc8e8 !important;
-  }
-  .border-emerald-400\/20,
-  .border-emerald-400\/30,
-  .border-emerald-400\/40 {
-    border-color: #7fd8b1 !important;
-  }
-  .border-amber-400\/20,
-  .border-amber-400\/30,
-  .border-amber-400\/40,
-  .border-amber-500\/40 {
-    border-color: #f0c377 !important;
-  }
-  .border-rose-400\/30,
-  .border-rose-400\/40,
-  .border-rose-500\/40 {
-    border-color: #f5a3b3 !important;
-  }
-
-  /* Legacy hook. It used to flatten the whole subtree to black on white, which
-     is what made the PDF greyscale. Now it only normalises body text to ink;
-     the accent rules above keep their colour. */
-  .print-black {
-    background: #ffffff !important;
-    border-color: #94a3b8 !important;
-  }
-  .print-black,
-  .print-black .text-white,
-  .print-black .text-slate-50,
-  .print-black .text-slate-100,
-  .print-black .text-slate-200,
-  .print-black .text-slate-300,
-  .print-black .text-slate-400,
-  .print-black .text-slate-500 {
-    color: #111827 !important;
-  }
-}
 
 /* ============================================================
    LIGHT THEME v2 — vivid, high-contrast, never washed-out.
@@ -8137,4 +7971,283 @@ html:not(.light) .calc-stage-fluid {
 html:not(.light) .chip-on {
   background:  linear-gradient(135deg, var(--p-a2) 0%, var(--p-a2) 100%);
   box-shadow:  0 6px 16px -12px rgba(var(--p-a2-rgb), 0.7);
+}
+
+/* ============================================================
+   PRINT — authoritative.
+   This must sit at the end of the file: the palette blocks above redefine
+   --text / --p-t1..t4 and the dark surface colours at equal specificity, so
+   a print block placed earlier in the file loses and the sheet comes out as
+   near-white text on white paper — i.e. blank.
+   ============================================================ */
+@media print {
+  /* Browsers drop backgrounds unless colour adjustment is forced. Shadows
+     print as grey smudges. The ink baseline uses the universal selector on
+     purpose: at specificity (0,0,0) any accent rule below still wins. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    color: #0f172a !important;
+  }
+
+  /* Swap the design tokens to ink and paper, so every consumer of
+     var(--text*) and var(--p-t*) follows without needing its own rule. */
+  :root,
+  html,
+  html:not(.light),
+  html.light {
+    color-scheme: light;
+
+    --text: #0f172a;
+    --text-2: #1f2937;
+    --text-3: #334155;
+    --text-4: #475569;
+    --p-t1: #0f172a;
+    --p-t2: #1f2937;
+    --p-t3: #334155;
+    --p-t4: #475569;
+
+    --bg: #ffffff;
+    --bg-glow-1: transparent;
+    --bg-glow-2: transparent;
+    --bg-glow-3: transparent;
+    --p-bg: #ffffff;
+    --p-bg2: #ffffff;
+    --p-bg-rgb: 255, 255, 255;
+    --p-bg2-rgb: 255, 255, 255;
+    --p-glow-1: transparent;
+    --p-glow-2: transparent;
+    --p-glow-3: transparent;
+
+    --card: #ffffff;
+    --card-solid: #ffffff;
+    --card-hi: #f8fafc;
+    --p-card-a: 248, 250, 252;
+    --p-card-b: 241, 245, 249;
+    --p-bloom-1: 255, 255, 255;
+    --p-bloom-2: 255, 255, 255;
+
+    --border: #cbd5e1;
+    --border-strong: #94a3b8;
+    --p-border-rgb: 203, 213, 225;
+    --p-border-hi-rgb: 148, 163, 184;
+
+    --accent: #0e7490;
+    --accent-2: #0e7490;
+    --p-a1: #0e7490;
+    --p-a2: #0e7490;
+    --p-a1-rgb: 14, 116, 144;
+    --p-a2-rgb: 14, 116, 144;
+
+    --shadow-card: none;
+    --shadow-pop: none;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  html:not(.light) body,
+  html.light body {
+    background: #ffffff !important;
+    min-height: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    break-inside: avoid;
+  }
+  .card::before {
+    display: none;
+  }
+
+  /* Dark translucent panels -> light neutral panels. */
+  .bg-slate-900\/30,
+  .bg-slate-900\/40,
+  .bg-slate-900\/50,
+  .bg-slate-900\/60,
+  .bg-slate-900\/90,
+  .bg-slate-900\/95,
+  .bg-slate-950\/40,
+  .bg-slate-950\/60,
+  .bg-slate-950\/70,
+  .bg-slate-950\/80,
+  .bg-white\/5,
+  .bg-white\/10,
+  .bg-white\/\[0\.02\],
+  .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.04\],
+  .bg-white\/\[0\.07\] {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Form controls: dark fills would hide ink and waste toner. */
+  .inp,
+  input,
+  select,
+  textarea {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Clinical colour coding survives, lightened for paper. Each rule outranks
+     the universal ink baseline above, so the hue is kept rather than lost. */
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-200,
+  .text-cyan-300,
+  .text-sky-200,
+  .text-sky-300,
+  .text-blue-200,
+  .text-blue-300 {
+    color: #0e7490 !important;
+  }
+  .text-emerald-100,
+  .text-emerald-200,
+  .text-emerald-300 {
+    color: #047857 !important;
+  }
+  .text-amber-100,
+  .text-amber-200,
+  .text-amber-300 {
+    color: #92400e !important;
+  }
+  .text-rose-200,
+  .text-rose-300 {
+    color: #be123c !important;
+  }
+  .text-violet-200,
+  .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+
+  .bg-cyan-400\/5,
+  .bg-cyan-400\/10,
+  .bg-cyan-400\/15,
+  .bg-sky-400\/10 {
+    background-color: #e0f2fe !important;
+  }
+  .bg-emerald-400\/5,
+  .bg-emerald-400\/10 {
+    background-color: #dcfce7 !important;
+  }
+  .bg-amber-400\/5,
+  .bg-amber-400\/10,
+  .bg-amber-500\/15 {
+    background-color: #fef3c7 !important;
+  }
+  .bg-rose-400\/5,
+  .bg-rose-400\/10,
+  .bg-rose-500\/10,
+  .bg-rose-500\/15 {
+    background-color: #ffe4e6 !important;
+  }
+  .bg-violet-400\/10 {
+    background-color: #ede9fe !important;
+  }
+  .bg-indigo-400\/10 {
+    background-color: #e0e7ff !important;
+  }
+
+  /* Chips print as light tint with matching accent ink, not solid dark. */
+  .chip-on {
+    background-color: #e0f2fe !important;
+    border-color: #7cc8e8 !important;
+  }
+  .chip-on.tone-rose {
+    background-color: #ffe4e6 !important;
+    border-color: #f5a3b3 !important;
+  }
+  .chip-on.tone-emerald {
+    background-color: #dcfce7 !important;
+    border-color: #7fd8b1 !important;
+  }
+  .chip-on.tone-amber {
+    background-color: #fef3c7 !important;
+    border-color: #f0c377 !important;
+  }
+  .chip-off {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20 {
+    border-color: #cbd5e1 !important;
+  }
+  .border-cyan-400\/20,
+  .border-cyan-400\/25,
+  .border-cyan-400\/30,
+  .border-cyan-400\/40 {
+    border-color: #7cc8e8 !important;
+  }
+  .border-emerald-400\/20,
+  .border-emerald-400\/30,
+  .border-emerald-400\/40 {
+    border-color: #7fd8b1 !important;
+  }
+  .border-amber-400\/20,
+  .border-amber-400\/30,
+  .border-amber-400\/40,
+  .border-amber-500\/40 {
+    border-color: #f0c377 !important;
+  }
+  .border-rose-400\/30,
+  .border-rose-400\/40,
+  .border-rose-500\/40 {
+    border-color: #f5a3b3 !important;
+  }
+
+  /* The dark theme re-declares several utility text colours with !important at
+     specificity (0,2,1) — html:not(.light) .text-slate-300 and friends. That
+     outranks the universal ink baseline above, so those exact selectors are
+     repeated here; equal specificity plus later source order means these win
+     and nothing prints as pale text on white paper. */
+  html:not(.light) .text-slate-100,
+  html:not(.light) .text-slate-200,
+  html:not(.light) .text-slate-300,
+  html:not(.light) .text-white {
+    color: #1f2937 !important;
+  }
+  html:not(.light) .text-slate-400,
+  html:not(.light) .text-slate-500 {
+    color: #475569 !important;
+  }
+  html:not(.light) .text-cyan-200,
+  html:not(.light) .text-cyan-300,
+  html:not(.light) .text-sky-300,
+  html:not(.light) .text-indigo-300 {
+    color: #0e7490 !important;
+  }
+  html:not(.light) .text-violet-200,
+  html:not(.light) .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+  html:not(.light) .text-emerald-200,
+  html:not(.light) .text-emerald-300 {
+    color: #047857 !important;
+  }
+  html:not(.light) .text-amber-200,
+  html:not(.light) .text-amber-300 {
+    color: #92400e !important;
+  }
+  html:not(.light) .text-rose-200,
+  html:not(.light) .text-rose-300 {
+    color: #be123c !important;
+  }
+  html:not(.light) .theme-switch button {
+    color: #334155 !important;
+  }
 }
