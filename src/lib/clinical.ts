@@ -72,6 +72,13 @@ export type Clinical = {
     fortificationAmount?: number;
     fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
     fortificationFeedVolumeMl?: number;
+    /**
+     * Energy and protein each fortifier unit contributes. Optional — defaults
+     * to a standard human milk fortifier. Set these to match the product on
+     * the label when it differs.
+     */
+    fortifierKcalPerUnit?: number;
+    fortifierProteinPerUnit?: number;
     fortificationNotes?: string;
     residual?: string;
     tpn?: boolean;
@@ -150,6 +157,24 @@ export const PROTEIN_G_PER_ML: Record<string, number> = {
   "Post-discharge formula": 0.019,
 };
 
+/**
+ * Fortifier contribution per unit (sachet / scoop / measure / g / ml).
+ *
+ * A standard human milk fortifier sachet mixed into 25 ml of expressed breast
+ * milk raises it from ~0.67 to ~0.80 kcal/ml (+4 kcal per 25 ml) and protein
+ * from ~1.1 to ~2.4 g/dl (+0.33 g per 25 ml). Override per product with
+ * fortifierKcalPerUnit / fortifierProteinPerUnit.
+ */
+export const FORTIFIER_KCAL_PER_UNIT = 4;
+export const FORTIFIER_PROTEIN_G_PER_UNIT = 0.33;
+
+/**
+ * Lipid emulsions supply energy (9 kcal/g) but effectively no protein — the
+ * egg phospholipid emulsifier is not counted as usable protein. Kept as a
+ * named constant so the assumption is visible and easy to change.
+ */
+export const LIPID_PROTEIN_G_PER_G = 0;
+
 export type NutritionCalc = {
   feedType: string;
   density: number;
@@ -170,6 +195,26 @@ export type NutritionCalc = {
   totalProtein: number;
   totalFluids: number;
   ivMl: number;
+  /* --- Fortification, so fortified feeds are counted with unfortified ones --- */
+  /** True when a fortifier amount is recorded. */
+  fortified: boolean;
+  /** kcal/ml added to the base milk by the fortifier. */
+  fortKcalPerMl: number;
+  /** g protein/ml added to the base milk by the fortifier. */
+  fortProteinPerMl: number;
+  /** Effective kcal/ml actually used: base milk density + fortifier. */
+  effectiveKcalPerMl: number;
+  /** Effective g protein/ml actually used: base milk protein + fortifier. */
+  effectiveProteinPerMl: number;
+  /* --- Per-source breakdown so every number can be audited --- */
+  milkKcal: number;
+  fortKcal: number;
+  milkProtein: number;
+  fortProtein: number;
+  /** Protein from IV amino acids (Aminoven / Vaminolact) — equals aaG. */
+  aaProtein: number;
+  /** Protein from lipid emulsion — 0 by definition, shown for completeness. */
+  lipidProtein: number;
   kcalTarget: [number, number];
   proteinTarget: [number, number];
   kcalDeficit: number;
@@ -375,19 +420,48 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const lipidG = Math.max(0, Math.min(6, rawLipid)); // lipid max 3-4 g/kg/day
   const lipidKcal = Math.round(lipidG * 9 * 10) / 10; // 9 kcal/g
 
-  const enteralKcal = Math.round(enteralMl * density * 10) / 10;
-  const enteralProtein = Math.round(enteralMl * protPerMl * 100) / 100;
+  const warnings: string[] = [];
+
+  // --- Fortification: uplift the milk density from the recorded preparation ---
+  // amount used / volume it was mixed into = fortifier per ml of feed, applied
+  // to the whole day's enteral volume, so fortified feeds count their energy
+  // and protein exactly like an unfortified feed does.
+  const fortAmount = f.fortificationAmount ?? 0;
+  const fortMixedMl = f.fortificationFeedVolumeMl ?? 0;
+  const kcalPerUnit = f.fortifierKcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
+  const proteinPerUnit = f.fortifierProteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
+  const fortified = fortAmount > 0;
+  let fortKcalPerMl = 0;
+  let fortProteinPerMl = 0;
+  if (fortified && fortMixedMl > 0) {
+    fortKcalPerMl = (fortAmount * kcalPerUnit) / fortMixedMl;
+    fortProteinPerMl = (fortAmount * proteinPerUnit) / fortMixedMl;
+  } else if (fortified) {
+    warnings.push(
+      "Fortifier recorded without a mixed volume — enter \"Feed volume mixed (ml)\" so its energy and protein are counted",
+    );
+  }
+  const effectiveKcalPerMl = density + fortKcalPerMl;
+  const effectiveProteinPerMl = protPerMl + fortProteinPerMl;
+
+  const enteralKcal = Math.round(enteralMl * effectiveKcalPerMl * 10) / 10;
+  const fortKcal = Math.round(enteralMl * fortKcalPerMl * 10) / 10;
+  const milkKcal = Math.round((enteralKcal - fortKcal) * 10) / 10;
+  const enteralProtein = Math.round(enteralMl * effectiveProteinPerMl * 100) / 100;
+  const fortProtein = Math.round(enteralMl * fortProteinPerMl * 100) / 100;
+  const milkProtein = Math.round((enteralProtein - fortProtein) * 100) / 100;
 
   // Total IV kcal = dextrose + AA + lipid (TPN)
   const ivKcal = Math.round((dextroseKcal + aaKcal + lipidKcal) * 10) / 10;
-  // Total = enteral + IV
+  // Total energy = enteral (milk + fortifier) + IV (dextrose + AA + lipid)
   const totalKcal = Math.round((enteralKcal + ivKcal) * 10) / 10;
-  const totalProtein = Math.round((enteralProtein + aaG) * 100) / 100;
+  // Total protein = enteral (milk + fortifier) + IV amino acids + lipid (0)
+  const lipidProtein = Math.round(lipidG * LIPID_PROTEIN_G_PER_G * 100) / 100;
+  const totalProtein = Math.round((enteralProtein + aaG + lipidProtein) * 100) / 100;
 
   const kcalTarget: [number, number] = [110, 135];
   const proteinTarget: [number, number] = [3.5, 4.5]; // widened to 3.5-4.5 for preterm, was 3.5-4
 
-  const warnings: string[] = [];
   if (gir > 0 && gir < 4) warnings.push(`Low GIR ${gir} mg/kg/min (<4) — risk hypoglycaemia`);
   if (gir > 8 && gir <= 12) warnings.push(`High GIR ${gir} mg/kg/min (>8) — monitor glucose, consider central line if >10`);
   if (gir > 12) warnings.push(`Very high GIR ${gir} mg/kg/min (>12) — requires central line, high osmolarity risk`);
@@ -430,8 +504,21 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     ivKcal,
     totalKcal,
     totalProtein,
-    totalFluids: plan.active ? Math.round((enteralMl + ivMl) * 10) / 10 : f.totalMlKgDay ?? 0,
+    totalFluids: plan.active
+      ? Math.round((enteralMl + ivMl) * 10) / 10
+      : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10,
     ivMl,
+    fortified,
+    fortKcalPerMl: Math.round(fortKcalPerMl * 1000) / 1000,
+    fortProteinPerMl: Math.round(fortProteinPerMl * 10000) / 10000,
+    effectiveKcalPerMl: Math.round(effectiveKcalPerMl * 1000) / 1000,
+    effectiveProteinPerMl: Math.round(effectiveProteinPerMl * 10000) / 10000,
+    milkKcal,
+    fortKcal,
+    milkProtein,
+    fortProtein,
+    aaProtein: aaG,
+    lipidProtein,
     feedPlan: plan,
     kcalTarget,
     proteinTarget,

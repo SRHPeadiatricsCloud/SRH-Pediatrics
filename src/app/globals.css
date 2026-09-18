@@ -703,28 +703,167 @@ body.view-only button[title="Delete card"] {
    PRINT
    ============================================================ */
 @media print {
+  /* Without this the browser drops every background colour and the sheet comes
+     out greyscale. Keep colour, but drop shadows which print as grey smudges. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+  }
+
+  html,
   body,
   html.light body {
     background: #ffffff !important;
   }
+
   .no-print {
     display: none !important;
   }
+
   .card {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
-    box-shadow: none !important;
     break-inside: avoid;
   }
   .card::before {
     display: none;
   }
-  .print-black,
-  .print-black * {
-    color: #000000 !important;
+
+  /* The dark theme's near-white text would print as white-on-white. Turn the
+     neutral text ramp into ink — but leave the clinical accent colours alone,
+     because cyan / emerald / amber / rose carry meaning on the sheet. */
+  .text-white,
+  .text-slate-50,
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300,
+  .text-slate-400,
+  .text-slate-500 {
+    color: #111827 !important;
+  }
+
+  /* Dark translucent panels -> light neutral panels so ink stays readable. */
+  .bg-slate-900\/30,
+  .bg-slate-900\/40,
+  .bg-slate-900\/50,
+  .bg-slate-900\/60,
+  .bg-slate-900\/90,
+  .bg-slate-900\/95,
+  .bg-slate-950\/40,
+  .bg-slate-950\/60,
+  .bg-slate-950\/70,
+  .bg-slate-950\/80,
+  .bg-white\/5,
+  .bg-white\/10,
+  .bg-white\/\[0\.02\],
+  .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.04\],
+  .bg-white\/\[0\.07\] {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Keep the coloured panels, lightened for paper rather than flattened. */
+  .bg-cyan-400\/5,
+  .bg-cyan-400\/10,
+  .bg-cyan-400\/15,
+  .bg-sky-400\/10 {
+    background-color: #e0f2fe !important;
+  }
+  .bg-emerald-400\/5,
+  .bg-emerald-400\/10 {
+    background-color: #dcfce7 !important;
+  }
+  .bg-amber-400\/5,
+  .bg-amber-400\/10,
+  .bg-amber-500\/15 {
+    background-color: #fef3c7 !important;
+  }
+  .bg-rose-400\/5,
+  .bg-rose-400\/10,
+  .bg-rose-500\/10,
+  .bg-rose-500\/15 {
+    background-color: #ffe4e6 !important;
+  }
+  .bg-violet-400\/10 {
+    background-color: #ede9fe !important;
+  }
+  .bg-indigo-400\/10 {
+    background-color: #e0e7ff !important;
+  }
+
+  /* Accent text: darkened for contrast on paper, hue preserved. */
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-200,
+  .text-cyan-300 {
+    color: #0e7490 !important;
+  }
+  .text-emerald-100,
+  .text-emerald-200,
+  .text-emerald-300 {
+    color: #047857 !important;
+  }
+  .text-amber-100,
+  .text-amber-200,
+  .text-amber-300 {
+    color: #b45309 !important;
+  }
+  .text-rose-200,
+  .text-rose-300 {
+    color: #be123c !important;
+  }
+  .text-violet-200,
+  .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20 {
+    border-color: #cbd5e1 !important;
+  }
+  .border-cyan-400\/20,
+  .border-cyan-400\/25,
+  .border-cyan-400\/30,
+  .border-cyan-400\/40 {
+    border-color: #7cc8e8 !important;
+  }
+  .border-emerald-400\/20,
+  .border-emerald-400\/30,
+  .border-emerald-400\/40 {
+    border-color: #7fd8b1 !important;
+  }
+  .border-amber-400\/20,
+  .border-amber-400\/30,
+  .border-amber-400\/40,
+  .border-amber-500\/40 {
+    border-color: #f0c377 !important;
+  }
+  .border-rose-400\/30,
+  .border-rose-400\/40,
+  .border-rose-500\/40 {
+    border-color: #f5a3b3 !important;
+  }
+
+  /* Legacy hook. It used to flatten the whole subtree to black on white, which
+     is what made the PDF greyscale. Now it only normalises body text to ink;
+     the accent rules above keep their colour. */
+  .print-black {
     background: #ffffff !important;
     border-color: #94a3b8 !important;
-    box-shadow: none !important;
+  }
+  .print-black,
+  .print-black .text-white,
+  .print-black .text-slate-50,
+  .print-black .text-slate-100,
+  .print-black .text-slate-200,
+  .print-black .text-slate-300,
+  .print-black .text-slate-400,
+  .print-black .text-slate-500 {
+    color: #111827 !important;
   }
 }
 
