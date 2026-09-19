@@ -9,6 +9,37 @@ export type GrowthEntry = {
   fluids?: number;
 };
 
+/**
+ * How a baby left the unit. Mirrors the `babies.status` column, which already
+ * carries these values — this type just keeps the UI honest about them.
+ */
+export type DischargeOutcome = "discharged" | "transferred" | "death";
+
+export const DISCHARGE_OUTCOMES: readonly DischargeOutcome[] = ["discharged", "transferred", "death"];
+
+/**
+ * The administrative discharge record, written once when a baby is marked as
+ * discharged and kept with the chart for MRD retention.
+ *
+ * Kept separate from `Clinical.discharge` (the discharge-readiness criteria
+ * checklist) and from `babies.status` (the board filter).
+ */
+export type DischargeRecord = {
+  /** Full timestamp of when the discharge was signed. */
+  at: string;
+  /** Local calendar day, YYYY-MM-DD — the grouping key for day/month archives. */
+  date: string;
+  outcome: DischargeOutcome;
+  /** Free-text condition at discharge / instructions given. */
+  summary: string;
+  /** Who signed the discharge. */
+  signedBy: string;
+  /** Snapshot values, so the record still reads correctly if the card changes. */
+  weightAtDischarge?: number;
+  bedAtDischarge?: string;
+  unitAtDischarge?: string;
+};
+
 export type Clinical = {
   triage?: {
     scale: string;
@@ -33,6 +64,29 @@ export type Clinical = {
     totalMlKgDay?: number;
     enteralMlKgDay?: number;
     ivMlKgDay?: number;
+    /**
+     * How today's enteral volume relates to the total fluid target:
+     *  - "static"     : the whole TFI is enteral, divided across the day.
+     *  - "increasing" : enteral = TFI - increment; the increment is given IV,
+     *                   so feeds step up by that amount over the next 24 h.
+     * Absent means the legacy behaviour (enteral/IV entered directly).
+     */
+    feedPlan?: "static" | "increasing";
+    /** Total fluid intake target, ml/kg/day. */
+    tfiMlKgDay?: number;
+    /** Planned feed increase over the next 24 h, ml/kg/day ("increasing" plan). */
+    feedIncrementMlKgDay?: number;
+    /**
+     * What the increase number means:
+     *  - "iv-today":       feeds run at TFI - increment and the increment is
+     *                      given IV today (steps up over the next 24 h).
+     *  - "tomorrow-target": today's feeds are the full TFI and the increase
+     *                      is the enteral target for the next 24 h.
+     *
+     * The feed plan governs enteral feeds only. IV fluids are always typed
+     * manually in ivMlKgDay — the plan never derives or overrides them.
+     */
+    increaseAppliesTo?: "iv-today" | "tomorrow-target";
     dextrosePct?: number;
     gir?: number;
     girManual?: boolean;
@@ -49,6 +103,13 @@ export type Clinical = {
     fortificationAmount?: number;
     fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
     fortificationFeedVolumeMl?: number;
+    /**
+     * Energy and protein each fortifier unit contributes. Optional — defaults
+     * to a standard human milk fortifier. Set these to match the product on
+     * the label when it differs.
+     */
+    fortifierKcalPerUnit?: number;
+    fortifierProteinPerUnit?: number;
     fortificationNotes?: string;
     residual?: string;
     tpn?: boolean;
@@ -70,7 +131,13 @@ export type Clinical = {
   };
   labs?: Record<string, string>;
   care?: string[];
+  /** Discharge-readiness criteria checklist — ticked items, not the discharge event. */
   discharge?: string[];
+  /**
+   * The signed discharge record. Distinct from `discharge` above; see
+   * DischargeRecord. Present only once a baby has been marked as discharged.
+   */
+  dischargeRecord?: DischargeRecord;
   antenatal?: string[];
   plan?: string;
   familyNote?: string;
@@ -127,6 +194,24 @@ export const PROTEIN_G_PER_ML: Record<string, number> = {
   "Post-discharge formula": 0.019,
 };
 
+/**
+ * Fortifier contribution per unit (sachet / scoop / measure / g / ml).
+ *
+ * A standard human milk fortifier sachet mixed into 25 ml of expressed breast
+ * milk raises it from ~0.67 to ~0.80 kcal/ml (+4 kcal per 25 ml) and protein
+ * from ~1.1 to ~2.4 g/dl (+0.33 g per 25 ml). Override per product with
+ * fortifierKcalPerUnit / fortifierProteinPerUnit.
+ */
+export const FORTIFIER_KCAL_PER_UNIT = 4;
+export const FORTIFIER_PROTEIN_G_PER_UNIT = 0.33;
+
+/**
+ * Lipid emulsions supply energy (9 kcal/g) but effectively no protein — the
+ * egg phospholipid emulsifier is not counted as usable protein. Kept as a
+ * named constant so the assumption is visible and easy to change.
+ */
+export const LIPID_PROTEIN_G_PER_G = 0;
+
 export type NutritionCalc = {
   feedType: string;
   density: number;
@@ -147,10 +232,32 @@ export type NutritionCalc = {
   totalProtein: number;
   totalFluids: number;
   ivMl: number;
+  /* --- Fortification, so fortified feeds are counted with unfortified ones --- */
+  /** True when a fortifier amount is recorded. */
+  fortified: boolean;
+  /** kcal/ml added to the base milk by the fortifier. */
+  fortKcalPerMl: number;
+  /** g protein/ml added to the base milk by the fortifier. */
+  fortProteinPerMl: number;
+  /** Effective kcal/ml actually used: base milk density + fortifier. */
+  effectiveKcalPerMl: number;
+  /** Effective g protein/ml actually used: base milk protein + fortifier. */
+  effectiveProteinPerMl: number;
+  /* --- Per-source breakdown so every number can be audited --- */
+  milkKcal: number;
+  fortKcal: number;
+  milkProtein: number;
+  fortProtein: number;
+  /** Protein from IV amino acids (Aminoven / Vaminolact) — equals aaG. */
+  aaProtein: number;
+  /** Protein from lipid emulsion — 0 by definition, shown for completeness. */
+  lipidProtein: number;
   kcalTarget: [number, number];
   proteinTarget: [number, number];
   kcalDeficit: number;
   proteinDeficit: number;
+  /** Resolved feed plan (static / increasing) behind these numbers. */
+  feedPlan: FeedPlan;
   warnings: string[];
   isAbnormal: boolean;
 };
@@ -168,6 +275,143 @@ export function calcGir(dextrosePct: number | undefined, ivMlKgDay: number | und
   return Math.round(gir * 100) / 100;
 }
 
+const clampMl = (v: number) => Math.max(0, Math.min(250, v));
+
+/**
+ * Feeds per day implied by an "N hourly" frequency.
+ * Returns undefined for "continuous", on-demand or unrecognised entries,
+ * because those have no fixed number of boluses to divide the day into.
+ */
+export function feedsPerDay(feedFreq: string | undefined): number | undefined {
+  const match = feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  if (!hours || hours <= 0 || hours >= 24) return undefined;
+  return 24 / hours;
+}
+
+export type FeedPlan = {
+  /** False when no TFI target is entered — callers fall back to raw enteral/IV. */
+  active: boolean;
+  mode: "static" | "increasing";
+  increaseAppliesTo: "iv-today" | "tomorrow-target";
+  tfi?: number;
+  /** Only set for the "increasing" plan. */
+  increment?: number;
+  /** Today's enteral volume, the only thing the plan actually drives. */
+  enteralMlKgDay?: number;
+  /** Today's IV volume — always the manually entered value, never derived. */
+  ivMlKgDay?: number;
+  /**
+   * What the IV would have to be to bring enteral + IV up to the TFI target.
+   * Informational only: the UI shows it as a hint and never writes it back.
+   */
+  ivSuggestedMlKgDay?: number;
+  /** Enteral volume planned for the next 24 h (the step-up target). */
+  tomorrowEnteralMlKgDay?: number;
+  /** Enteral + IV actually prescribed today. */
+  totalFluidsMlKgDay?: number;
+  /** True when today's enteral + IV equals the TFI target. */
+  reconciled: boolean;
+  perFeedMl?: number;
+  feedsPerDay?: number;
+  notes: string[];
+};
+
+/**
+ * Resolve today's enteral volume and the next 24 h step-up from the total
+ * fluid intake target. The plan governs enteral feeds only.
+ *
+ *  static                whole TFI is enteral, no change tomorrow
+ *  increasing + iv-today    feeds run at TFI - increment, TFI tomorrow
+ *  increasing + tomorrow    feeds run at the full TFI today and step up to
+ *                           TFI + increment over the next 24 h
+ *
+ * IV fluids are always the manually entered ivMlKgDay. The plan reports what
+ * IV would reconcile the day (ivSuggestedMlKgDay) but never sets it, so a
+ * typed IV prescription can no longer be overwritten or silently zeroed.
+ *
+ * Pure function — used by calcNutrition and the feed UI so both always agree.
+ */
+export function resolveFeedPlan(
+  f: NonNullable<Clinical["fluids"]>,
+  weightKg?: number,
+): FeedPlan {
+  const mode: FeedPlan["mode"] = f.feedPlan === "increasing" ? "increasing" : "static";
+  const increaseAppliesTo: FeedPlan["increaseAppliesTo"] =
+    f.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
+  const notes: string[] = [];
+  const enteredIv = f.ivMlKgDay !== undefined ? clampMl(f.ivMlKgDay) : 0;
+  const inactive: FeedPlan = {
+    active: false,
+    mode,
+    increaseAppliesTo,
+    ivMlKgDay: enteredIv,
+    reconciled: false,
+    notes,
+  };
+  if (f.tfiMlKgDay === undefined || !(f.tfiMlKgDay > 0)) return inactive;
+  if (f.tfiMlKgDay > 250) notes.push(`TFI ${f.tfiMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
+  const tfi = clampMl(f.tfiMlKgDay);
+
+  // --- today's enteral volume, plus the step-up target for the next 24 h ---
+  let enteral = tfi;
+  let tomorrow = tfi;
+  let increment: number | undefined;
+  if (mode === "increasing") {
+    const rawInc = f.feedIncrementMlKgDay ?? 0;
+    increment = clampMl(rawInc);
+    if (rawInc > 250) notes.push(`Increase ${rawInc} ml/kg/day exceeds the 250 cap — clamped`);
+    if (increaseAppliesTo === "iv-today") {
+      if (increment > tfi) notes.push(`Increase ${increment} exceeds TFI ${tfi} — enteral floored at 0`);
+      enteral = Math.max(0, tfi - increment);
+      tomorrow = tfi;
+    } else {
+      enteral = tfi;
+      const next = tfi + increment;
+      tomorrow = clampMl(next);
+      if (next > 250) notes.push(`Next 24 h target ${Math.round(next)} ml/kg/day exceeds the 250 cap — clamped`);
+    }
+  }
+
+  // --- today's IV volume: whatever was typed, never derived or overridden ---
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  const ivSuggested = Math.max(0, round2(tfi - enteral));
+  const totalFluids = round2(enteral + enteredIv);
+  const reconciled = Math.abs(totalFluids - tfi) < 0.01;
+  if (totalFluids > tfi + 0.01) {
+    notes.push(
+      `Total fluids ${totalFluids} ml/kg/day exceed the TFI target ${tfi} by ${round2(totalFluids - tfi)} — check the IV prescription.`,
+    );
+  }
+
+  const fpd = feedsPerDay(f.feedFreq);
+  const perFeedMl =
+    fpd !== undefined && weightKg !== undefined && weightKg > 0
+      ? round2((enteral * weightKg) / fpd)
+      : undefined;
+  if (fpd === undefined && enteral > 0) {
+    notes.push("Choose an hourly frequency to split the day's volume into feeds");
+  }
+
+  return {
+    active: true,
+    mode,
+    increaseAppliesTo,
+    tfi,
+    increment,
+    enteralMlKgDay: round2(enteral),
+    ivMlKgDay: round2(enteredIv),
+    ivSuggestedMlKgDay: ivSuggested,
+    tomorrowEnteralMlKgDay: round2(tomorrow),
+    totalFluidsMlKgDay: totalFluids,
+    reconciled,
+    perFeedMl,
+    feedsPerDay: fpd,
+    notes,
+  };
+}
+
 /** Auto-compute kcal/kg/day and protein g/kg/day from the current feed + TPN prescription. */
 export function calcNutrition(c: Clinical): NutritionCalc {
   const f = c.fluids ?? {};
@@ -175,17 +419,31 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const density = KCAL_PER_ML[feedType] ?? 0.67;
   const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
 
+  // --- Feed plan: TFI target split into today's enteral + IV volumes ---
+  const plan = resolveFeedPlan(f);
+
   // --- Input sanitization with physiological limits ---
-  const rawEnteral = f.enteralMlKgDay ?? 0;
-  const enteralMl = Math.max(0, Math.min(250, rawEnteral)); // cap 250 ml/kg/day
+  const rawEnteral = plan.active && plan.enteralMlKgDay !== undefined ? plan.enteralMlKgDay : f.enteralMlKgDay ?? 0;
+  const enteralMl = clampMl(rawEnteral); // cap 250 ml/kg/day
 
-  const rawIv = f.ivMlKgDay ?? 0;
-  const ivMl = Math.max(0, Math.min(250, rawIv));
+  const rawIv = plan.active && plan.ivMlKgDay !== undefined ? plan.ivMlKgDay : f.ivMlKgDay ?? 0;
+  const ivMl = clampMl(rawIv);
 
-  const rawGir = f.gir ?? 0;
+  // GIR: an explicit manual value wins. Otherwise DERIVE it from dextrose% and
+  // the IV volume, so IV energy is never silently dropped on the screens that
+  // call calcNutrition on stored data without pre-computing GIR.
+  const derivedGir = calcGir(f.dextrosePct, ivMl);
+  const storedGir = f.gir ?? 0;
+  const rawGir = f.girManual ? storedGir : derivedGir > 0 ? derivedGir : storedGir;
   // GIR should be 0-20 mg/kg/min, if >20 likely data entry error
   const gir = Math.max(0, Math.min(20, rawGir));
-  const girSource: NutritionCalc["girSource"] = f.girManual ? "manual" : f.dextrosePct !== undefined && f.ivMlKgDay !== undefined ? "auto" : rawGir > 0 ? "manual" : "none";
+  const girSource: NutritionCalc["girSource"] = f.girManual
+    ? "manual"
+    : derivedGir > 0
+      ? "auto"
+      : storedGir > 0
+        ? "manual"
+        : "none";
 
   // Dextrose: mg/kg/min -> g/kg/day = GIR * 1440 /1000 = GIR *1.44
   const dextroseG = Math.round(gir * 1.44 * 10) / 10;
@@ -199,19 +457,48 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const lipidG = Math.max(0, Math.min(6, rawLipid)); // lipid max 3-4 g/kg/day
   const lipidKcal = Math.round(lipidG * 9 * 10) / 10; // 9 kcal/g
 
-  const enteralKcal = Math.round(enteralMl * density * 10) / 10;
-  const enteralProtein = Math.round(enteralMl * protPerMl * 100) / 100;
+  const warnings: string[] = [];
+
+  // --- Fortification: uplift the milk density from the recorded preparation ---
+  // amount used / volume it was mixed into = fortifier per ml of feed, applied
+  // to the whole day's enteral volume, so fortified feeds count their energy
+  // and protein exactly like an unfortified feed does.
+  const fortAmount = f.fortificationAmount ?? 0;
+  const fortMixedMl = f.fortificationFeedVolumeMl ?? 0;
+  const kcalPerUnit = f.fortifierKcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
+  const proteinPerUnit = f.fortifierProteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
+  const fortified = fortAmount > 0;
+  let fortKcalPerMl = 0;
+  let fortProteinPerMl = 0;
+  if (fortified && fortMixedMl > 0) {
+    fortKcalPerMl = (fortAmount * kcalPerUnit) / fortMixedMl;
+    fortProteinPerMl = (fortAmount * proteinPerUnit) / fortMixedMl;
+  } else if (fortified) {
+    warnings.push(
+      "Fortifier recorded without a mixed volume — enter \"Feed volume mixed (ml)\" so its energy and protein are counted",
+    );
+  }
+  const effectiveKcalPerMl = density + fortKcalPerMl;
+  const effectiveProteinPerMl = protPerMl + fortProteinPerMl;
+
+  const enteralKcal = Math.round(enteralMl * effectiveKcalPerMl * 10) / 10;
+  const fortKcal = Math.round(enteralMl * fortKcalPerMl * 10) / 10;
+  const milkKcal = Math.round((enteralKcal - fortKcal) * 10) / 10;
+  const enteralProtein = Math.round(enteralMl * effectiveProteinPerMl * 100) / 100;
+  const fortProtein = Math.round(enteralMl * fortProteinPerMl * 100) / 100;
+  const milkProtein = Math.round((enteralProtein - fortProtein) * 100) / 100;
 
   // Total IV kcal = dextrose + AA + lipid (TPN)
   const ivKcal = Math.round((dextroseKcal + aaKcal + lipidKcal) * 10) / 10;
-  // Total = enteral + IV
+  // Total energy = enteral (milk + fortifier) + IV (dextrose + AA + lipid)
   const totalKcal = Math.round((enteralKcal + ivKcal) * 10) / 10;
-  const totalProtein = Math.round((enteralProtein + aaG) * 100) / 100;
+  // Total protein = enteral (milk + fortifier) + IV amino acids + lipid (0)
+  const lipidProtein = Math.round(lipidG * LIPID_PROTEIN_G_PER_G * 100) / 100;
+  const totalProtein = Math.round((enteralProtein + aaG + lipidProtein) * 100) / 100;
 
   const kcalTarget: [number, number] = [110, 135];
   const proteinTarget: [number, number] = [3.5, 4.5]; // widened to 3.5-4.5 for preterm, was 3.5-4
 
-  const warnings: string[] = [];
   if (gir > 0 && gir < 4) warnings.push(`Low GIR ${gir} mg/kg/min (<4) — risk hypoglycaemia`);
   if (gir > 8 && gir <= 12) warnings.push(`High GIR ${gir} mg/kg/min (>8) — monitor glucose, consider central line if >10`);
   if (gir > 12) warnings.push(`Very high GIR ${gir} mg/kg/min (>12) — requires central line, high osmolarity risk`);
@@ -220,6 +507,11 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   if (aaG > 4) warnings.push(`AA ${aaG} g/kg/day exceeds 4 — check prescription`);
   if (lipidG > 4) warnings.push(`Lipid ${lipidG} g/kg/day exceeds 4 — check prescription`);
   if (enteralMl > 200) warnings.push(`Enteral ${enteralMl} ml/kg/day >200 — fluid overload risk`);
+  if (ivMl > 0 && derivedGir === 0 && !f.girManual) {
+    warnings.push(
+      `IV ${ivMl} ml/kg/day carries no energy here — enter dextrose% (or GIR) if the IV fluid contains dextrose`,
+    );
+  }
   if (totalKcal > 0 && totalKcal < 80) warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
   if (totalKcal > 150) warnings.push(`High energy ${totalKcal} kcal/kg/day (>150) — exceeds target 110-135`);
   if (totalProtein > 0 && totalProtein < 2) warnings.push(`Low protein ${totalProtein} g/kg/day (<2) — inadequate for growth`);
@@ -249,8 +541,22 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     ivKcal,
     totalKcal,
     totalProtein,
-    totalFluids: f.totalMlKgDay ?? 0,
+    totalFluids: plan.active
+      ? Math.round((enteralMl + ivMl) * 10) / 10
+      : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10,
     ivMl,
+    fortified,
+    fortKcalPerMl: Math.round(fortKcalPerMl * 1000) / 1000,
+    fortProteinPerMl: Math.round(fortProteinPerMl * 10000) / 10000,
+    effectiveKcalPerMl: Math.round(effectiveKcalPerMl * 1000) / 1000,
+    effectiveProteinPerMl: Math.round(effectiveProteinPerMl * 10000) / 10000,
+    milkKcal,
+    fortKcal,
+    milkProtein,
+    fortProtein,
+    aaProtein: aaG,
+    lipidProtein,
+    feedPlan: plan,
     kcalTarget,
     proteinTarget,
     kcalDeficit: Math.round((totalKcal - kcalTarget[0]) * 10) / 10,

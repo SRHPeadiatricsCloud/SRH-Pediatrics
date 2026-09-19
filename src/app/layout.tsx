@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}var f=parseFloat(localStorage.getItem("srh_font_scale"));if(isFinite(f)){f=Math.min(1.7,Math.max(0.85,f));document.documentElement.style.fontSize=(f*100)+"%"}}catch(e){}})();`;
+const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}var p=localStorage.getItem("srh_palette");if(p){document.documentElement.setAttribute("data-palette",p)}var f=parseFloat(localStorage.getItem("srh_font_scale"));if(isFinite(f)){f=Math.min(1.7,Math.max(0.85,f));document.documentElement.style.fontSize=(f*100)+"%"}}catch(e){}})();`;
 
 const fontVars: CSSProperties = {
   ["--font-display" as string]: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

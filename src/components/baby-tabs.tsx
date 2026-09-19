@@ -33,6 +33,7 @@ import {
   fmtTime,
   gainGPerKgDay,
   pctOfBirth,
+  resolveFeedPlan,
   tempIn,
   tempOut,
   type Clinical,
@@ -445,22 +446,48 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   });
   const wt = d.baby.currentWeight / 1000;
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
+  // The feed plan resolves today's enteral + IV volumes from the TFI target.
+  // The same resolver runs inside calcNutrition, so the energy panel and the
+  // feed volume can never disagree.
+  const plan = resolveFeedPlan(s, wt);
+  const planMode = s.feedPlan === "increasing" ? "increasing" : "static";
+  const increaseAppliesTo = s.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
   const intervalHours = (() => {
     const match = s.feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
     return match ? Number(match[1]) : undefined;
   })();
-  const autoGir = s.dextrosePct !== undefined && s.ivMlKgDay !== undefined && s.ivMlKgDay > 0
-    ? girFromDextrose(s.dextrosePct, Math.min(250, s.ivMlKgDay))
+  const feedsToday = intervalHours && intervalHours < 24 ? 24 / intervalHours : undefined;
+  const planIv = plan.active ? plan.ivMlKgDay : s.ivMlKgDay;
+  const autoGir = s.dextrosePct !== undefined && planIv !== undefined && planIv > 0
+    ? girFromDextrose(s.dextrosePct, Math.min(250, planIv))
     : s.gir;
   const girValue = manualDerived.gir ? s.gir : autoGir;
-  const autoFeedVolume = intervalHours && intervalHours < 24 && wt > 0 && s.enteralMlKgDay !== undefined
-    ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / (24 / intervalHours)).toFixed(2))
-    : s.feedVol;
+  const autoFeedVolume = plan.active
+    ? plan.perFeedMl ?? s.feedVol
+    : feedsToday && wt > 0 && s.enteralMlKgDay !== undefined
+      ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / feedsToday).toFixed(2))
+      : s.feedVol;
   const feedVolumeValue = manualDerived.feedVol ? s.feedVol : autoFeedVolume;
-  const enteralForNutrition = manualDerived.feedVol && feedVolumeValue !== undefined && intervalHours && intervalHours < 24 && wt > 0
-    ? Number((feedVolumeValue * (24 / intervalHours) / wt).toFixed(4))
-    : s.enteralMlKgDay;
-  const nutrition = calcNutrition({ fluids: { ...s, gir: girValue, enteralMlKgDay: enteralForNutrition } });
+  // A manual per-feed volume converts back to ml/kg/day, but only when the plan
+  // is not driving the volumes — there the plan stays authoritative.
+  const manualEnteralFromVolume =
+    !plan.active && manualDerived.feedVol && feedVolumeValue !== undefined && feedsToday && wt > 0
+      ? Number(((feedVolumeValue * feedsToday) / wt).toFixed(4))
+      : undefined;
+  const enteralForNutrition = plan.active
+    ? plan.enteralMlKgDay
+    : manualEnteralFromVolume !== undefined
+      ? manualEnteralFromVolume
+      : s.enteralMlKgDay;
+  const nutrition = calcNutrition({
+    fluids: {
+      ...s,
+      gir: girValue,
+      girManual: manualDerived.gir,
+      ivMlKgDay: planIv,
+      ...(manualEnteralFromVolume !== undefined ? { enteralMlKgDay: manualEnteralFromVolume } : {}),
+    },
+  });
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
   const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
@@ -472,7 +499,9 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     setManualDerived((current) => ({ ...current, [key]: false }));
     setS((p) => ({ ...p, [key]: undefined }));
   };
-  const saveFluids = () => patch({ clinical: { fluids: { ...s, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
+  // totalMlKgDay is what the board, the handover sheet and the print sheet all
+  // read, so keep it in step with the plan instead of leaving a stale total.
+  const saveFluids = () => patch({ clinical: { fluids: { ...s, totalMlKgDay: nutrition.totalFluids, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
 
   const girFlag: Flag = girValue === undefined || girValue === 0
     ? { key: "gir", label: "GIR waiting for dextrose% and IV ml/kg/day", sev: "info" }
@@ -555,13 +584,136 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         )}
 
+        <fieldset className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+          <legend className="px-1 text-base font-black text-slate-100">Feed plan - enteral feeds</legend>
+          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+            Sets the enteral feed volume only. <b className="text-slate-200">Increasing:</b> enter the total fluid
+            target (TFI) and the planned increase, then choose whether the increase is given IV today or becomes
+            tomorrow&apos;s feed target. <b className="text-slate-200">Static:</b> the whole TFI is enteral and
+            simply divided across the day by the chosen frequency. IV fluids are always entered by you below, in
+            Prescription inputs.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Chip
+              label="Static - whole 24 h divided"
+              on={planMode !== "increasing"}
+              onClick={() => setS((p) => ({ ...p, feedPlan: "static" }))}
+            />
+            <Chip
+              label="Increasing - step up over 24 h"
+              on={planMode === "increasing"}
+              onClick={() => setS((p) => ({ ...p, feedPlan: "increasing" }))}
+            />
+          </div>
+
+          {planMode === "increasing" && (
+            <div className="mt-3">
+              <span className="lbl mb-1 block">Increase applies to</span>
+              <div className="flex flex-wrap gap-1.5">
+                <Chip
+                  label="Given IV today"
+                  on={increaseAppliesTo !== "tomorrow-target"}
+                  onClick={() => setS((p) => ({ ...p, increaseAppliesTo: "iv-today" }))}
+                />
+                <Chip
+                  label="Tomorrow's feed target"
+                  on={increaseAppliesTo === "tomorrow-target"}
+                  onClick={() => setS((p) => ({ ...p, increaseAppliesTo: "tomorrow-target" }))}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                {increaseAppliesTo === "tomorrow-target"
+                  ? "Feeds run at the full TFI today and step up to TFI plus the increase over the next 24 h."
+                  : "Feeds run at TFI minus the increase today — enter the IV that covers the difference in Prescription inputs below."}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <NumField
+              label="TFI target ml/kg/d (0-250)"
+              value={s.tfiMlKgDay ?? undefined}
+              onChange={set("tfiMlKgDay")}
+              min={0}
+              max={250}
+              step={1}
+              placeholder="e.g. 150"
+            />
+            {planMode === "increasing" && (
+              <NumField
+                label="Increase over next 24 h ml/kg/d"
+                value={s.feedIncrementMlKgDay ?? undefined}
+                onChange={set("feedIncrementMlKgDay")}
+                min={0}
+                max={250}
+                step={1}
+                placeholder="e.g. 20"
+              />
+            )}
+          </div>
+
+          {plan.active && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
+                <div className="lbl !mb-1">Today</div>
+                <div className="font-black text-white">
+                  Enteral {plan.enteralMlKgDay} ml/kg/d
+                </div>
+                <div className="text-slate-400">
+                  {plan.perFeedMl !== undefined && plan.feedsPerDay !== undefined
+                    ? `${plan.perFeedMl} ml per feed x ${plan.feedsPerDay} feeds/24 h`
+                    : "Choose an hourly frequency to split the day"}
+                </div>
+                <div className="text-slate-400">
+                  IV entered {plan.ivMlKgDay ?? 0} ml/kg/d - total fluids {plan.totalFluidsMlKgDay} ml/kg/d
+                </div>
+                {plan.ivSuggestedMlKgDay !== undefined && plan.ivSuggestedMlKgDay > 0 && (
+                  <div className="text-slate-500">
+                    {plan.ivSuggestedMlKgDay} ml/kg/d of IV would bring the day to the TFI target
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed">
+                <div className="lbl !mb-1">Next 24 h</div>
+                <div className="font-black text-white">Enteral {plan.tomorrowEnteralMlKgDay} ml/kg/d</div>
+                <div className="text-slate-400">
+                  {plan.mode === "increasing" && plan.increment !== undefined
+                    ? `step up of ${plan.increment} ml/kg/d`
+                    : "unchanged - static plan"}
+                </div>
+                <div className={plan.reconciled ? "text-slate-400" : "font-bold text-amber-200"}>
+                  {plan.reconciled
+                    ? `enteral + IV reconciles to TFI ${plan.tfi} ml/kg/d`
+                    : `enteral + IV is ${plan.totalFluidsMlKgDay}, TFI target ${plan.tfi} ml/kg/d`}
+                </div>
+              </div>
+            </div>
+          )}
+          {!plan.active && (
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/50 p-2 text-[11px] text-slate-400">
+              Enter a TFI target to set the enteral feed volume from the plan
+            </div>
+          )}
+          {plan.notes.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-[11px] text-amber-100">
+              {plan.notes.map((note, i) => (
+                <li key={i}>{note}</li>
+              ))}
+            </ul>
+          )}
+        </fieldset>
+
         <fieldset className="mt-5">
           <legend className="text-base font-black text-slate-100">Prescription inputs - caps 0-250 ml/kg/day, AA/lipid 0-6 g/kg/day</legend>
           <p className="mt-1 text-xs text-slate-400">Enter ml/kg/day (not ml/day). AA and lipid are g/kg/day, not ml. Grossly high values flagged.</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
-            <NumField label="Enteral ml/kg/d (0-250)" value={s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
-            <NumField label="IV ml/kg/d (0-250)" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            {/* TFI already lives in the feed plan above — only ask for a total
+                here for legacy records that have no plan driving them. */}
+            {!plan.active && (
+              <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            )}
+            <NumField label={`Enteral ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.enteralMlKgDay}` : ""}`} value={plan.active ? plan.enteralMlKgDay : s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label="IV ml/kg/d (0-250) - entered by you" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             <NumField label="Dextrose % (0-25) for auto GIR" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
             <NumField label="Amino acid g/kg/d (0-4.5, cap 6)" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
             <NumField label="Lipid g/kg/d (0-4, cap 6)" value={s.lipid ?? undefined} onChange={set("lipid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
@@ -584,20 +736,67 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
         </fieldset>
 
-        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ~ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
+        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ~ {Math.round(nutrition.totalFluids * wt)} ml/day ({nutrition.totalFluids} ml/kg/d = enteral {nutrition.enteralMl} + IV {nutrition.ivMl}) - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
+        {/* Every kcal and gram of protein, traced to its source. */}
+        <div className="mt-3 grid gap-2 lg:grid-cols-2">
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-xs">
+            <div className="lbl !mb-1">Energy breakdown kcal/kg/day</div>
+            <ul className="space-y-1 leading-relaxed text-slate-200">
+              <li className="flex justify-between gap-2"><span>Milk / feeds {nutrition.enteralMl} ml × {nutrition.density} kcal/ml</span><b>{nutrition.milkKcal}</b></li>
+              {nutrition.fortified && (
+                <li className="flex justify-between gap-2 text-cyan-100"><span>Fortifier {nutrition.enteralMl} ml × {nutrition.fortKcalPerMl} kcal/ml</span><b>+{nutrition.fortKcal}</b></li>
+              )}
+              <li className="flex justify-between gap-2"><span>IV dextrose {nutrition.dextroseG} g × 3.4 (GIR {nutrition.gir})</span><b>{nutrition.dextroseKcal}</b></li>
+              <li className="flex justify-between gap-2"><span>IV amino acids {nutrition.aaG} g × 4</span><b>{nutrition.aaKcal}</b></li>
+              <li className="flex justify-between gap-2"><span>IV lipid {nutrition.lipidG} g × 9</span><b>{nutrition.lipidKcal}</b></li>
+              <li className="mt-1 flex justify-between gap-2 border-t border-white/10 pt-1 font-black text-white"><span>Total (enteral {nutrition.enteralKcal} + IV {nutrition.ivKcal})</span><span>{nutrition.totalKcal}</span></li>
+              <li className="text-[10px] text-slate-400">Target {nutrition.kcalTarget[0]}–{nutrition.kcalTarget[1]} kcal/kg/day</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs">
+            <div className="lbl !mb-1">Protein breakdown g/kg/day</div>
+            <ul className="space-y-1 leading-relaxed text-slate-200">
+              <li className="flex justify-between gap-2"><span>Milk / feeds {nutrition.enteralMl} ml × {nutrition.proteinPerMl} g/ml</span><b>{nutrition.milkProtein}</b></li>
+              {nutrition.fortified && (
+                <li className="flex justify-between gap-2 text-emerald-100"><span>Fortifier {nutrition.enteralMl} ml × {nutrition.fortProteinPerMl} g/ml</span><b>+{nutrition.fortProtein}</b></li>
+              )}
+              <li className="flex justify-between gap-2"><span>IV amino acids (Aminoven / Vaminolact)</span><b>{nutrition.aaProtein}</b></li>
+              <li className="flex justify-between gap-2 text-slate-400"><span>IV lipid emulsion (no usable protein)</span><b>{nutrition.lipidProtein}</b></li>
+              <li className="mt-1 flex justify-between gap-2 border-t border-white/10 pt-1 font-black text-white"><span>Total (enteral {nutrition.enteralProtein} + IV {nutrition.aaProtein})</span><span>{nutrition.totalProtein}</span></li>
+              <li className="text-[10px] text-slate-400">Target {nutrition.proteinTarget[0]}–{nutrition.proteinTarget[1]} g/kg/day</li>
+            </ul>
+          </div>
+        </div>
         <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
 
         <fieldset className="mt-6 border-t border-white/10 pt-5">
           <legend className="text-base font-black text-slate-100">Fortification</legend>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record exactly as prepared.</b> Product, amount, and mixed volume. Does not auto-scale.</p>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300">
+            <b className="text-slate-100">Record exactly as prepared.</b> Product, amount, and the volume it was mixed
+            into. The amount and mixed volume are never rescaled — they are used as entered to add the
+            fortifier&apos;s energy and protein to the day&apos;s enteral feeds.
+          </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
             <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.1} decimals={2} placeholder="enter" />
             <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml</option><option value="scoop">scoop</option><option value="measure">measure</option></select></label>
-            <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="enter" />
-            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional" /></label>
+            <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="required for energy" />
+            <NumField label={`kcal per unit - ${s.fortifierKcalPerUnit === undefined ? "default 4" : "custom"}`} value={s.fortifierKcalPerUnit ?? undefined} onChange={set("fortifierKcalPerUnit")} min={0} max={50} step={0.1} decimals={2} placeholder="4" />
+            <NumField label={`Protein g per unit - ${s.fortifierProteinPerUnit === undefined ? "default 0.33" : "custom"}`} value={s.fortifierProteinPerUnit ?? undefined} onChange={set("fortifierProteinPerUnit")} min={0} max={10} step={0.01} decimals={2} placeholder="0.33" />
+            <label className="block sm:col-span-2 lg:col-span-2"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional" /></label>
           </div>
-          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> amount stays linked to stated mixed volume. Do not auto-adjust.</div>
+          <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed text-slate-300">
+            {nutrition.fortified
+              ? <>
+                  <b className="text-white">Counted in the totals:</b> {s.fortificationAmount} {s.fortificationAmountUnit ?? "sachet"}
+                  {s.fortificationFeedVolumeMl ? ` per ${s.fortificationFeedVolumeMl} ml` : ""} adds{" "}
+                  <b className="text-cyan-200">+{nutrition.fortKcalPerMl} kcal/ml</b> and{" "}
+                  <b className="text-emerald-200">+{nutrition.fortProteinPerMl} g protein/ml</b> to {nutrition.feedType} —
+                  effective density {nutrition.effectiveKcalPerMl} kcal/ml, {nutrition.effectiveProteinPerMl} g protein/ml.
+                </>
+              : "No fortifier recorded — the base milk density is used."}
+          </div>
+          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> amount stays linked to stated mixed volume. Do not auto-adjust. Defaults assume a standard human milk fortifier (4 kcal, 0.33 g protein per sachet) — override per product from the label.</div>
         </fieldset>
       </Section>
     </div>
@@ -1115,7 +1314,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
   const [shift, setShift] = useState(SHIFTS[0]);
   const [toStaff, setToStaff] = useState("");
   const [illness, setIllness] = useState(b.acuity);
-  const [summary, setSummary] = useState(autoSummary);
+  const [summaryDraft, setSummaryDraft] = useState("");
   const [actions, setActions] = useState<ComposedAction[]>(() => {
     const seen = new Set<string>();
     const out: ComposedAction[] = [];
@@ -1130,9 +1329,12 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
   const [actionDraft, setActionDraft] = useState("");
   const [synthesis, setSynthesis] = useState("Read-back completed at bedside with nurse in charge.");
   const [saving, setSaving] = useState(false);
-  // Keep generated text current when source data changes while allowing manual edits.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setSummary(autoSummary), [autoSummary]);
+  const [summaryEdited, setSummaryEdited] = useState(false);
+  // Show the generated summary until the clinician types over it. Once they
+  // have, their note wins and no re-render or autosave elsewhere can replace
+  // it — the previous version synced this through an effect, which silently
+  // discarded a handover note whenever the underlying data changed.
+  const summary = summaryEdited ? summaryDraft : autoSummary;
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       <div className="space-y-3 lg:col-span-2">
@@ -1169,8 +1371,32 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
           <ChipGroup options={ILLNESS} value={illness} onChange={(v2: string) => setIllness(v2 || "stable")} tone="rose" />
           <div className="lbl mt-3 mb-1">To</div>
           <input className="inp" value={toStaff} onChange={(e) => setToStaff(e.target.value)} placeholder="Receiving doctor / nurse" />
-          <div className="lbl mt-3 mb-1">Patient summary</div>
-          <textarea className="inp h-28" value={summary} onChange={(e) => setSummary(e.target.value)} />
+          <div className="mt-3 mb-1 flex flex-wrap items-center justify-between gap-2">
+            <span className="lbl">Patient summary</span>
+            <button
+              type="button"
+              className="text-[10px] font-bold text-cyan-200 underline"
+              onClick={() => {
+                setSummaryDraft("");
+                setSummaryEdited(false);
+              }}
+            >
+              Regenerate from current data
+            </button>
+          </div>
+          <textarea
+            className="inp h-28"
+            value={summary}
+            onChange={(e) => {
+              setSummaryDraft(e.target.value);
+              setSummaryEdited(true);
+            }}
+          />
+          {summaryEdited && (
+            <p className="mt-1 text-[10px] text-emerald-200">
+              Your note is kept — the generated summary will not overwrite it.
+            </p>
+          )}
           <div className="lbl mt-3 mb-1">Synthesis</div>
           <input className="inp" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} />
         </Section>

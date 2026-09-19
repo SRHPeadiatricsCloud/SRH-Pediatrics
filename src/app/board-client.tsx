@@ -6,12 +6,14 @@ import { interpretVitals, type VitalsInput } from "@/lib/interpret";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackupVault, DeleteConfirmModal, type DeletableBaby } from "@/components/backup-ui";
+import { DischargeModal, type DischargeableBaby } from "@/components/discharge-ui";
 import { OnCallCard } from "@/components/oncall";
 import { TopBar, usePoll, api, useTempUnit } from "@/components/ui";
 import { UnitBadge, UnitSwitcher } from "@/components/unit-ui";
 import { ACUITY_META } from "@/lib/catalog";
 import type { Clinical } from "@/lib/clinical";
 import { correctedGA, dayOfLife, fmtBP, relTime, tempOut, vitalFlag, weightChangePct } from "@/lib/clinical";
+import { isDischarged } from "@/lib/discharge";
 import { UNITS, UNIT_LIST, type UnitKey, unitOf } from "@/lib/units";
 
 type BoardBaby = {
@@ -59,6 +61,7 @@ export default function BoardClient() {
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
   const [pending, setPending] = useState<DeletableBaby | null>(null);
+  const [pendingDischarge, setPendingDischarge] = useState<DischargeableBaby | null>(null);
   const [layoutMode, setLayoutMode] = useState<"masonry" | "uniform">("masonry");
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
 
@@ -82,6 +85,7 @@ export default function BoardClient() {
 
   const babies = useMemo(() => (data?.babies ?? []).filter((b) => b.status === "active"), [data]);
   const deleted = useMemo(() => (data?.babies ?? []).filter((b) => b.status === "deleted"), [data]);
+  const discharged = useMemo(() => (data?.babies ?? []).filter(isDischarged), [data]);
 
   const shown = babies.filter((b) => {
     const text = `${b.babyName} ${b.uhid} ${b.bed} ${b.motherName}`.toLowerCase();
@@ -278,6 +282,17 @@ export default function BoardClient() {
                       return next;
                     })
                   }
+                  onDischarge={() =>
+                    setPendingDischarge({
+                      id: b.id,
+                      babyName: b.babyName,
+                      uhid: b.uhid,
+                      bed: b.bed,
+                      motherName: b.motherName,
+                      unit: b.unit,
+                      currentWeight: b.currentWeight,
+                    })
+                  }
                   onDelete={() =>
                     setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
                   }
@@ -302,6 +317,17 @@ export default function BoardClient() {
                     return next;
                   })
                 }
+                onDischarge={() =>
+                  setPendingDischarge({
+                    id: b.id,
+                    babyName: b.babyName,
+                    uhid: b.uhid,
+                    bed: b.bed,
+                    motherName: b.motherName,
+                    unit: b.unit,
+                    currentWeight: b.currentWeight,
+                  })
+                }
                 onDelete={() =>
                   setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
                 }
@@ -310,6 +336,20 @@ export default function BoardClient() {
             ))}
           </div>
         )}
+
+        <section className="card mt-5 flex flex-wrap items-center gap-3 p-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-black text-emerald-200">Discharge register &amp; MRD archive</h3>
+            <p className="text-[11px] text-slate-400">
+              {discharged.length > 0
+                ? `${discharged.length} discharged record${discharged.length === 1 ? "" : "s"} held — review by day, export one, a whole day, or a consolidated month for MRD.`
+                : "Babies marked discharged collect here, grouped by the day they left and archived monthly."}
+            </p>
+          </div>
+          <Link href="/discharge" className="btn-primary !py-1 text-[11px]">
+            Open register
+          </Link>
+        </section>
 
         {deleted.length > 0 && (
           <section className="card mt-5 p-4">
@@ -372,6 +412,17 @@ export default function BoardClient() {
           }}
         />
       )}
+
+      {pendingDischarge && (
+        <DischargeModal
+          baby={pendingDischarge}
+          onCancel={() => setPendingDischarge(null)}
+          onDone={() => {
+            setPendingDischarge(null);
+            reload();
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -407,6 +458,7 @@ function Stat({
 function BabyCard({
   b,
   onDelete,
+  onDischarge,
   onActionToggled,
   uniform = false,
   expanded = false,
@@ -414,6 +466,7 @@ function BabyCard({
 }: {
   b: BoardBaby;
   onDelete: () => void;
+  onDischarge: () => void;
   onActionToggled?: () => void;
   uniform?: boolean;
   expanded?: boolean;
@@ -440,6 +493,18 @@ function BabyCard({
     >
       <button
         type="button"
+        title="Mark as discharged — moves the card to the discharge register"
+        className="absolute right-11 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-emerald-400/30 bg-slate-950/70 text-sm text-emerald-300 hover:bg-emerald-500 hover:text-white"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDischarge();
+        }}
+      >
+        ⤓
+      </button>
+      <button
+        type="button"
         title="Delete card"
         className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-rose-400/30 bg-slate-950/70 text-sm text-rose-300 hover:bg-rose-500 hover:text-white"
         onClick={(e) => {
@@ -450,7 +515,7 @@ function BabyCard({
       >
         🗑
       </button>
-      <Link href={`/baby/${b.id}`} className="block p-4 pr-12">
+      <Link href={`/baby/${b.id}`} className="block p-4 pr-20">
         <div className="flex items-start gap-3">
           <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot} animate-pulse`} />
           <div className="min-w-0 flex-1">

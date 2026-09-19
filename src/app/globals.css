@@ -699,34 +699,7 @@ body.view-only button[title="Delete card"] {
   cursor: not-allowed;
 }
 
-/* ============================================================
-   PRINT
-   ============================================================ */
-@media print {
-  body,
-  html.light body {
-    background: #ffffff !important;
-  }
-  .no-print {
-    display: none !important;
-  }
-  .card {
-    background: #ffffff !important;
-    border-color: #cbd5e1 !important;
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
-  .card::before {
-    display: none;
-  }
-  .print-black,
-  .print-black * {
-    color: #000000 !important;
-    background: #ffffff !important;
-    border-color: #94a3b8 !important;
-    box-shadow: none !important;
-  }
-}
+
 
 /* ============================================================
    LIGHT THEME v2 — vivid, high-contrast, never washed-out.
@@ -7029,3 +7002,1270 @@ html:not(.light) .bg-\[\#fde68a\],
 html:not(.light) .bg-\[\#fef3c7\],
 html:not(.light) .bg-\[\#d1fae5\],
 html:not(.light) .bg-\[\#fef9c3\] { color: #1e293b !important; }
+/* ============================================================
+   SWITCHABLE DARK PALETTES
+
+   Dark mode only. The active palette is chosen in the app by the
+   header picker and written to <html data-palette="..."> plus
+   localStorage("srh_palette"), applied pre-paint by the inline
+   bootstrap in layout.tsx.
+
+   Component rules below reference var(--p-*), so switching a
+   palette changes the whole theme without restyling anything.
+
+   Clinical colour coding is never themed: rose = active,
+   amber = watch, emerald = resolved, plus the 16 calculator
+   category accents. Every rule is scoped to html:not(.light),
+   so light mode is untouched.
+   ============================================================ */
+/* default: Slate & Teal — neutral charcoal · restrained teal */
+html:not(.light) {
+  --p-bg: #0d1011;
+  --p-bg-rgb: 13, 16, 17;
+  --p-bg2: #101416;
+  --p-bg2-rgb: 16, 20, 22;
+  --p-glow-1: rgba(45,212,191, 0.14);
+  --p-glow-2: rgba(56,130,180, 0.12);
+  --p-glow-3: rgba(148,163,184, 0.05);
+  --p-card-a: 24,32,34;
+  --p-card-b: 15,20,22;
+  --p-bloom-1: 45,212,191;
+  --p-bloom-2: 120,170,190;
+  --p-border-rgb: 150,190,195;
+  --p-border-hi-rgb: 170,210,215;
+  --p-t1: #eef2f2;
+  --p-t2: #dbe3e4;
+  --p-t3: #aebcbe;
+  --p-t4: #8b9a9c;
+  --p-a1: #2dd4bf;
+  --p-a1-rgb: 45, 212, 191;
+  --p-a2: #7dd3c8;
+  --p-a2-rgb: 125, 211, 200;
+  --p-ink: #04140f;
+}
+
+/* Graphite & Copper — warm charcoal · muted bronze */
+html:not(.light)[data-palette="graphite-copper"] {
+  --p-bg: #111010;
+  --p-bg-rgb: 17, 16, 16;
+  --p-bg2: #151312;
+  --p-bg2-rgb: 21, 19, 18;
+  --p-glow-1: rgba(217,160,102, 0.13);
+  --p-glow-2: rgba(180,140,110, 0.1);
+  --p-glow-3: rgba(148,140,135, 0.05);
+  --p-card-a: 34,29,26;
+  --p-card-b: 21,18,17;
+  --p-bloom-1: 217,160,102;
+  --p-bloom-2: 190,160,140;
+  --p-border-rgb: 205,180,155;
+  --p-border-hi-rgb: 225,195,165;
+  --p-t1: #f4f0ec;
+  --p-t2: #e2dad3;
+  --p-t3: #bdb1a7;
+  --p-t4: #9a8e85;
+  --p-a1: #d9a066;
+  --p-a1-rgb: 217, 160, 102;
+  --p-a2: #e8c39a;
+  --p-a2-rgb: 232, 195, 154;
+  --p-ink: #201206;
+}
+
+/* Deep Forest & Sage — green-black · desaturated sage */
+html:not(.light)[data-palette="deep-forest"] {
+  --p-bg: #0b0f0d;
+  --p-bg-rgb: 11, 15, 13;
+  --p-bg2: #0e1310;
+  --p-bg2-rgb: 14, 19, 16;
+  --p-glow-1: rgba(134,201,168, 0.13);
+  --p-glow-2: rgba(90,150,130, 0.11);
+  --p-glow-3: rgba(148,163,150, 0.05);
+  --p-card-a: 22,32,27;
+  --p-card-b: 14,20,17;
+  --p-bloom-1: 134,201,168;
+  --p-bloom-2: 110,160,140;
+  --p-border-rgb: 160,200,175;
+  --p-border-hi-rgb: 180,220,195;
+  --p-t1: #eef3ef;
+  --p-t2: #dae4dd;
+  --p-t3: #aebcb2;
+  --p-t4: #8b9a90;
+  --p-a1: #86c9a8;
+  --p-a1-rgb: 134, 201, 168;
+  --p-a2: #a8d8bf;
+  --p-a2-rgb: 168, 216, 191;
+  --p-ink: #08180f;
+}
+
+/* Ink & Orchid — near-black · desaturated violet */
+html:not(.light)[data-palette="ink-orchid"] {
+  --p-bg: #0c0b10;
+  --p-bg-rgb: 12, 11, 16;
+  --p-bg2: #100e15;
+  --p-bg2-rgb: 16, 14, 21;
+  --p-glow-1: rgba(167,139,250, 0.13);
+  --p-glow-2: rgba(140,130,200, 0.1);
+  --p-glow-3: rgba(150,148,163, 0.05);
+  --p-card-a: 28,25,40;
+  --p-card-b: 17,15,25;
+  --p-bloom-1: 167,139,250;
+  --p-bloom-2: 150,140,200;
+  --p-border-rgb: 185,175,225;
+  --p-border-hi-rgb: 205,195,245;
+  --p-t1: #f1f0f6;
+  --p-t2: #dedbe8;
+  --p-t3: #b0acc2;
+  --p-t4: #8d8a9c;
+  --p-a1: #a78bfa;
+  --p-a1-rgb: 167, 139, 250;
+  --p-a2: #c4b5fd;
+  --p-a2-rgb: 196, 181, 253;
+  --p-ink: #150a2e;
+}
+
+/* Midnight Aurora — deep navy · cyan to indigo */
+html:not(.light)[data-palette="midnight-aurora"] {
+  --p-bg: #05070f;
+  --p-bg-rgb: 5, 7, 15;
+  --p-bg2: #070c19;
+  --p-bg2-rgb: 7, 12, 25;
+  --p-glow-1: rgba(56,189,248, 0.2);
+  --p-glow-2: rgba(139,92,246, 0.18);
+  --p-glow-3: rgba(52,211,153, 0.12);
+  --p-card-a: 19,30,58;
+  --p-card-b: 12,18,36;
+  --p-bloom-1: 34,211,238;
+  --p-bloom-2: 139,92,246;
+  --p-border-rgb: 125,168,255;
+  --p-border-hi-rgb: 139,190,255;
+  --p-t1: #eef4ff;
+  --p-t2: #d8e4f7;
+  --p-t3: #a7bcd9;
+  --p-t4: #8298bb;
+  --p-a1: #22d3ee;
+  --p-a1-rgb: 34, 211, 238;
+  --p-a2: #818cf8;
+  --p-a2-rgb: 129, 140, 248;
+  --p-ink: #04101c;
+}
+
+/* Nocturne Plum — plum charcoal · fuchsia pink */
+html:not(.light)[data-palette="nocturne-plum"] {
+  --p-bg: #0a0810;
+  --p-bg-rgb: 10, 8, 16;
+  --p-bg2: #100b18;
+  --p-bg2-rgb: 16, 11, 24;
+  --p-glow-1: rgba(232,121,249, 0.17);
+  --p-glow-2: rgba(244,114,182, 0.13);
+  --p-glow-3: rgba(45,212,191, 0.08);
+  --p-card-a: 30,23,42;
+  --p-card-b: 20,15,30;
+  --p-bloom-1: 232,121,249;
+  --p-bloom-2: 244,114,182;
+  --p-border-rgb: 232,180,249;
+  --p-border-hi-rgb: 240,190,252;
+  --p-t1: #f8f3fb;
+  --p-t2: #e7dcf0;
+  --p-t3: #bfaecf;
+  --p-t4: #9c8bb0;
+  --p-a1: #e879f9;
+  --p-a1-rgb: 232, 121, 249;
+  --p-a2: #f472b6;
+  --p-a2-rgb: 244, 114, 182;
+  --p-ink: #1a0722;
+}
+
+/* Monochrome — pure neutral · zero hue */
+html:not(.light)[data-palette="monochrome"] {
+  --p-bg: #0b0b0c;
+  --p-bg-rgb: 11, 11, 12;
+  --p-bg2: #111113;
+  --p-bg2-rgb: 17, 17, 19;
+  --p-glow-1: rgba(212,212,216, 0.1);
+  --p-glow-2: rgba(161,161,170, 0.08);
+  --p-glow-3: rgba(113,113,122, 0.05);
+  --p-card-a: 28,28,31;
+  --p-card-b: 18,18,20;
+  --p-bloom-1: 228,228,231;
+  --p-bloom-2: 161,161,170;
+  --p-border-rgb: 212,212,216;
+  --p-border-hi-rgb: 228,228,231;
+  --p-t1: #f4f4f5;
+  --p-t2: #e4e4e7;
+  --p-t3: #a1a1aa;
+  --p-t4: #84848c;
+  --p-a1: #e4e4e7;
+  --p-a1-rgb: 228, 228, 231;
+  --p-a2: #a1a1aa;
+  --p-a2-rgb: 161, 161, 170;
+  --p-ink: #18181b;
+}
+
+/* --- shared dark chrome --------------------------------------- */
+html:not(.light) {
+  color-scheme: dark;
+  --bg: var(--p-bg);
+  --bg-glow-1: var(--p-glow-1);
+  --bg-glow-2: var(--p-glow-2);
+  --bg-glow-3: var(--p-glow-3);
+  --card:
+    radial-gradient(460px 200px at 8% -14%, rgba(var(--p-bloom-1), 0.10) 0%, transparent 68%),
+    radial-gradient(420px 220px at 96% -8%, rgba(var(--p-bloom-2), 0.09) 0%, transparent 70%),
+    linear-gradient(158deg, rgba(var(--p-card-a), 0.92) 0%, rgba(var(--p-card-b), 0.94) 55%, rgba(var(--p-bg-rgb), 0.96) 100%);
+  --card-solid: var(--p-bg2);
+  --card-hi: rgba(var(--p-border-rgb), 0.06);
+  --border: rgba(var(--p-border-rgb), 0.18);
+  --border-strong: rgba(var(--p-border-hi-rgb), 0.34);
+  --text: var(--p-t1);
+  --text-2: var(--p-t2);
+  --text-3: var(--p-t3);
+  --text-4: var(--p-t4);
+  --accent: var(--p-a1);
+  --accent-2: var(--p-a2);
+  --accent-soft: rgba(var(--p-a1-rgb), 0.13);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(var(--p-border-rgb), 0.06), 0 18px 40px -26px rgba(0, 0, 0, 0.95);
+  --shadow-pop: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 26px 54px -26px rgba(0, 0, 0, 1), 0 0 34px -18px rgba(var(--p-a1-rgb), 0.30);
+}
+
+html:not(.light) body {
+  background:
+    radial-gradient(1200px 640px at 4% -14%, var(--p-glow-1) 0%, transparent 58%),
+    radial-gradient(1020px 560px at 96% -8%, var(--p-glow-2) 0%, transparent 56%),
+    radial-gradient(900px 620px at 50% 116%, var(--p-glow-3) 0%, transparent 60%),
+    linear-gradient(180deg, var(--p-bg) 0%, var(--p-bg2) 44%, var(--p-bg) 100%);
+  background-attachment: fixed;
+}
+
+html:not(.light) .card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+}
+html:not(.light) .card::before {
+  height: 2px;
+  opacity: 0.85;
+  background: linear-gradient(90deg, transparent 4%, rgba(var(--p-a1-rgb), 0.95) 32%, rgba(var(--p-a2-rgb), 0.85) 66%, transparent 96%);
+}
+html:not(.light) a.card:hover { border-color: rgba(var(--p-border-hi-rgb), 0.38); box-shadow: var(--shadow-pop); }
+
+html:not(.light) header {
+  background: linear-gradient(180deg, rgba(var(--p-bg2-rgb), 0.93) 0%, rgba(var(--p-bg-rgb), 0.88) 100%);
+  border-bottom: 1px solid rgba(var(--p-border-rgb), 0.20);
+  box-shadow: inset 0 -1px 0 rgba(var(--p-a1-rgb), 0.10), 0 14px 32px -26px rgba(0, 0, 0, 1);
+}
+
+html:not(.light) .btn-primary,
+html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald) {
+  background: linear-gradient(135deg, var(--p-a1) 0%, var(--p-a2) 100%);
+  border-color: transparent;
+  color: var(--p-ink);
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 10px 26px -14px rgba(var(--p-a1-rgb), 0.8);
+}
+html:not(.light) .btn-primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+html:not(.light) .chip-on:not(.tone-rose):not(.tone-amber):not(.tone-emerald):hover { filter: brightness(1.06); }
+
+/* clinical tone chips keep their hue in every palette */
+html:not(.light) .chip-on.tone-rose { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); color: #ffffff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 8px 22px -14px rgba(225,29,72,0.9); }
+html:not(.light) .chip-on.tone-amber { background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%); color: #231000; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 22px -14px rgba(217,119,6,0.9); }
+html:not(.light) .chip-on.tone-emerald { background: linear-gradient(135deg, #34d399 0%, #059669 100%); color: #02180f; box-shadow: inset 0 1px 0 rgba(255,255,255,0.26), 0 8px 22px -14px rgba(5,150,105,0.9); }
+
+html:not(.light) .chip,
+html:not(.light) .chip-off { background: rgba(var(--p-border-rgb), 0.07); border-color: rgba(var(--p-border-rgb), 0.20); color: var(--p-t2); }
+html:not(.light) .chip:hover,
+html:not(.light) .chip-off:hover { background: rgba(var(--p-a1-rgb), 0.11); border-color: rgba(var(--p-a1-rgb), 0.45); color: var(--p-t1); box-shadow: 0 0 18px -10px rgba(var(--p-a1-rgb), 0.9); }
+html:not(.light) .btn-ghost,
+html:not(.light) .btn-secondary { background: rgba(var(--p-border-rgb), 0.06); border-color: rgba(var(--p-border-rgb), 0.20); color: var(--p-t2); }
+html:not(.light) .btn-ghost:hover:not(:disabled),
+html:not(.light) .btn-secondary:hover:not(:disabled) { background: rgba(var(--p-a1-rgb), 0.11); border-color: rgba(var(--p-a1-rgb), 0.45); color: var(--p-t1); }
+
+html:not(.light) .inp { background: linear-gradient(180deg, rgba(var(--p-bg-rgb), 0.72) 0%, rgba(var(--p-bg-rgb), 0.55) 100%); border-color: rgba(var(--p-border-rgb), 0.20); color: var(--p-t1); }
+html:not(.light) .inp::placeholder { color: var(--p-t4); }
+html:not(.light) .inp:hover { border-color: rgba(var(--p-border-hi-rgb), 0.34); }
+html:not(.light) .inp:focus { border-color: rgba(var(--p-a1-rgb), 0.85); box-shadow: 0 0 0 3px rgba(var(--p-a1-rgb), 0.22), 0 0 24px -10px rgba(var(--p-a1-rgb), 0.7); }
+html:not(.light) .lbl { color: var(--p-t3); }
+
+/* triage tiles: hue identical in every palette, alpha tuned for dark */
+html:not(.light) .bg-rose-400\/10 { background: rgba(251, 113, 133, 0.12) !important; }
+html:not(.light) .border-rose-400\/30 { border-color: rgba(251, 113, 133, 0.36) !important; }
+html:not(.light) .bg-amber-400\/10 { background: rgba(251, 191, 36, 0.12) !important; }
+html:not(.light) .border-amber-400\/30 { border-color: rgba(251, 191, 36, 0.34) !important; }
+html:not(.light) .bg-emerald-400\/10 { background: rgba(52, 211, 153, 0.11) !important; }
+html:not(.light) .border-emerald-400\/30 { border-color: rgba(52, 211, 153, 0.32) !important; }
+html:not(.light) .bg-cyan-400\/10 { background: rgba(var(--p-a1-rgb), 0.09) !important; }
+html:not(.light) .border-cyan-400\/20 { border-color: rgba(var(--p-a1-rgb), 0.26) !important; }
+html:not(.light) .bg-violet-400\/10 { background: rgba(var(--p-a2-rgb), 0.10) !important; }
+html:not(.light) .border-violet-400\/30 { border-color: rgba(var(--p-a2-rgb), 0.28) !important; }
+
+html:not(.light) .bg-slate-900\/40,
+html:not(.light) .bg-slate-900\/50,
+html:not(.light) .bg-slate-900\/60 { background: rgba(var(--p-bg2-rgb), 0.74) !important; }
+html:not(.light) .bg-slate-900\/90,
+html:not(.light) .bg-slate-900\/95 { background: rgba(var(--p-bg2-rgb), 0.90) !important; }
+html:not(.light) .bg-slate-950\/60,
+html:not(.light) .bg-slate-950\/70,
+html:not(.light) .bg-slate-950\/80,
+html:not(.light) .bg-slate-950\/95 { background: rgba(var(--p-bg-rgb), 0.92) !important; }
+html:not(.light) .bg-white\/5,
+html:not(.light) .bg-white\/\[0\.03\],
+html:not(.light) .bg-white\/\[0\.04\],
+html:not(.light) .bg-white\/\[0\.07\] { background: rgba(var(--p-border-rgb), 0.06) !important; }
+html:not(.light) .bg-white\/10 { background: rgba(var(--p-border-rgb), 0.10) !important; }
+html:not(.light) .border-white\/5 { border-color: rgba(var(--p-border-rgb), 0.10) !important; }
+html:not(.light) .border-white\/10 { border-color: rgba(var(--p-border-rgb), 0.18) !important; }
+html:not(.light) .border-white\/20 { border-color: rgba(var(--p-border-hi-rgb), 0.28) !important; }
+
+html:not(.light) .text-slate-100,
+html:not(.light) .text-white { color: var(--p-t1) !important; }
+html:not(.light) .text-slate-200 { color: var(--p-t2) !important; }
+html:not(.light) .text-slate-300 { color: var(--p-t2) !important; }
+html:not(.light) .text-slate-400 { color: var(--p-t3) !important; }
+html:not(.light) .text-slate-500 { color: var(--p-t4) !important; }
+html:not(.light) .text-cyan-200,
+html:not(.light) .text-cyan-300,
+html:not(.light) .text-sky-300,
+html:not(.light) .text-indigo-300,
+html:not(.light) .text-violet-200,
+html:not(.light) .text-violet-300 { color: var(--p-a2) !important; }
+
+html:not(.light) .theme-switch {
+  background: linear-gradient(180deg, rgba(var(--p-bg2-rgb), 0.92) 0%, rgba(var(--p-bg-rgb), 0.86) 100%) !important;
+  border-color: rgba(var(--p-border-hi-rgb), 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -18px rgba(0, 0, 0, 1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html:not(.light) .theme-switch button { color: var(--p-t3) !important; }
+html:not(.light) .theme-switch button:hover { color: var(--p-t1) !important; background: rgba(var(--p-a1-rgb), 0.10) !important; }
+html:not(.light) .theme-switch button.theme-on.bg-indigo-500 {
+  background: linear-gradient(135deg, var(--p-a1) 0%, var(--p-a2) 100%) !important;
+  color: var(--p-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 0 0 1px rgba(var(--p-a1-rgb), 0.5), 0 0 20px -6px rgba(var(--p-a1-rgb), 0.9);
+}
+html:not(.light) .theme-switch button.theme-on.bg-indigo-500:hover { filter: brightness(1.08); }
+
+/* --- palette picker (header) --- */
+html:not(.light) .palette-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(var(--p-border-hi-rgb), 0.28);
+  background: linear-gradient(180deg, rgba(var(--p-bg2-rgb), 0.92) 0%, rgba(var(--p-bg-rgb), 0.86) 100%);
+  border-radius: 11px;
+  padding: 4px 8px 4px 7px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html:not(.light) .palette-picker .pp-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  flex: none;
+  background: linear-gradient(135deg, var(--p-a1) 0%, var(--p-a2) 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+html:not(.light) .palette-picker select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--p-t1);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 4px 16px 4px 2px;
+  cursor: pointer;
+  outline: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--p-t3) 50%), linear-gradient(135deg, var(--p-t3) 50%, transparent 50%);
+  background-position: calc(100% - 8px) 55%, calc(100% - 5px) 55%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+html:not(.light) .palette-picker select:focus-visible {
+  border-radius: 7px;
+  box-shadow: 0 0 0 2px rgba(var(--p-a1-rgb), 0.55);
+}
+html:not(.light) .palette-picker select option { background: var(--p-bg2); color: var(--p-t1); }
+html.light .palette-picker { display: none; }
+
+html:not(.light) ::-webkit-scrollbar-track { background: rgba(var(--p-bg-rgb), 0.6); }
+html:not(.light) ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(var(--p-a1-rgb), 0.5) 0%, rgba(var(--p-a2-rgb), 0.5) 100%); border-radius: 999px; }
+html:not(.light) ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(var(--p-a1-rgb), 0.8) 0%, rgba(var(--p-a2-rgb), 0.8) 100%); }
+
+html:not(.light) table thead th { background: rgba(var(--p-bg-rgb), 0.74); color: var(--p-t3); }
+html:not(.light) table tbody tr { border-color: rgba(var(--p-border-rgb), 0.12); }
+html:not(.light) table tbody tr:hover { background: rgba(var(--p-a1-rgb), 0.05); }
+html:not(.light) .rounded-xl.border.border-cyan-400\/25,
+html:not(.light) .rounded-xl.border.border-cyan-400\/35 {
+  background: linear-gradient(135deg, rgba(var(--p-a1-rgb), 0.08) 0%, rgba(var(--p-a2-rgb), 0.05) 100%);
+  border-color: rgba(var(--p-a1-rgb), 0.28) !important;
+}
+
+/* --- legacy cool hues follow the active palette ------------------ */
+html:not(.light) .anthro-hologram::before {
+  background:  linear-gradient(115deg, rgba(255,255,255,0.08), transparent 18%, transparent 72%, rgba(var(--p-a1-rgb),0.06));
+}
+html:not(.light) .anthro-hologram:hover .anthro-chart {
+  filter:  drop-shadow(0 0 12px rgba(var(--p-a1-rgb),0.11));
+}
+html:not(.light) .anthro-callout-leader {
+  stroke:  rgba(var(--p-a1-rgb),0.75);
+}
+html:not(.light) .anthro-callout-bg {
+  stroke:  rgba(var(--p-a1-rgb),0.75);
+}
+html:not(.light) .calculator-visual {
+  border:  1px solid rgba(var(--p-a1-rgb), 0.2);
+}
+html:not(.light) .calc-visual-kicker {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-visual-badge {
+  border:  1px solid rgba(var(--p-a2-rgb), .25);
+  background:  rgba(var(--p-a1-rgb), .08);
+}
+html:not(.light) .visual-airway,
+html:not(.light) .visual-rib {
+  stroke:  var(--p-a2);
+}
+html:not(.light) .visual-lung {
+  fill:  rgba(var(--p-a1-rgb), .13);
+  stroke:  var(--p-a1);
+}
+html:not(.light) .visual-score-dots i.on {
+  background:  var(--p-a1);
+  border-color:  var(--p-a2);
+  box-shadow:  0 0 7px rgba(var(--p-a1-rgb), .4);
+}
+html:not(.light) .visual-callout {
+  background:  rgba(var(--p-a2-rgb), .08);
+  border:  1px solid rgba(var(--p-a2-rgb), .24);
+}
+html:not(.light) .ballard-domain b {
+  color:  var(--p-a2);
+}
+html:not(.light) .domain-track i,
+html:not(.light) .tbsa-track i {
+  background:  linear-gradient(90deg, var(--p-a1), var(--p-a2));
+}
+html:not(.light) .retina-zone {
+  fill:  rgba(var(--p-a1-rgb), .04);
+  stroke:  rgba(var(--p-a2-rgb), .5);
+}
+html:not(.light) .retina-zone.zone-two {
+  fill:  rgba(var(--p-a1-rgb), .07);
+}
+html:not(.light) .visual-pill.active {
+  background:  rgba(var(--p-a1-rgb), .12);
+  border-color:  rgba(var(--p-a2-rgb), .4);
+}
+html:not(.light) .burn-region.limb {
+  fill:  rgba(var(--p-a2-rgb), .18);
+}
+html:not(.light) .burn-region.leg {
+  fill:  rgba(var(--p-a1-rgb), .2);
+}
+html:not(.light) .bed-dial-item-selected {
+  text-shadow:  0 0 12px rgba(var(--p-a1-rgb), .28);
+}
+html:not(.light) .burn-region-chip:hover {
+  border-color:  rgba(var(--p-a1-rgb), .55);
+}
+html:not(.light) .burn-region-chip.active {
+  background:  rgba(var(--p-a1-rgb), .14);
+  border-color:  rgba(var(--p-a2-rgb), .7);
+}
+html:not(.light) .scale-summary-meter {
+  background:  conic-gradient(var(--p-a1) var(--meter), rgba(148, 163, 184, .14) 0);
+}
+html:not(.light) .scale-summary-row i b {
+  background:  linear-gradient(90deg, var(--p-a1), var(--p-a2));
+}
+html:not(.light) .calculator-hero {
+  background: 
+    radial-gradient(600px 220px at 0% 0%, rgba(var(--p-a1-rgb), .15), transparent 65%),
+    radial-gradient(520px 260px at 100% 100%, rgba(168, 85, 247, .13), transparent 70%),
+    var(--card);
+}
+html:not(.light) .calc-hero-overline {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-hero-icon {
+  background:  linear-gradient(135deg, var(--p-a1), var(--p-a1));
+  box-shadow:  0 8px 25px -12px var(--p-a1);
+}
+html:not(.light) .calc-hero-meta svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-search-wrap > svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-search-wrap input {
+  border-color:  rgba(var(--p-a2-rgb),.28);
+}
+html:not(.light) .calc-howto-strip b {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-spotlight-cyan {
+  border-top:  2px solid var(--p-a1);
+}
+html:not(.light) .calc-spotlight-violet {
+  border-top:  2px solid var(--p-a2);
+}
+html:not(.light) .calc-spotlight-indigo {
+  border-top:  2px solid var(--p-a2);
+}
+html:not(.light) .calc-filter-title svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-focus-banner {
+  background:  linear-gradient(110deg, rgba(var(--p-a1-rgb),.1), rgba(var(--p-a2-rgb),.1));
+  border:  1px solid rgba(var(--p-a2-rgb),.28);
+}
+html:not(.light) .calc-focus-kicker {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-card-open {
+  border-color:  rgba(var(--p-a2-rgb),.34);
+  box-shadow:  0 18px 46px -32px rgba(var(--p-a1-rgb),.8), var(--shadow-card);
+}
+html:not(.light) .calc-card-chevron {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-card-mark {
+  border:  1px solid rgba(var(--p-a2-rgb),.24);
+}
+html:not(.light) .calc-mark-neonatal {
+  background:  rgba(var(--p-a1-rgb),.1);
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-mark-respiratory {
+  background:  rgba(var(--p-a2-rgb),.1);
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-mark-growth {
+  background:  rgba(var(--p-a1-rgb),.1);
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-mark-pain,
+html:not(.light) .calc-mark-warning,
+html:not(.light) .calc-mark-cardio,
+html:not(.light) .calc-mark-dosing,
+html:not(.light) .calc-mark-trauma,
+html:not(.light) .calc-mark-sepsis,
+html:not(.light) .calc-mark-neuro,
+html:not(.light) .calc-mark-gi,
+html:not(.light) .calc-mark-development,
+html:not(.light) .calc-mark-skin,
+html:not(.light) .calc-mark-endocrine {
+  background:  rgba(var(--p-a1-rgb),.1);
+}
+html:not(.light) .calc-card-eyebrow i {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-progress-pill > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-card-context a {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-step-kicker {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-progress-track i {
+  background:  linear-gradient(90deg, var(--p-a1), var(--p-a2));
+}
+html:not(.light) .calc-input-card:hover {
+  border-color:  rgba(var(--p-a2-rgb),.36);
+}
+html:not(.light) .calc-input-filled {
+  background:  linear-gradient(135deg, rgba(var(--p-a1-rgb),.07), rgba(var(--p-a2-rgb),.04));
+  border-color:  rgba(var(--p-a2-rgb),.28);
+}
+html:not(.light) .calc-input-label b {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-card-toggle:focus-visible,
+html:not(.light) .calc-card-open-label:focus-visible,
+html:not(.light) .calc-save-button:focus-visible,
+html:not(.light) .calc-spotlight:focus-visible,
+html:not(.light) .calc-recent-list button:focus-visible,
+html:not(.light) .calc-focus-banner button:focus-visible,
+html:not(.light) .calc-category-chips .chip:focus-visible,
+html:not(.light) .calc-search-wrap button:focus-visible {
+  outline:  3px solid rgba(var(--p-a1-rgb), .55);
+}
+html:not(.light) .calc-recent-heading svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-recent-list button > svg:first-child {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-empty-state > svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calculator-command {
+  background: 
+    linear-gradient(135deg, rgba(var(--p-a1-rgb), .08), transparent 38%),
+    linear-gradient(315deg, rgba(124, 58, 237, .09), transparent 44%),
+    var(--card-solid);
+}
+html:not(.light) .calc-command-mark {
+  background:  linear-gradient(145deg, var(--p-a1), var(--p-a1));
+  box-shadow:  0 12px 26px -15px var(--p-a1);
+}
+html:not(.light) .calc-command-overline,
+html:not(.light) .calc-stage-kicker {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-rail-count {
+  border:  1px solid rgba(var(--p-a1-rgb), .3);
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-library-item.active {
+  background:  linear-gradient(90deg, rgba(var(--p-a1-rgb), .13), rgba(var(--p-a2-rgb), .08));
+  border-color:  rgba(var(--p-a2-rgb), .38);
+}
+html:not(.light) .calc-library-current {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-rail-empty svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-placeholder-icon {
+  border:  1px solid rgba(var(--p-a1-rgb), .35);
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-stage-recent > svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-library-item:focus-visible,
+html:not(.light) .calc-rail-tabs button:focus-visible,
+html:not(.light) .calc-rail-filter select:focus-visible,
+html:not(.light) .calc-stage-actions button:focus-visible {
+  outline:  3px solid rgba(var(--p-a1-rgb), .55);
+}
+html:not(.light) .calc-mark-neonatal,
+html:not(.light) .calc-area-neonatal,
+html:not(.light) .calc-group-neonatal,
+html:not(.light) .calc-stage-neonatal {
+  --area-accent:  var(--p-a1);
+  --area-soft:  rgba(var(--p-a1-rgb), .14);
+}
+html:not(.light) .calc-mark-respiratory,
+html:not(.light) .calc-area-respiratory,
+html:not(.light) .calc-group-respiratory,
+html:not(.light) .calc-stage-respiratory {
+  --area-accent:  var(--p-a2);
+  --area-soft:  rgba(var(--p-a2-rgb), .14);
+}
+html:not(.light) .calc-mark-dosing,
+html:not(.light) .calc-area-dosing,
+html:not(.light) .calc-group-dosing,
+html:not(.light) .calc-stage-dosing {
+  --area-accent:  var(--p-a2);
+  --area-soft:  rgba(var(--p-a1-rgb), .14);
+}
+html:not(.light) .calc-mark-growth,
+html:not(.light) .calc-area-growth,
+html:not(.light) .calc-group-growth,
+html:not(.light) .calc-stage-growth {
+  --area-accent:  var(--p-a2);
+  --area-soft:  rgba(var(--p-a1-rgb), .14);
+}
+html:not(.light) .calc-mark-gi,
+html:not(.light) .calc-area-gi,
+html:not(.light) .calc-group-gi,
+html:not(.light) .calc-stage-gi {
+  --area-accent:  var(--p-a1);
+  --area-soft:  rgba(var(--p-a1-rgb), .14);
+}
+html:not(.light) .calc-library-item.active {
+  background:  linear-gradient(90deg, var(--area-soft), rgba(var(--p-a2-rgb), .08));
+}
+html:not(.light) .calc-stage-heading {
+  border-left:  4px solid var(--area-accent, var(--p-a1));
+}
+html:not(.light) .calc-stage-heading .calc-stage-kicker {
+  color:  var(--area-accent, var(--p-a2));
+}
+html:not(.light) .bp-mode-switch button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .35);
+}
+html:not(.light) .bp-mode-switch button.active {
+  border-color:  rgba(var(--p-a1-rgb), .55);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(var(--p-a2-rgb), .22));
+}
+html:not(.light) .bp-input-wrap b {
+  color:  var(--p-a2);
+}
+html:not(.light) .bp-level-low {
+  border-color:  rgba(var(--p-a2-rgb), .45);
+}
+html:not(.light) .bp-empty-result svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .bp-evidence .bp-section-heading svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .bp-source-grid a:hover {
+  border-color:  rgba(var(--p-a2-rgb), .45);
+}
+html:not(.light) .bp-source-grid a svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-group-tabs button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .4);
+}
+html:not(.light) .dose-group-tabs button.active {
+  border-color:  rgba(var(--p-a1-rgb), .58);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .28), rgba(var(--p-a2-rgb), .2));
+}
+html:not(.light) .dose-card-heading > svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-field b,
+html:not(.light) .dose-strength-field b {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-clear:hover {
+  border-color:  rgba(var(--p-a2-rgb), .4);
+}
+html:not(.light) .dose-result-banner > div {
+  border:  1px solid rgba(var(--p-a1-rgb), .28);
+}
+html:not(.light) .dose-awaiting svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-catalog-item:hover,
+html:not(.light) .dose-catalog-item.active {
+  border-color:  rgba(var(--p-a2-rgb), .47);
+}
+html:not(.light) .dose-scope-switch button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .38);
+}
+html:not(.light) .dose-scope-switch button.active {
+  border-color:  rgba(var(--p-a1-rgb), .56);
+}
+html:not(.light) .dose-howto li > b {
+  background:  linear-gradient(135deg, var(--p-a2), var(--p-a2));
+}
+html:not(.light) .dose-search-field svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-medicine-list button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .4);
+}
+html:not(.light) .dose-medicine-list button.active {
+  border-color:  rgba(var(--p-a2-rgb), .62);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .22), rgba(var(--p-a2-rgb), .16));
+}
+html:not(.light) .dose-catalog summary::after {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-hero-innovative {
+  background: 
+    radial-gradient(620px 220px at 0% 0%, rgba(var(--p-a1-rgb), .14), transparent 68%),
+    radial-gradient(470px 240px at 100% 100%, rgba(217, 70, 239, .11), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+html:not(.light) .dose-progress-step:hover:not(:disabled) {
+  border-color:  rgba(var(--p-a2-rgb), .35);
+}
+html:not(.light) .dose-progress-step.active {
+  border-color:  rgba(var(--p-a2-rgb), .54);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .25), rgba(var(--p-a2-rgb), .18));
+}
+html:not(.light) .dose-progress-step.active > b,
+html:not(.light) .dose-progress-step.complete > b {
+  border-color:  rgba(var(--p-a2-rgb), .65);
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-step-heading > div:first-child > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-step-number {
+  border:  1px solid rgba(var(--p-a2-rgb), .35);
+  background:  rgba(var(--p-a1-rgb), .1);
+}
+html:not(.light) .dose-next-button {
+  border:  1px solid rgba(var(--p-a2-rgb), .5);
+  background:  linear-gradient(135deg, var(--p-a2), var(--p-a2));
+  box-shadow:  0 9px 20px -14px var(--p-a2);
+}
+html:not(.light) .dose-back-button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .4);
+}
+html:not(.light) .dose-selected-medicine {
+  border:  1px solid rgba(var(--p-a2-rgb), .25);
+  background:  linear-gradient(135deg, rgba(8, 145, 178, .13), rgba(var(--p-a2-rgb), .09));
+}
+html:not(.light) .dose-selected-mark {
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-selected-medicine button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .45);
+}
+html:not(.light) .dose-row-preview {
+  border-left:  3px solid var(--p-a2);
+  background:  rgba(var(--p-a1-rgb), .08);
+}
+html:not(.light) .dose-live-card {
+  border:  1px solid rgba(var(--p-a2-rgb), .25);
+  background: 
+    radial-gradient(390px 180px at 0% 0%, rgba(var(--p-a1-rgb), .14), transparent 70%),
+    linear-gradient(145deg, rgba(18, 35, 61, .92), rgba(10, 21, 40, .86));
+  box-shadow:  0 16px 32px -26px rgba(var(--p-a1-rgb), .7);
+}
+html:not(.light) .dose-live-empty svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-reference-drawer summary::after {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-current-bar {
+  border:  1px solid rgba(var(--p-a2-rgb), .3);
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .14), rgba(var(--p-a2-rgb), .1));
+}
+html:not(.light) .dose-current-icon {
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-change-button {
+  border:  1px solid rgba(var(--p-a2-rgb), .4);
+  background:  rgba(var(--p-a1-rgb), .1);
+}
+html:not(.light) .dose-change-button:hover {
+  border-color:  var(--p-a2);
+  background:  rgba(var(--p-a1-rgb), .18);
+}
+html:not(.light) .dose-calculator-title > div > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-section-label > b {
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-calculator-actions > span svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-medicine-modal {
+  border:  1px solid rgba(var(--p-a2-rgb), .38);
+}
+html:not(.light) .dose-medicine-modal-heading > div > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-modal-close:hover {
+  border-color:  var(--p-a2);
+}
+html:not(.light) .dose-modal-tip svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-redesign-hero {
+  background: 
+    radial-gradient(600px 230px at 0% 0%, rgba(var(--p-a1-rgb), .14), transparent 68%),
+    radial-gradient(500px 230px at 100% 100%, rgba(217, 70, 239, .1), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+html:not(.light) .dose-redesign-panel-heading span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-redesign-panel-heading > b {
+  border:  1px solid rgba(var(--p-a2-rgb), .32);
+  background:  rgba(var(--p-a1-rgb), .1);
+}
+html:not(.light) .dose-library-list button:hover {
+  border-color:  rgba(var(--p-a2-rgb), .38);
+  border-left-color:  var(--p-a2);
+}
+html:not(.light) .dose-library-list button.active {
+  border-color:  rgba(var(--p-a2-rgb), .56);
+  border-left-color:  var(--p-a2);
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .22), rgba(var(--p-a2-rgb), .13));
+}
+html:not(.light) .dose-library-list button em {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-library-tip svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-calculator-top > div > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-change-link {
+  border:  1px solid rgba(var(--p-a2-rgb), .35);
+  background:  rgba(var(--p-a1-rgb), .08);
+}
+html:not(.light) .dose-change-link:hover {
+  border-color:  var(--p-a2);
+  background:  rgba(var(--p-a1-rgb), .15);
+}
+html:not(.light) .dose-redesign-card-title > span {
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-redesign-result {
+  border:  1px solid rgba(var(--p-a2-rgb), .3);
+  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(var(--p-a2-rgb), .1));
+}
+html:not(.light) .dose-result-heading span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-result-placeholder svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-mobile-tabs button svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-mobile-tabs button.active {
+  border-color:  rgba(var(--p-a2-rgb), .48);
+  background:  linear-gradient(135deg, rgba(8,145,178,.24), rgba(var(--p-a2-rgb),.16));
+}
+html:not(.light) .dose-slider-grid input[type="range"] {
+  accent-color:  var(--p-a1);
+}
+html:not(.light) .dose-slider-grid button:hover {
+  background:  rgba(var(--p-a1-rgb), .14);
+}
+html:not(.light) .dose-simple-hero {
+  background: 
+    radial-gradient(640px 220px at 0% 0%, rgba(var(--p-a1-rgb), .13), transparent 68%),
+    radial-gradient(460px 220px at 100% 100%, rgba(217, 70, 239, .09), transparent 70%),
+    rgba(10, 21, 40, .72);
+}
+html:not(.light) .dose-simple-heading > div > span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-simple-count {
+  border:  1px solid rgba(var(--p-a2-rgb), .35);
+  background:  rgba(var(--p-a1-rgb), .1);
+}
+html:not(.light) .dose-simple-selected {
+  border:  1px solid rgba(var(--p-a2-rgb), .24);
+  background:  linear-gradient(90deg, rgba(8, 145, 178, .12), rgba(var(--p-a2-rgb), .08));
+}
+html:not(.light) .dose-simple-selected > span {
+  background:  var(--p-a2);
+}
+html:not(.light) .dose-simple-selected > svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-simple-row-preview {
+  border-left:  3px solid var(--p-a2);
+  background:  rgba(var(--p-a1-rgb), .07);
+}
+html:not(.light) .dose-simple-slider-grid input[type="range"] {
+  accent-color:  var(--p-a1);
+}
+html:not(.light) .dose-simple-result {
+  border-color:  rgba(var(--p-a2-rgb), .3);
+  background:  linear-gradient(145deg, rgba(8, 145, 178, .13), rgba(var(--p-a2-rgb), .1));
+}
+html:not(.light) .dose-simple-result-heading span {
+  color:  var(--p-a2);
+}
+html:not(.light) .dose-simple-placeholder svg {
+  color:  var(--p-a2);
+}
+html:not(.light) .calc-stage-fluid {
+  --area-accent:  var(--p-a1);
+}
+html:not(.light) .chip-on {
+  background:  linear-gradient(135deg, var(--p-a2) 0%, var(--p-a2) 100%);
+  box-shadow:  0 6px 16px -12px rgba(var(--p-a2-rgb), 0.7);
+}
+
+/* ============================================================
+   PRINT — authoritative.
+   This must sit at the end of the file: the palette blocks above redefine
+   --text / --p-t1..t4 and the dark surface colours at equal specificity, so
+   a print block placed earlier in the file loses and the sheet comes out as
+   near-white text on white paper — i.e. blank.
+   ============================================================ */
+@media print {
+  /* Browsers drop backgrounds unless colour adjustment is forced. Shadows
+     print as grey smudges. The ink baseline uses the universal selector on
+     purpose: at specificity (0,0,0) any accent rule below still wins. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    color: #0f172a !important;
+  }
+
+  /* Swap the design tokens to ink and paper, so every consumer of
+     var(--text*) and var(--p-t*) follows without needing its own rule. */
+  :root,
+  html,
+  html:not(.light),
+  html.light {
+    color-scheme: light;
+
+    --text: #0f172a;
+    --text-2: #1f2937;
+    --text-3: #334155;
+    --text-4: #475569;
+    --p-t1: #0f172a;
+    --p-t2: #1f2937;
+    --p-t3: #334155;
+    --p-t4: #475569;
+
+    --bg: #ffffff;
+    --bg-glow-1: transparent;
+    --bg-glow-2: transparent;
+    --bg-glow-3: transparent;
+    --p-bg: #ffffff;
+    --p-bg2: #ffffff;
+    --p-bg-rgb: 255, 255, 255;
+    --p-bg2-rgb: 255, 255, 255;
+    --p-glow-1: transparent;
+    --p-glow-2: transparent;
+    --p-glow-3: transparent;
+
+    --card: #ffffff;
+    --card-solid: #ffffff;
+    --card-hi: #f8fafc;
+    --p-card-a: 248, 250, 252;
+    --p-card-b: 241, 245, 249;
+    --p-bloom-1: 255, 255, 255;
+    --p-bloom-2: 255, 255, 255;
+
+    --border: #cbd5e1;
+    --border-strong: #94a3b8;
+    --p-border-rgb: 203, 213, 225;
+    --p-border-hi-rgb: 148, 163, 184;
+
+    --accent: #0e7490;
+    --accent-2: #0e7490;
+    --p-a1: #0e7490;
+    --p-a2: #0e7490;
+    --p-a1-rgb: 14, 116, 144;
+    --p-a2-rgb: 14, 116, 144;
+
+    --shadow-card: none;
+    --shadow-pop: none;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  html:not(.light) body,
+  html.light body {
+    background: #ffffff !important;
+    min-height: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Batch exports: one discharge record per page. The last one must not add a
+     trailing blank page, which is why the wrapper resets itself. */
+  .print-page-break {
+    break-after: page;
+    page-break-after: always;
+    break-inside: auto;
+  }
+  .print-page-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .print-sheet {
+    break-inside: auto;
+  }
+  .print-sheet .card {
+    break-inside: avoid;
+  }
+
+  .card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    break-inside: avoid;
+  }
+  .card::before {
+    display: none;
+  }
+
+  /* Dark translucent panels -> light neutral panels. */
+  .bg-slate-900\/30,
+  .bg-slate-900\/40,
+  .bg-slate-900\/50,
+  .bg-slate-900\/60,
+  .bg-slate-900\/90,
+  .bg-slate-900\/95,
+  .bg-slate-950\/40,
+  .bg-slate-950\/60,
+  .bg-slate-950\/70,
+  .bg-slate-950\/80,
+  .bg-white\/5,
+  .bg-white\/10,
+  .bg-white\/\[0\.02\],
+  .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.04\],
+  .bg-white\/\[0\.07\] {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Form controls: dark fills would hide ink and waste toner. */
+  .inp,
+  input,
+  select,
+  textarea {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Clinical colour coding survives, lightened for paper. Each rule outranks
+     the universal ink baseline above, so the hue is kept rather than lost. */
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-200,
+  .text-cyan-300,
+  .text-sky-200,
+  .text-sky-300,
+  .text-blue-200,
+  .text-blue-300 {
+    color: #0e7490 !important;
+  }
+  .text-emerald-100,
+  .text-emerald-200,
+  .text-emerald-300 {
+    color: #047857 !important;
+  }
+  .text-amber-100,
+  .text-amber-200,
+  .text-amber-300 {
+    color: #92400e !important;
+  }
+  .text-rose-200,
+  .text-rose-300 {
+    color: #be123c !important;
+  }
+  .text-violet-200,
+  .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+
+  .bg-cyan-400\/5,
+  .bg-cyan-400\/10,
+  .bg-cyan-400\/15,
+  .bg-sky-400\/10 {
+    background-color: #e0f2fe !important;
+  }
+  .bg-emerald-400\/5,
+  .bg-emerald-400\/10 {
+    background-color: #dcfce7 !important;
+  }
+  .bg-amber-400\/5,
+  .bg-amber-400\/10,
+  .bg-amber-500\/15 {
+    background-color: #fef3c7 !important;
+  }
+  .bg-rose-400\/5,
+  .bg-rose-400\/10,
+  .bg-rose-500\/10,
+  .bg-rose-500\/15 {
+    background-color: #ffe4e6 !important;
+  }
+  .bg-violet-400\/10 {
+    background-color: #ede9fe !important;
+  }
+  .bg-indigo-400\/10 {
+    background-color: #e0e7ff !important;
+  }
+
+  /* Chips print as light tint with matching accent ink, not solid dark. */
+  .chip-on {
+    background-color: #e0f2fe !important;
+    border-color: #7cc8e8 !important;
+  }
+  .chip-on.tone-rose {
+    background-color: #ffe4e6 !important;
+    border-color: #f5a3b3 !important;
+  }
+  .chip-on.tone-emerald {
+    background-color: #dcfce7 !important;
+    border-color: #7fd8b1 !important;
+  }
+  .chip-on.tone-amber {
+    background-color: #fef3c7 !important;
+    border-color: #f0c377 !important;
+  }
+  .chip-off {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20 {
+    border-color: #cbd5e1 !important;
+  }
+  .border-cyan-400\/20,
+  .border-cyan-400\/25,
+  .border-cyan-400\/30,
+  .border-cyan-400\/40 {
+    border-color: #7cc8e8 !important;
+  }
+  .border-emerald-400\/20,
+  .border-emerald-400\/30,
+  .border-emerald-400\/40 {
+    border-color: #7fd8b1 !important;
+  }
+  .border-amber-400\/20,
+  .border-amber-400\/30,
+  .border-amber-400\/40,
+  .border-amber-500\/40 {
+    border-color: #f0c377 !important;
+  }
+  .border-rose-400\/30,
+  .border-rose-400\/40,
+  .border-rose-500\/40 {
+    border-color: #f5a3b3 !important;
+  }
+
+  /* The dark theme re-declares several utility text colours with !important at
+     specificity (0,2,1) — html:not(.light) .text-slate-300 and friends. That
+     outranks the universal ink baseline above, so those exact selectors are
+     repeated here; equal specificity plus later source order means these win
+     and nothing prints as pale text on white paper. */
+  html:not(.light) .text-slate-100,
+  html:not(.light) .text-slate-200,
+  html:not(.light) .text-slate-300,
+  html:not(.light) .text-white {
+    color: #1f2937 !important;
+  }
+  html:not(.light) .text-slate-400,
+  html:not(.light) .text-slate-500 {
+    color: #475569 !important;
+  }
+  html:not(.light) .text-cyan-200,
+  html:not(.light) .text-cyan-300,
+  html:not(.light) .text-sky-300,
+  html:not(.light) .text-indigo-300 {
+    color: #0e7490 !important;
+  }
+  html:not(.light) .text-violet-200,
+  html:not(.light) .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+  html:not(.light) .text-emerald-200,
+  html:not(.light) .text-emerald-300 {
+    color: #047857 !important;
+  }
+  html:not(.light) .text-amber-200,
+  html:not(.light) .text-amber-300 {
+    color: #92400e !important;
+  }
+  html:not(.light) .text-rose-200,
+  html:not(.light) .text-rose-300 {
+    color: #be123c !important;
+  }
+  html:not(.light) .theme-switch button {
+    color: #334155 !important;
+  }
+}
