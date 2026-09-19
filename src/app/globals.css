@@ -8063,6 +8063,24 @@ html:not(.light) .chip-on {
     display: none !important;
   }
 
+  /* Batch exports: one discharge record per page. The last one must not add a
+     trailing blank page, which is why the wrapper resets itself. */
+  .print-page-break {
+    break-after: page;
+    page-break-after: always;
+    break-inside: auto;
+  }
+  .print-page-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .print-sheet {
+    break-inside: auto;
+  }
+  .print-sheet .card {
+    break-inside: avoid;
+  }
+
   .card {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;

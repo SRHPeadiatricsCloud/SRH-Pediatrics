@@ -5,6 +5,7 @@ import {
   Calculator as CalculatorIcon,
   CalendarDays,
   Check,
+  FolderArchive,
   GraduationCap,
   KeyRound,
   LayoutGrid,
@@ -723,6 +724,7 @@ export function TopBar({
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
           <MobileNavLink href="/handover" icon={<Printer size={13} />}>Shift sheet</MobileNavLink>
+          <MobileNavLink href="/discharge" icon={<FolderArchive size={13} />}>Discharge archive</MobileNavLink>
           <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Drugs &amp; doses</MobileNavLink>
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
           <MobileNavLink href="/roster" icon={<CalendarDays size={13} />}>Duty roster</MobileNavLink>

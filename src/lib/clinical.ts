@@ -9,6 +9,37 @@ export type GrowthEntry = {
   fluids?: number;
 };
 
+/**
+ * How a baby left the unit. Mirrors the `babies.status` column, which already
+ * carries these values — this type just keeps the UI honest about them.
+ */
+export type DischargeOutcome = "discharged" | "transferred" | "death";
+
+export const DISCHARGE_OUTCOMES: readonly DischargeOutcome[] = ["discharged", "transferred", "death"];
+
+/**
+ * The administrative discharge record, written once when a baby is marked as
+ * discharged and kept with the chart for MRD retention.
+ *
+ * Kept separate from `Clinical.discharge` (the discharge-readiness criteria
+ * checklist) and from `babies.status` (the board filter).
+ */
+export type DischargeRecord = {
+  /** Full timestamp of when the discharge was signed. */
+  at: string;
+  /** Local calendar day, YYYY-MM-DD — the grouping key for day/month archives. */
+  date: string;
+  outcome: DischargeOutcome;
+  /** Free-text condition at discharge / instructions given. */
+  summary: string;
+  /** Who signed the discharge. */
+  signedBy: string;
+  /** Snapshot values, so the record still reads correctly if the card changes. */
+  weightAtDischarge?: number;
+  bedAtDischarge?: string;
+  unitAtDischarge?: string;
+};
+
 export type Clinical = {
   triage?: {
     scale: string;
@@ -100,7 +131,13 @@ export type Clinical = {
   };
   labs?: Record<string, string>;
   care?: string[];
+  /** Discharge-readiness criteria checklist — ticked items, not the discharge event. */
   discharge?: string[];
+  /**
+   * The signed discharge record. Distinct from `discharge` above; see
+   * DischargeRecord. Present only once a baby has been marked as discharged.
+   */
+  dischargeRecord?: DischargeRecord;
   antenatal?: string[];
   plan?: string;
   familyNote?: string;

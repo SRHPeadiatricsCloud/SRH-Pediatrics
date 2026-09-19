@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildDischargeRecord } from "@/lib/discharge";
 import { db } from "@/db";
 import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
 import { sql } from "drizzle-orm";
@@ -14,6 +15,23 @@ export async function POST() {
   await db.execute(sql`TRUNCATE TABLE vitals RESTART IDENTITY`);
   await db.execute(sql`TRUNCATE TABLE problems RESTART IDENTITY`);
   await db.execute(sql`TRUNCATE TABLE babies RESTART IDENTITY`);
+
+  /** Local calendar helpers — the archive groups by local day, never UTC. */
+  const daysAgoAt = (days: number, hour = 10): Date => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  /** A date in the previous calendar month, so the monthly archive has 2 groups. */
+  const lastMonthDay = (dayOfMonth: number): Date => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    d.setDate(dayOfMonth);
+    d.setHours(11, 0, 0, 0);
+    return d;
+  };
 
   const seedBabies = [
     {
@@ -510,6 +528,153 @@ export async function POST() {
       vitals: { hr: 142, rr: 48, spo2: 94, temp: 36.7, sbp: 58, dbp: 32, map: 41, crt: 3, rbs: 90, fio2: 28, urineMlKgHr: 2.9 },
       tasks: ["Check feed tolerance after fortification", "Review calcium and phosphate"],
     },
+    /* ------------------------------------------------------------------
+       Discharged samples, so the discharge register and the MRD archive are
+       demonstrable: two babies left on the same day (day batch export), one
+       transfer, and one from the previous month (monthly archive).
+       ------------------------------------------------------------------ */
+    {
+      uhid: "SAMPLE-G",
+      babyName: "Sample G - discharged home",
+      motherName: "Sample G",
+      bed: "",
+      sex: "Male",
+      dob: new Date(Date.now() - 32 * 24 * H),
+      gestWeeks: 31,
+      gestDays: 2,
+      birthWeight: 1480,
+      currentWeight: 2150,
+      deliveryMode: "LSCS",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "O+",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 160, ivMlKgDay: 0, feedType: "Direct breast feed", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        discharge: ["Maintaining temperature in open cot 24 h", "Weight gain \u226515 g/kg/day for 3 days", "Full oral / breast feeds, no tube"],
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Stable in open cot, exclusive direct breast feeds, gaining 22 g/kg/day. Review in OPD in 5 days; ROP screening due at 4 weeks.",
+          signedBy: "Dr. Sample",
+          at: daysAgoAt(2, 10),
+          weightAtDischarge: 2150,
+          bedAtDischarge: "S7",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Discharged home after 32 days. Two babies left on this day, so the day batch export covers both.",
+      },
+      problems: [["Growth / Prematurity", "Prematurity 31 weeks"]],
+      vitals: { hr: 138, rr: 42, spo2: 98, temp: 36.8, sbp: 68, dbp: 40, map: 49, crt: 2, rbs: 88, fio2: 21, urineMlKgHr: 3.2 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-H",
+      babyName: "Sample H - discharged the same day",
+      motherName: "Sample H",
+      bed: "",
+      sex: "Female",
+      dob: new Date(Date.now() - 18 * 24 * H),
+      gestWeeks: 34,
+      gestDays: 4,
+      birthWeight: 1900,
+      currentWeight: 2400,
+      deliveryMode: "NVD",
+      apgar1: 9,
+      apgar5: 9,
+      bloodGroup: "A+",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 150, ivMlKgDay: 0, feedType: "Expressed breast milk (EBM)", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        discharge: ["Maintaining temperature in open cot 24 h", "Full oral / breast feeds, no tube", "Newborn screening completed"],
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Feeding well orally, afebrile for 72 h, jaundice resolved. Newborn screening sent. Follow up in 1 week.",
+          signedBy: "Dr. Sample",
+          at: daysAgoAt(2, 15),
+          weightAtDischarge: 2400,
+          bedAtDischarge: "S8",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Discharged on the same day as Sample G, so both appear in one day batch and one monthly archive.",
+      },
+      problems: [["Jaundice", "Neonatal jaundice - resolved"]],
+      vitals: { hr: 136, rr: 40, spo2: 99, temp: 36.9, sbp: 72, dbp: 44, map: 53, crt: 2, rbs: 92, fio2: 21, urineMlKgHr: 3.4 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-I",
+      babyName: "Sample I - transferred out",
+      motherName: "Sample I",
+      bed: "",
+      sex: "Male",
+      dob: new Date(Date.now() - 9 * 24 * H),
+      gestWeeks: 27,
+      gestDays: 1,
+      birthWeight: 950,
+      currentWeight: 1080,
+      deliveryMode: "Emergency LSCS",
+      apgar1: 4,
+      apgar5: 6,
+      bloodGroup: "B+",
+      acuity: "critical",
+      consultant: "Dr. Sample",
+      status: "transferred",
+      clinical: {
+        fluids: { feedPlan: "increasing", increaseAppliesTo: "iv-today", tfiMlKgDay: 140, feedIncrementMlKgDay: 15, ivMlKgDay: 120, dextrosePct: 10, aminoAcid: 2.5, lipid: 1, feedType: "Trophic feeds", feedRoute: "OG tube", feedFreq: "2 hourly" },
+        dischargeRecord: buildDischargeRecord({
+          outcome: "transferred",
+          summary: "Transferred to a tertiary centre with paediatric surgery for necrotising enterocolitis. Ventilated, on inotropes. Accepted by Dr. Raman; ambulance with neonatal transport team.",
+          signedBy: "Dr. Sethi (SR)",
+          at: daysAgoAt(5, 21),
+          weightAtDischarge: 1080,
+          bedAtDischarge: "S9",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Transferred, not discharged home. The archive keeps it with the same retention rules and flags the outcome.",
+      },
+      problems: [["Gastrointestinal", "Necrotising enterocolitis"]],
+      vitals: { hr: 155, rr: 62, spo2: 91, temp: 36.4, sbp: 42, dbp: 24, map: 30, crt: 4, rbs: 74, fio2: 60, urineMlKgHr: 1.6 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-J",
+      babyName: "Sample J - discharged last month",
+      motherName: "Sample J",
+      bed: "",
+      sex: "Female",
+      dob: new Date(lastMonthDay(5).getTime() - 41 * 24 * H),
+      gestWeeks: 32,
+      gestDays: 0,
+      birthWeight: 1620,
+      currentWeight: 2600,
+      deliveryMode: "LSCS",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "O-",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 160, ivMlKgDay: 0, feedType: "Direct breast feed", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Discharged in the previous calendar month, so this record lands in a separate monthly archive from the others.",
+          signedBy: "Dr. Sample",
+          at: lastMonthDay(5),
+          weightAtDischarge: 2600,
+          bedAtDischarge: "S10",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Filed under the previous month to prove the monthly consolidation groups correctly.",
+      },
+      problems: [["Respiratory", "RDS - resolved"]],
+      vitals: { hr: 134, rr: 40, spo2: 98, temp: 36.8, sbp: 74, dbp: 46, map: 55, crt: 2, rbs: 90, fio2: 21, urineMlKgHr: 3.5 },
+      tasks: [],
+    },
   ];
 
   const growthSeries = (birth: number, current: number, points: number, dob: Date) => {
@@ -545,9 +710,11 @@ export async function POST() {
     );
     rest.clinical = { ...rest.clinical, growth };
     const [row] = await db.insert(babies).values(rest).returning();
-    await db
-      .insert(problems)
-      .values(probs.map(([system, label]) => ({ babyId: row.id, system, label })));
+    if (probs.length) {
+      await db
+        .insert(problems)
+        .values(probs.map(([system, label]) => ({ babyId: row.id, system, label })));
+    }
     for (let i = 0; i < 5; i++) {
       await db.insert(vitals).values({
         babyId: row.id,
@@ -558,7 +725,10 @@ export async function POST() {
         spo2: Math.min(100, (v.spo2 ?? 95) + (i % 2)),
       });
     }
-    await db.insert(tasks).values(tk.map((t) => ({ babyId: row.id, text: t, priority: "today" })));
+    // A discharged baby has no open tasks, and drizzle rejects values([]).
+    if (tk.length) {
+      await db.insert(tasks).values(tk.map((t) => ({ babyId: row.id, text: t, priority: "today" })));
+    }
     await db.insert(events).values([
       { babyId: row.id, kind: "admission", text: `Admitted · ${row.gestWeeks}+${row.gestDays} wk · ${row.birthWeight} g`, author: "Admitting team", at: row.dob },
       { babyId: row.id, kind: "round", text: "Consultant round completed, plan updated", author: rest.consultant },
