@@ -100,9 +100,20 @@ export type Clinical = {
     feedVol?: number;
     feedVolManual?: boolean;
     fortificationName?: string;
+    /** Which stocked product this is — resolves default values and dose steps. */
+    fortifierProductId?: string;
     fortificationAmount?: number;
     fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
     fortificationFeedVolumeMl?: number;
+    /**
+     * How many feeds per day the fortifier is actually given in. Fortification
+     * is not usually added to every feed, so the uplift is scaled by
+     * doses/day ÷ feeds/day — recording "0.5 g twice a day" must not credit the
+     * whole day's enteral volume with the fortifier.
+     *
+     * Absent means every feed is fortified, which preserves older records.
+     */
+    fortificationDosesPerDay?: number;
     /**
      * Energy and protein each fortifier unit contributes. Optional — defaults
      * to a standard human milk fortifier. Set these to match the product on
@@ -212,6 +223,112 @@ export const FORTIFIER_PROTEIN_G_PER_UNIT = 0.33;
  */
 export const LIPID_PROTEIN_G_PER_G = 0;
 
+/** How a fortifier is measured at the bedside — a sachet, or weighed powder. */
+export type FortifierUnit = "sachet" | "g";
+
+/**
+ * A fortifier / concentrated formula as the unit actually uses it.
+ *
+ * `kcalPerUnit` and `proteinPerUnit` are per ONE unit of `unit` — i.e. per 1 g
+ * sachet, or per gram of powder — never per 100 g, so the bedside arithmetic
+ * stays a single multiplication.
+ */
+export type FortifierProduct = {
+  id: string;
+  name: string;
+  unit: FortifierUnit;
+  kcalPerUnit: number;
+  proteinPerUnit: number;
+  /** Volume of milk one unit is nominally mixed into. */
+  mixedWithMl: number;
+  /** Dose steps the bedside actually uses, in units. */
+  steps: readonly number[];
+  /** Human label for a step, e.g. 0.25 -> "1/4 sachet". */
+  stepLabel: (n: number) => string;
+  note: string;
+};
+
+const sachetLabel = (n: number) =>
+  n === 1 ? "1 sachet" : n === 0.5 ? "1/2 sachet" : n === 0.25 ? "1/4 sachet" : `${n} sachet`;
+const gramLabel = (n: number) => `${n} g`;
+
+/**
+ * Products stocked in the unit.
+ *
+ * Values are per manufacturer data:
+ *  - PreNAN FM 85: 435 kcal and 35.5 g protein per 100 g powder.
+ *  - Multicomponent HMF sachets (Nutricia/Nutriprem class): 4.3 kcal, 0.33 g
+ *    protein per 1 g sachet.
+ *  - Neocate Infant: the mixing chart states 1 g provides 4.87 kcal; protein
+ *    is 13.5 g per 483 kcal, so 0.136 g per gram.
+ *  - Similac NeoSure: 513 kcal and 15 g protein per 100 g powder.
+ *
+ * Every value is still overridable per baby via fortifierKcalPerUnit /
+ * fortifierProteinPerUnit — labels and lot formulations differ, and the record
+ * on the chart must win over a table here.
+ */
+export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
+  {
+    id: "prenan-fm85",
+    name: "PreNAN FM 85 (Nestlé)",
+    unit: "sachet",
+    kcalPerUnit: 4.35,
+    proteinPerUnit: 0.355,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet · 435 kcal and 35.5 g protein per 100 g powder",
+  },
+  {
+    id: "mmf",
+    name: "MMF — multicomponent human milk fortifier",
+    unit: "sachet",
+    kcalPerUnit: 4.3,
+    proteinPerUnit: 0.33,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet · 4.3 kcal and 0.33 g protein per sachet",
+  },
+  {
+    id: "lhmf",
+    name: "LHMF — low-mineral human milk fortifier",
+    unit: "sachet",
+    kcalPerUnit: 4.3,
+    proteinPerUnit: 0.33,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet · same macronutrient density, lower calcium/phosphorus load",
+  },
+  {
+    id: "neocate",
+    name: "Neocate Infant (amino-acid based)",
+    unit: "g",
+    kcalPerUnit: 4.87,
+    proteinPerUnit: 0.136,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "4.87 kcal and 0.136 g protein equivalent per gram of powder",
+  },
+  {
+    id: "neosure",
+    name: "Similac NeoSure (post-discharge preterm)",
+    unit: "g",
+    kcalPerUnit: 5.13,
+    proteinPerUnit: 0.15,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "513 kcal and 15 g protein per 100 g powder · 74 kcal and 2.1 g protein per 100 ml at standard dilution",
+  },
+];
+
+export function fortifierById(id: string | undefined): FortifierProduct | undefined {
+  return FORTIFIER_CATALOG.find((p) => p.id === id);
+}
+
 export type NutritionCalc = {
   feedType: string;
   density: number;
@@ -235,10 +352,22 @@ export type NutritionCalc = {
   /* --- Fortification, so fortified feeds are counted with unfortified ones --- */
   /** True when a fortifier amount is recorded. */
   fortified: boolean;
-  /** kcal/ml added to the base milk by the fortifier. */
+  /** kcal/ml added to the base milk, spread across the whole day's feeds. */
   fortKcalPerMl: number;
-  /** g protein/ml added to the base milk by the fortifier. */
+  /** g protein/ml added to the base milk, spread across the whole day's feeds. */
   fortProteinPerMl: number;
+  /** kcal/ml inside a single fortified feed (before spreading over the day). */
+  fortKcalPerMlInFeed: number;
+  /** g protein/ml inside a single fortified feed. */
+  fortProteinPerMlInFeed: number;
+  /** Stocked product the per-unit values came from, if one was selected. */
+  fortProduct: FortifierProduct | null;
+  /** Feeds per day the fortifier is given in. */
+  fortDosesPerDay: number;
+  /** Total feeds per day implied by the feed frequency. */
+  fortFeedsPerDay: number | undefined;
+  /** Fraction of the day's enteral volume that is fortified, 0-1. */
+  fortFraction: number;
   /** Effective kcal/ml actually used: base milk density + fortifier. */
   effectiveKcalPerMl: number;
   /** Effective g protein/ml actually used: base milk protein + fortifier. */
@@ -413,7 +542,13 @@ export function resolveFeedPlan(
 }
 
 /** Auto-compute kcal/kg/day and protein g/kg/day from the current feed + TPN prescription. */
-export function calcNutrition(c: Clinical): NutritionCalc {
+/**
+ * @param weightG current weight in grams. Optional for backwards compatibility,
+ *   but without it a fortifier dose cannot be converted from "0.5 g twice a
+ *   day" into an absolute daily amount, so the uplift falls back to assuming
+ *   the fortified feeds are an equal share of the day.
+ */
+export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
   const density = KCAL_PER_ML[feedType] ?? 0.67;
@@ -460,32 +595,64 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const warnings: string[] = [];
 
   // --- Fortification: uplift the milk density from the recorded preparation ---
-  // amount used / volume it was mixed into = fortifier per ml of feed, applied
-  // to the whole day's enteral volume, so fortified feeds count their energy
-  // and protein exactly like an unfortified feed does.
+  // The product sets the per-unit values; amount ÷ volume it was mixed into
+  // gives the concentration inside a fortified feed, and doses/day ÷ feeds/day
+  // scales that across the whole day's enteral volume. Without that last step
+  // "0.5 g given twice a day" would be credited to every feed the baby gets.
+  const fortProduct = fortifierById(f.fortifierProductId);
   const fortAmount = f.fortificationAmount ?? 0;
-  const fortMixedMl = f.fortificationFeedVolumeMl ?? 0;
-  const kcalPerUnit = f.fortifierKcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
-  const proteinPerUnit = f.fortifierProteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
+  const fortMixedMl = f.fortificationFeedVolumeMl || fortProduct?.mixedWithMl || 0;
+  const kcalPerUnit = f.fortifierKcalPerUnit ?? fortProduct?.kcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
+  const proteinPerUnit = f.fortifierProteinPerUnit ?? fortProduct?.proteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
   const fortified = fortAmount > 0;
+
+  const fortFeedsPerDay = feedsPerDay(f.feedFreq);
+  const fortDosesPerDay = fortified ? (f.fortificationDosesPerDay ?? fortFeedsPerDay ?? 1) : 0;
+  const weightKg = weightG != null && weightG > 0 ? weightG / 1000 : undefined;
+  let fortFraction = fortified ? 1 : 0;
+  if (fortified && fortFeedsPerDay && fortDosesPerDay > fortFeedsPerDay) {
+    warnings.push(
+      `Fortifier is recorded for ${fortDosesPerDay} feeds/day but "${f.feedFreq}" only gives ${fortFeedsPerDay} feeds/day — check the dose count`,
+    );
+  }
+
+  // Concentration inside a fortified feed, and the same spread over the day.
   let fortKcalPerMl = 0;
   let fortProteinPerMl = 0;
+  let fortKcalPerMlEffective = 0;
+  let fortProteinPerMlEffective = 0;
   if (fortified && fortMixedMl > 0) {
     fortKcalPerMl = (fortAmount * kcalPerUnit) / fortMixedMl;
     fortProteinPerMl = (fortAmount * proteinPerUnit) / fortMixedMl;
+    // How much of the day's enteral volume is actually the fortified mixture:
+    // mixed volume × doses/day, which needs the weight to express per kg.
+    if (weightKg) {
+      const fortifiedMlPerKgDay = (fortMixedMl * fortDosesPerDay) / weightKg;
+      if (fortifiedMlPerKgDay > enteralMl + 0.001) {
+        warnings.push(
+          `Fortifier mix volume ${fortMixedMl} ml × ${fortDosesPerDay} dose(s)/day exceeds the recorded enteral volume — the uplift is capped at the enteral volume`,
+        );
+      }
+      fortFraction = enteralMl > 0 ? Math.min(1, fortifiedMlPerKgDay / enteralMl) : 0;
+    } else if (fortFeedsPerDay) {
+      // No weight on record: fall back to the share of feeds that are fortified.
+      fortFraction = Math.max(0, Math.min(1, fortDosesPerDay / fortFeedsPerDay));
+    }
+    fortKcalPerMlEffective = fortKcalPerMl * fortFraction;
+    fortProteinPerMlEffective = fortProteinPerMl * fortFraction;
   } else if (fortified) {
     warnings.push(
       "Fortifier recorded without a mixed volume — enter \"Feed volume mixed (ml)\" so its energy and protein are counted",
     );
   }
-  const effectiveKcalPerMl = density + fortKcalPerMl;
-  const effectiveProteinPerMl = protPerMl + fortProteinPerMl;
+  const effectiveKcalPerMl = density + fortKcalPerMlEffective;
+  const effectiveProteinPerMl = protPerMl + fortProteinPerMlEffective;
 
   const enteralKcal = Math.round(enteralMl * effectiveKcalPerMl * 10) / 10;
-  const fortKcal = Math.round(enteralMl * fortKcalPerMl * 10) / 10;
+  const fortKcal = Math.round(enteralMl * fortKcalPerMlEffective * 10) / 10;
   const milkKcal = Math.round((enteralKcal - fortKcal) * 10) / 10;
   const enteralProtein = Math.round(enteralMl * effectiveProteinPerMl * 100) / 100;
-  const fortProtein = Math.round(enteralMl * fortProteinPerMl * 100) / 100;
+  const fortProtein = Math.round(enteralMl * fortProteinPerMlEffective * 100) / 100;
   const milkProtein = Math.round((enteralProtein - fortProtein) * 100) / 100;
 
   // Total IV kcal = dextrose + AA + lipid (TPN)
@@ -546,8 +713,17 @@ export function calcNutrition(c: Clinical): NutritionCalc {
       : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10,
     ivMl,
     fortified,
-    fortKcalPerMl: Math.round(fortKcalPerMl * 1000) / 1000,
-    fortProteinPerMl: Math.round(fortProteinPerMl * 10000) / 10000,
+    // Spread across the whole day, so effectiveKcalPerMl = density + this.
+    fortKcalPerMl: Math.round(fortKcalPerMlEffective * 1000) / 1000,
+    fortProteinPerMl: Math.round(fortProteinPerMlEffective * 10000) / 10000,
+    // Concentration inside a single fortified feed, for the readout. Kept at
+    // 5 dp because a small fortifier uplift rounds away almost entirely at 3.
+    fortKcalPerMlInFeed: Math.round(fortKcalPerMl * 100000) / 100000,
+    fortProteinPerMlInFeed: Math.round(fortProteinPerMl * 100000) / 100000,
+    fortProduct: fortProduct ?? null,
+    fortDosesPerDay,
+    fortFeedsPerDay,
+    fortFraction: Math.round(fortFraction * 1000) / 1000,
     effectiveKcalPerMl: Math.round(effectiveKcalPerMl * 1000) / 1000,
     effectiveProteinPerMl: Math.round(effectiveProteinPerMl * 10000) / 10000,
     milkKcal,

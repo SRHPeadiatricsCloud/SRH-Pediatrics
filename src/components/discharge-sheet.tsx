@@ -69,7 +69,7 @@ export function DischargeSheet({
   const b = d.baby;
   const c = b.clinical ?? {};
   const rec = record ?? c.dischargeRecord ?? null;
-  const nutrition = calcNutrition(c);
+  const nutrition = calcNutrition(c, b.currentWeight);
   const los = lengthOfStayDays({
     id: b.id,
     babyName: b.babyName,

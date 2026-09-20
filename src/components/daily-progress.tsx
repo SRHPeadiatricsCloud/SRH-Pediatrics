@@ -48,7 +48,7 @@ export function DailyProgressTab({
   user: string;
 }) {
   const c = baby.clinical ?? {};
-  const n = useMemo(() => calcNutrition(c), [c]);
+  const n = useMemo(() => calcNutrition(c, baby.currentWeight), [c, baby.currentWeight]);
   const useKg = baby.unit !== "nicu";
   const [w, setW] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);

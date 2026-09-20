@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { editorOfChecked, unsigned } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
@@ -50,31 +50,46 @@ export async function POST(req: Request, ctx: Ctx) {
       return NextResponse.json({ rows });
     }
     case "vitals": {
-      const [row] = await db
-        .insert(vitals)
-        .values({
-          babyId: id,
-          recordedBy: body.recordedBy ?? "Nurse",
-          hr: asIntOrNull(body.hr),
-          rr: asIntOrNull(body.rr),
-          spo2: asIntOrNull(body.spo2),
-          spo2Post: asIntOrNull(body.spo2Post),
-          temp: asRealOrNull(body.temp),
-          sbp: asIntOrNull(body.sbp),
-          dbp: asIntOrNull(body.dbp),
-          map: asIntOrNull(body.map),
-          crt: asIntOrNull(body.crt),
-          rbs: asIntOrNull(body.rbs),
-          fio2: asIntOrNull(body.fio2),
-          painScore: asIntOrNull(body.painScore),
-          painScale: String(body.painScale ?? "NIPS"),
-          painRaw: asRealOrNull(body.painRaw ?? body.painScore),
-          urineMlKgHr: asRealOrNull(body.urineMlKgHr),
-          notes: body.notes ?? "",
-        })
-        .returning();
+      const recordedBy = body.recordedBy ?? "Nurse";
+      const values = {
+        hr: asIntOrNull(body.hr),
+        rr: asIntOrNull(body.rr),
+        spo2: asIntOrNull(body.spo2),
+        spo2Post: asIntOrNull(body.spo2Post),
+        temp: asRealOrNull(body.temp),
+        sbp: asIntOrNull(body.sbp),
+        dbp: asIntOrNull(body.dbp),
+        map: asIntOrNull(body.map),
+        crt: asIntOrNull(body.crt),
+        rbs: asIntOrNull(body.rbs),
+        fio2: asIntOrNull(body.fio2),
+        painScore: asIntOrNull(body.painScore),
+        painScale: String(body.painScale ?? "NIPS"),
+        painRaw: asRealOrNull(body.painRaw ?? body.painScore),
+        urineMlKgHr: asRealOrNull(body.urineMlKgHr),
+        notes: body.notes ?? "",
+      };
+      /*
+       * A round of observations is typed field by field and auto-saved as the
+       * nurse goes, which used to write a separate row per edit — so the
+       * observation log showed the same round several times over. If the same
+       * recorder wrote a row inside the merge window, update that row instead
+       * of inserting a new one, so one round is one entry.
+       */
+      const windowMs = Number(body.mergeWindowMs ?? 10 * 60_000);
+      const since = new Date(Date.now() - Math.max(0, windowMs));
+      const [recent] = await db
+        .select()
+        .from(vitals)
+        .where(and(eq(vitals.babyId, id), eq(vitals.recordedBy, recordedBy)))
+        .orderBy(desc(vitals.recordedAt))
+        .limit(1);
+      const mergeInto = recent && recent.recordedAt >= since ? recent.id : null;
+      const [row] = mergeInto
+        ? await db.update(vitals).set(values).where(eq(vitals.id, mergeInto)).returning()
+        : await db.insert(vitals).values({ babyId: id, recordedBy, ...values }).returning();
       await db.update(babies).set({ updatedAt: new Date() }).where(eq(babies.id, id));
-      return NextResponse.json({ row });
+      return NextResponse.json({ row, merged: mergeInto != null });
     }
     case "events": {
       const [row] = await db

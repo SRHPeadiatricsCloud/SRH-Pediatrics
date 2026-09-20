@@ -9,8 +9,16 @@
  */
 
 export const BACKUP_SCHEMA_VERSION = 2;
-// Displayed in the shell footer and backup metadata. Increment the patch segment for each feature release.
-export const APP_VERSION = "3.0.000";
+/**
+ * Displayed in the shell footer and stored in every backup envelope.
+ *
+ * Bump it on every release, following CHANGELOG.md:
+ *   MAJOR — a major update (breaking change to data or workflow)
+ *   MINOR — new features added
+ *   PATCH — existing features rewritten or fixed
+ * Never edit a released entry in CHANGELOG.md; add a new one.
+ */
+export const APP_VERSION = "3.1.0";
 
 export type BackupEnvelope = {
   kind: "srh-nicu-backup";

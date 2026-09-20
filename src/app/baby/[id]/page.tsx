@@ -137,10 +137,11 @@ type Detail = {
 
 const TABS = [
   "Overview",
-  "Vitals",
+  // Vitals and growth live together: weight is recorded during the observation
+  // round, so splitting them across two tabs meant entering it twice.
+  "Vitals & growth",
   "Respiratory",
   "Fluids & feeds",
-  "Growth & weight",
   "Daily progress",
   "Problems",
   "Drugs & lines",
@@ -356,12 +357,16 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {tab === "Overview" && <Overview d={data} patch={patch} user={name} />}
-        {tab === "Vitals" && <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />}
+        {tab === "Vitals & growth" && (
+          <>
+            <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />
+            <div className="mt-6">
+              <GrowthTab d={data} patch={patch} user={name} reload={reload} />
+            </div>
+          </>
+        )}
         {tab === "Respiratory" && <RespTab d={data} patch={patch} user={name} />}
         {tab === "Fluids & feeds" && <FluidsTab d={data} patch={patch} />}
-        {tab === "Growth & weight" && (
-          <GrowthTab d={data} patch={patch} user={name} reload={reload} />
-        )}
         {tab === "Daily progress" && <DailyProgressTab baby={b} patch={patch} user={name} />}
         {tab === "Problems" && <ProblemsTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Drugs & lines" && <DrugsTab d={data} patch={patch} />}
@@ -522,7 +527,7 @@ function Overview({
           <Row k="TPN" v={c.fluids?.tpn ? `AA ${c.fluids.aminoAcid ?? "—"} g/kg · Lipid ${c.fluids.lipid ?? "—"} g/kg` : "No"} />
           <Row
             k="Energy (auto)"
-            v={`${calcNutrition(c).totalKcal} kcal/kg/day · protein ${calcNutrition(c).totalProtein} g/kg/day`}
+            v={`${calcNutrition(c, b.currentWeight).totalKcal} kcal/kg/day · protein ${calcNutrition(c, b.currentWeight).totalProtein} g/kg/day`}
           />
           <Row k="Lines" v={(c.lines ?? []).map((l) => `${l.name} D${l.day}`).join(", ") || "None"} />
           <Row k="Drugs" v={(c.drugs ?? []).map((x) => `${x.name}${x.ofDays ? ` D${x.day}/${x.ofDays}` : x.dose ? ` (${x.dose})` : ""}`).join(", ") || "None"} />

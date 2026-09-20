@@ -31,6 +31,10 @@ import {
   calcNutrition,
   fmtBP,
   fmtTime,
+  FORTIFIER_CATALOG,
+  FORTIFIER_KCAL_PER_UNIT,
+  FORTIFIER_PROTEIN_G_PER_UNIT,
+  fortifierById,
   gainGPerKgDay,
   pctOfBirth,
   resolveFeedPlan,
@@ -479,15 +483,19 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     : manualEnteralFromVolume !== undefined
       ? manualEnteralFromVolume
       : s.enteralMlKgDay;
-  const nutrition = calcNutrition({
-    fluids: {
-      ...s,
-      gir: girValue,
-      girManual: manualDerived.gir,
-      ivMlKgDay: planIv,
-      ...(manualEnteralFromVolume !== undefined ? { enteralMlKgDay: manualEnteralFromVolume } : {}),
+  const fortProduct = fortifierById(s.fortifierProductId);
+  const nutrition = calcNutrition(
+    {
+      fluids: {
+        ...s,
+        gir: girValue,
+        girManual: manualDerived.gir,
+        ivMlKgDay: planIv,
+        ...(manualEnteralFromVolume !== undefined ? { enteralMlKgDay: manualEnteralFromVolume } : {}),
+      },
     },
-  });
+    d.baby.currentWeight,
+  );
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
   const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
@@ -777,26 +785,95 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             fortifier&apos;s energy and protein to the day&apos;s enteral feeds.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
-            <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.1} decimals={2} placeholder="enter" />
+            {/* Picking a stocked product fills the per-unit values, the dose unit
+                and the mix volume from the label, and clears any override. */}
+            <label className="block lg:col-span-2">
+              <span className="lbl mb-1 block">Fortification product</span>
+              <select
+                className="inp min-h-11"
+                value={s.fortifierProductId ?? ""}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  const product = fortifierById(id);
+                  setS((p) => ({
+                    ...p,
+                    fortifierProductId: id || undefined,
+                    fortificationName: product ? product.name : p.fortificationName,
+                    fortificationAmountUnit: product ? product.unit : p.fortificationAmountUnit,
+                    fortificationFeedVolumeMl: product ? product.mixedWithMl : p.fortificationFeedVolumeMl,
+                    fortifierKcalPerUnit: product ? undefined : p.fortifierKcalPerUnit,
+                    fortifierProteinPerUnit: product ? undefined : p.fortifierProteinPerUnit,
+                  }));
+                }}
+              >
+                <option value="">— Select the product on the label —</option>
+                {FORTIFIER_CATALOG.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block lg:col-span-2">
+              <span className="lbl mb-1 block">Free-text name (if not listed)</span>
+              <input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" />
+            </label>
+
+            {fortProduct && (
+              <div className="sm:col-span-2 lg:col-span-4">
+                <span className="lbl mb-1 block">
+                  Dose per feed — {fortProduct.unit === "sachet" ? "sachet" : "grams of powder"}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {fortProduct.steps.map((step) => (
+                    <button
+                      key={step}
+                      type="button"
+                      className={`chip ${s.fortificationAmount === step ? "chip-on" : "chip-off"}`}
+                      onClick={() => setS((p) => ({ ...p, fortificationAmount: step }))}
+                    >
+                      {fortProduct.stepLabel(step)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">{fortProduct.note}</p>
+              </div>
+            )}
+
+            <NumField label="Amount per dose" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.05} decimals={2} placeholder="enter" />
             <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml</option><option value="scoop">scoop</option><option value="measure">measure</option></select></label>
             <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="required for energy" />
-            <NumField label={`kcal per unit - ${s.fortifierKcalPerUnit === undefined ? "default 4" : "custom"}`} value={s.fortifierKcalPerUnit ?? undefined} onChange={set("fortifierKcalPerUnit")} min={0} max={50} step={0.1} decimals={2} placeholder="4" />
-            <NumField label={`Protein g per unit - ${s.fortifierProteinPerUnit === undefined ? "default 0.33" : "custom"}`} value={s.fortifierProteinPerUnit ?? undefined} onChange={set("fortifierProteinPerUnit")} min={0} max={10} step={0.01} decimals={2} placeholder="0.33" />
+            <NumField
+              label={`Times per day - ${nutrition.fortFeedsPerDay ? `${nutrition.fortFeedsPerDay} feeds total` : "feed frequency unknown"}`}
+              value={s.fortificationDosesPerDay ?? undefined}
+              onChange={set("fortificationDosesPerDay")}
+              min={0}
+              max={48}
+              step={1}
+              decimals={0}
+              placeholder={nutrition.fortFeedsPerDay ? String(nutrition.fortFeedsPerDay) : "every feed"}
+            />
+            <NumField label={`kcal per unit - ${s.fortifierKcalPerUnit === undefined ? `label ${fortProduct?.kcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT}` : "custom"}`} value={s.fortifierKcalPerUnit ?? undefined} onChange={set("fortifierKcalPerUnit")} min={0} max={50} step={0.05} decimals={3} placeholder={String(fortProduct?.kcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT)} />
+            <NumField label={`Protein g per unit - ${s.fortifierProteinPerUnit === undefined ? `label ${fortProduct?.proteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT}` : "custom"}`} value={s.fortifierProteinPerUnit ?? undefined} onChange={set("fortifierProteinPerUnit")} min={0} max={10} step={0.01} decimals={3} placeholder={String(fortProduct?.proteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT)} />
             <label className="block sm:col-span-2 lg:col-span-2"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional" /></label>
           </div>
           <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/50 p-2 text-[11px] leading-relaxed text-slate-300">
             {nutrition.fortified
               ? <>
-                  <b className="text-white">Counted in the totals:</b> {s.fortificationAmount} {s.fortificationAmountUnit ?? "sachet"}
-                  {s.fortificationFeedVolumeMl ? ` per ${s.fortificationFeedVolumeMl} ml` : ""} adds{" "}
+                  <b className="text-white">Counted in the totals:</b> {s.fortificationAmount} {s.fortificationAmountUnit ?? "sachet"} in{" "}
+                  {s.fortificationFeedVolumeMl ?? fortProduct?.mixedWithMl} ml, given{" "}
+                  <b className="text-white">{nutrition.fortDosesPerDay} time{nutrition.fortDosesPerDay === 1 ? "" : "s"}/day</b> —{" "}
+                  {s.fortificationFeedVolumeMl || fortProduct ? `${(s.fortificationFeedVolumeMl ?? fortProduct!.mixedWithMl) * nutrition.fortDosesPerDay} ml/day fortified, ` : ""}
+                  {(nutrition.fortFraction * 100).toFixed(0)}% of the enteral volume. Inside a fortified feed that is{" "}
+                  <b className="text-cyan-200">{nutrition.fortKcalPerMlInFeed} kcal/ml</b> and{" "}
+                  <b className="text-emerald-200">{nutrition.fortProteinPerMlInFeed} g protein/ml</b>; spread over the day it adds{" "}
                   <b className="text-cyan-200">+{nutrition.fortKcalPerMl} kcal/ml</b> and{" "}
                   <b className="text-emerald-200">+{nutrition.fortProteinPerMl} g protein/ml</b> to {nutrition.feedType} —
                   effective density {nutrition.effectiveKcalPerMl} kcal/ml, {nutrition.effectiveProteinPerMl} g protein/ml.
                 </>
               : "No fortifier recorded — the base milk density is used."}
           </div>
-          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> amount stays linked to stated mixed volume. Do not auto-adjust. Defaults assume a standard human milk fortifier (4 kcal, 0.33 g protein per sachet) — override per product from the label.</div>
+          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> the amount is a single dose and stays linked to the stated mixed volume — nothing is rescaled. Only the feeds it is actually given in are uplifted, so &ldquo;0.5 g twice a day&rdquo; is not credited to every feed. Product values come from the manufacturer label and can be overridden per baby.</div>
         </fieldset>
       </Section>
     </div>
@@ -1185,7 +1262,7 @@ export function CourseTab({
   const growth = [...(c.growth ?? [])].sort((a, z) => +new Date(a.at) - +new Date(z.at));
   const lastWeight = growth.at(-1)?.weight ?? b.currentWeight;
   const lastVital = d.vitals[0] ?? {};
-  const n = calcNutrition(c);
+  const n = calcNutrition(c, lastWeight);
   const course = [
     ...d.problems.map((p) => ({ at: p.onsetAt, text: `${p.label} - ${p.status}`, author: "Clinical record" })),
     ...d.events.map((e) => ({ at: e.at, text: e.text, author: e.author })),
