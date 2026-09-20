@@ -28,13 +28,32 @@ assert.deepEqual([...prenan.steps], [0.25, 0.5, 1], "1/4, 1/2 and 1 sachet");
 assert.equal(prenan.stepLabel(0.25), "1/4 sachet");
 assert.equal(prenan.stepLabel(1), "1 sachet");
 
-for (const id of ["mmf", "lhmf"]) {
-  const p = fortifierById(id)!;
-  assert.equal(p.unit, "sachet", `${id} is dosed in sachets`);
-  assert.deepEqual([...p.steps], [0.25, 0.5, 1], `${id} offers 1/4, 1/2 and 1 sachet`);
-  assert.equal(p.kcalPerUnit, 4.3);
-  assert.equal(p.proteinPerUnit, 0.33);
-}
+const prenanHmf = fortifierById("prenan-hmf")!;
+assert.equal(prenanHmf.unit, "sachet");
+assert.equal(prenanHmf.kcalPerUnit, 4, "PreNAN HMF sachet: 4 kcal per 1 g");
+assert.equal(prenanHmf.proteinPerUnit, 0.3, "PreNAN HMF sachet: 0.3 g protein per 1 g");
+assert.deepEqual([...prenanHmf.steps], [0.25, 0.5, 1]);
+
+/* LHMF is Lactodex HMF (Raptakos Brett): 3.37 kcal and 0.27 g protein per
+ * 1 g sachet, reconstituted 1 sachet in 25 ml of human milk (pack label). */
+const lactodex = fortifierById("lhmf")!;
+assert.match(lactodex.name, /Lactodex HMF/, "lhmf is the Lactodex HMF sachet");
+assert.equal(lactodex.unit, "sachet");
+assert.equal(lactodex.kcalPerUnit, 3.37, "Lactodex HMF: 3.37 kcal per 1 g sachet");
+assert.equal(lactodex.proteinPerUnit, 0.27, "Lactodex HMF: 0.27 g protein per 1 g sachet");
+assert.equal(lactodex.mixedWithMl, 25, "Lactodex HMF: one sachet into 25 ml of milk");
+assert.deepEqual([...lactodex.steps], [0.25, 0.5, 1], "1/4, 1/2 and 1 sachet");
+assert.equal(lactodex.stepLabel(0.25), "1/4 sachet");
+assert.equal(lactodex.stepLabel(1), "1 sachet");
+
+/* MMF is NeoLact MMF Plus — human-milk derived, a different density again. */
+const mmf = fortifierById("mmf")!;
+assert.match(mmf.name, /NeoLact MMF/);
+assert.equal(mmf.kcalPerUnit, 3.89, "NeoLact MMF Plus: 3.89 kcal per 1 g sachet");
+assert.equal(mmf.proteinPerUnit, 0.27, "NeoLact MMF Plus: 0.27 g protein per 1 g sachet");
+assert.equal(mmf.mixedWithMl, 25);
+assert.deepEqual([...mmf.steps], [0.25, 0.5, 1]);
+assert.notEqual(lactodex.kcalPerUnit, mmf.kcalPerUnit, "the two sachets are not interchangeable");
 
 const neocate = fortifierById("neocate")!;
 assert.equal(neocate.unit, "g", "Neocate is weighed in grams");
@@ -46,7 +65,7 @@ assert.equal(Math.max(...neocate.steps), 1.5, "to 1.5 g");
 const neosure = fortifierById("neosure")!;
 assert.equal(neosure.kcalPerUnit, 5.13, "NeoSure: 513 kcal per 100 g");
 assert.equal(neosure.proteinPerUnit, 0.15, "NeoSure: 15 g protein per 100 g");
-assert.equal(FORTIFIER_CATALOG.length, 5);
+assert.equal(FORTIFIER_CATALOG.length, 6);
 assert.equal(fortifierById("does-not-exist"), undefined);
 
 /* --- 2. The user's example: 0.5 g given 2 times -------------------------- */
@@ -105,7 +124,7 @@ const half = calcNutrition(
   }),
   1500,
 );
-assert.equal(round(half.fortKcalPerMlInFeed, 3), 0.086, "1/2 sachet x 4.3 kcal in 25 ml");
+assert.equal(round(half.fortKcalPerMlInFeed, 4), 0.0778, "1/2 sachet of NeoLact MMF Plus (3.89 kcal) in 25 ml");
 assert.equal(half.fortFraction, 1, "25 ml x 12 doses = 300 ml/day, more than the 160 ml/kg/day enteral");
 assert.ok(
   half.warnings.some((w) => /exceeds the recorded enteral volume/.test(w)),

@@ -19,6 +19,27 @@ Rules:
 
 ---
 
+## 3.1.1
+
+Existing feature rewritten with corrected product data, so the patch segment moves.
+
+### Fixed
+
+- **LHMF is Lactodex HMF** (Raptakos Brett), not a generic "low-mineral" fortifier.
+  The catalogue entry now carries the pack-label values: **3.37 kcal and 0.27 g
+  protein per 1 g sachet**, one sachet reconstituted in **25 ml** of human milk
+  (was 4.3 kcal / 0.33 g, borrowed from the Nutricia class of sachet).
+- **MMF is NeoLact MMF Plus**, the human-milk-derived fortifier: **3.89 kcal and
+  0.27 g protein per 1 g sachet**, one sachet in 25 ml (was also 4.3 / 0.33).
+- **PreNAN HMF sachet added** as its own product — 4 kcal and 0.3 g protein per
+  1 g sachet. PreNAN FM 85 stays in the list, relabelled as powder and marked as
+  a preterm follow-up formula rather than an HMF sachet, because its 4.35 kcal/g
+  is a feed density, not a fortifier density.
+- Per-baby overrides (`fortifierKcalPerUnit` / `fortifierProteinPerUnit`) still win
+  over the catalogue, so any chart already carrying its own values is untouched.
+
+---
+
 ## 3.1.0
 
 New features, so the minor segment moves.

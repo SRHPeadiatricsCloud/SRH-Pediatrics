@@ -255,10 +255,15 @@ const gramLabel = (n: number) => `${n} g`;
 /**
  * Products stocked in the unit.
  *
- * Values are per manufacturer data:
- *  - PreNAN FM 85: 435 kcal and 35.5 g protein per 100 g powder.
- *  - Multicomponent HMF sachets (Nutricia/Nutriprem class): 4.3 kcal, 0.33 g
- *    protein per 1 g sachet.
+ * All values are per ONE unit of `unit`, so the bedside arithmetic is a single
+ * multiplication. Sources:
+ *  - Lactodex HMF (Raptakos Brett) and NeoLact MMF Plus: per 1 g sachet, from
+ *    the published comparison of Indian multicomponent fortifiers (Cureus 2025,
+ *    "Balancing Nutrition and Osmolality…", Table 1) cross-checked against the
+ *    pack label. Lactodex 3.37 kcal / 0.27 g protein; MMF Plus 3.89 kcal /
+ *    0.27 g protein. Both are reconstituted 1 sachet in 25 ml of milk.
+ *  - PreNAN HMF (Nestlé) sachet: 4 kcal / 0.3 g protein per 1 g, same table.
+ *  - PreNAN FM 85: 435 kcal and 35.5 g protein per 100 g powder (label).
  *  - Neocate Infant: the mixing chart states 1 g provides 4.87 kcal; protein
  *    is 13.5 g per 483 kcal, so 0.136 g per gram.
  *  - Similac NeoSure: 513 kcal and 15 g protein per 100 g powder.
@@ -269,37 +274,48 @@ const gramLabel = (n: number) => `${n} g`;
  */
 export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
   {
+    id: "prenan-hmf",
+    name: "PreNAN HMF (Nestlé) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 4,
+    proteinPerUnit: 0.3,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet in 25 ml milk · 4 kcal, 0.3 g protein, Ca 15.9 mg, P 8.8 mg, Na 7.3 mg per sachet",
+  },
+  {
+    id: "lhmf",
+    name: "Lactodex HMF (Raptakos Brett) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.37,
+    proteinPerUnit: 0.27,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet in 25 ml milk · 3.37 kcal, 0.27 g protein, Ca 15.8 mg, P 7.9 mg, Na 1.9 mg, Fe 0.03 mg per sachet · bovine-derived",
+  },
+  {
+    id: "mmf",
+    name: "NeoLact MMF Plus (Mother's Milk Fortifier) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.89,
+    proteinPerUnit: 0.27,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "1 g sachet in 25 ml milk · 3.89 kcal, 0.27 g protein, Ca 6 mg, P 1.4 mg, Na 2.2 mg per sachet · human-milk derived, maltodextrin-free",
+  },
+  {
     id: "prenan-fm85",
-    name: "PreNAN FM 85 (Nestlé)",
+    name: "PreNAN FM 85 (Nestlé) — powder",
     unit: "sachet",
     kcalPerUnit: 4.35,
     proteinPerUnit: 0.355,
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "1 g sachet · 435 kcal and 35.5 g protein per 100 g powder",
-  },
-  {
-    id: "mmf",
-    name: "MMF — multicomponent human milk fortifier",
-    unit: "sachet",
-    kcalPerUnit: 4.3,
-    proteinPerUnit: 0.33,
-    mixedWithMl: 25,
-    steps: [0.25, 0.5, 1],
-    stepLabel: sachetLabel,
-    note: "1 g sachet · 4.3 kcal and 0.33 g protein per sachet",
-  },
-  {
-    id: "lhmf",
-    name: "LHMF — low-mineral human milk fortifier",
-    unit: "sachet",
-    kcalPerUnit: 4.3,
-    proteinPerUnit: 0.33,
-    mixedWithMl: 25,
-    steps: [0.25, 0.5, 1],
-    stepLabel: sachetLabel,
-    note: "1 g sachet · same macronutrient density, lower calcium/phosphorus load",
+    note: "per 1 g of powder · 435 kcal and 35.5 g protein per 100 g · preterm follow-up formula, not a HMF sachet",
   },
   {
     id: "neocate",
