@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Clock } from "lucide-react";
-import { Chip, DialWithOther, NumField, Section } from "@/components/ui";
+import { Chip, DialWithOther, NumField, Section, api } from "@/components/ui";
 import { girFromDextrose, type Flag } from "@/lib/interpret";
 import {
   FEED_PHASES,
@@ -10,6 +10,7 @@ import {
   TARGET_FIELDS,
   applyProtocol,
   bandIntervalHours,
+  mergeProtocols,
   protocolInUse,
   suggestFluids,
   targetsFor,
@@ -202,15 +203,16 @@ function RxField({
 }
 
 /**
- * One unit-protocol figure. A plain input rather than a stepper, because the
- * empty state is meaningful: blank means "use the published value", and the
- * placeholder shows what that value is.
+ * One protocol figure. A plain input rather than a stepper, because the empty
+ * state is meaningful: blank means "fall through to the next layer", and the
+ * sub-label says what that layer currently gives.
  */
 function ProtocolRow({
   label,
   unit,
   value,
   published,
+  inherited,
   hint,
   min,
   max,
@@ -219,8 +221,12 @@ function ProtocolRow({
 }: {
   label: string;
   unit: string;
+  /** What the layer being edited holds. */
   value: number | undefined;
+  /** The published guidance figure. */
   published: number;
+  /** What the layer below already provides, e.g. the unit's figure. */
+  inherited?: { value: number; from: string };
   hint: string;
   min: number;
   max: number;
@@ -228,6 +234,7 @@ function ProtocolRow({
   onChange: (v: number | undefined) => void;
 }) {
   const overridden = value !== undefined;
+  const fallback = overridden ? undefined : inherited ? `${inherited.from} ${inherited.value}` : `published ${published}`;
   return (
     <label className={`block rounded-xl border p-2 ${overridden ? "border-cyan-400/30 bg-cyan-400/5" : "border-white/10 bg-slate-900/50"}`}>
       <span className="lbl mb-1 block truncate">
@@ -238,17 +245,22 @@ function ProtocolRow({
         inputMode="decimal"
         className="inp min-h-11"
         value={value ?? ""}
-        placeholder={String(published)}
+        placeholder={String(inherited?.value ?? published)}
         min={min}
         max={max}
         step={step}
         onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
       />
       <span className="mt-1 block text-[10px] leading-tight text-slate-500">
-        {overridden ? `yours — published ${published}` : `published ${published}`} · {hint}
+        {overridden ? `this ${inherited ? "baby" : "layer"} — published ${published}` : fallback} · {hint}
       </span>
     </label>
   );
+}
+
+/** The fallback a cleared box falls through to, labelled by where it came from. */
+function unitValueFor(value: number | undefined, from: string) {
+  return typeof value === "number" && Number.isFinite(value) ? { value, from } : undefined;
 }
 
 function localDateTimeValue(value?: string) {
@@ -276,6 +288,27 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const wt = d.baby.currentWeight / 1000;
   const [saving, setSaving] = useState(false);
   const feedDetailsRef = useRef<HTMLDetailsElement>(null);
+  // The unit's own figures, shared by every baby in it. A baby's own override
+  // still wins, so one chart can depart from the unit without changing it.
+  const [unitProtocol, setUnitProtocol] = useState<ProtocolOverrides | undefined>(undefined);
+  const [unitDraft, setUnitDraft] = useState<ProtocolOverrides | undefined>(undefined);
+  const [unitSaving, setUnitSaving] = useState(false);
+  const [protocolScope, setProtocolScope] = useState<"baby" | "unit">("baby");
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/unit-protocol?unit=${encodeURIComponent(d.baby.unit)}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json: { row?: { protocol?: ProtocolOverrides } | null }) => {
+        if (!live) return;
+        const loaded = (json?.row?.protocol ?? undefined) as ProtocolOverrides | undefined;
+        setUnitProtocol(loaded);
+        setUnitDraft(loaded);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [d.baby.unit]);
   // The feed-due clock has to move, so this one state is allowed to tick.
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -321,11 +354,13 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       ? manualEnteralFromVolume
       : s.enteralMlKgDay;
   const fortProduct = fortifierById(s.fortifierProductId);
-  const protocol = s.protocol;
+  // This baby's figures beat the unit's, which beat the published guidance.
+  const protocol = mergeProtocols(s.protocol, unitProtocol);
   const nutrition = calcNutrition(
     {
       fluids: {
         ...s,
+        protocol,
         gir: girValue,
         girManual: manualDerived.gir,
         ivMlKgDay: planIv,
@@ -403,6 +438,27 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       feedType: p.feedType ?? "Expressed breast milk (EBM)",
       feedVolManual: false,
     }));
+
+  const setUnitProtocolValue = (key: keyof ProtocolOverrides) => (v: number | undefined) =>
+    setUnitDraft((current) => {
+      const next = { ...(current ?? {}) };
+      if (v === undefined) delete next[key];
+      else next[key] = v;
+      return next;
+    });
+
+  const saveUnitProtocol = async () => {
+    setUnitSaving(true);
+    try {
+      const result = (await api("/api/unit-protocol", "POST", {
+        unit: d.baby.unit,
+        protocol: unitDraft ?? {},
+      })) as { row?: { protocol?: ProtocolOverrides } } | undefined;
+      if (result?.row?.protocol !== undefined) setUnitProtocol(result.row.protocol as ProtocolOverrides);
+    } finally {
+      setUnitSaving(false);
+    }
+  };
 
   const setDerived = (key: "gir" | "kcal") => (value: number) => {
     setManualDerived((current) => ({ ...current, [key]: true }));
@@ -508,6 +564,13 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     s.aminoAcid === undefined &&
     s.lipid === undefined &&
     !plan.active;
+
+  // The protocol editor edits one layer at a time; the other layers still show
+  // through as the fallback a cleared box falls back to.
+  const activeLayer = protocolScope === "baby" ? s.protocol : unitDraft;
+  const babyHasOverrides = protocolInUse(s.protocol);
+  const unitHasOverrides = protocolInUse(unitDraft);
+  const unitDirty = JSON.stringify(unitDraft ?? {}) !== JSON.stringify(unitProtocol ?? {});
 
   // The published figures, for the protocol editor's placeholders.
   const publishedBand = weightBand(d.baby.currentWeight);
@@ -1093,26 +1156,37 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         {/* --- the unit's own figures -------------------------------------- */}
         <details className="mt-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
           <summary className="cursor-pointer text-xs font-black text-slate-200">
-            Unit protocol for this baby {usingProtocol ? "— using your figures" : "— published values"}
+            Protocol figures {usingProtocol ? "— using your figures" : "— published values"}
           </summary>
           <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-            The published figures are guidance, and units differ. Replace any of them here and every suggestion, target and
-            phase for <b className="text-slate-200">this baby</b> follows your numbers. Leave a box empty to use the published
-            value; the placeholder shows what that is. Nothing here changes another baby&apos;s chart.
+            The published figures are guidance, and units differ. Any of them can be replaced for{" "}
+            <b className="text-slate-200">this baby</b> or for the <b className="text-slate-200">whole unit</b>. This
+            baby&apos;s figure beats the unit&apos;s, which beats the published value; leave a box empty to fall through to
+            the layer below, and the placeholder shows what that gives. Suggestions, targets and the feeding pathway all
+            follow.
           </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Chip label="This baby only" on={protocolScope === "baby"} onClick={() => setProtocolScope("baby")} />
+            <Chip
+              label={`Whole unit — ${d.baby.unit.toUpperCase()}`}
+              on={protocolScope === "unit"}
+              onClick={() => setProtocolScope("unit")}
+            />
+          </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {PROTOCOL_FIELDS.map((field) => (
               <ProtocolRow
                 key={field.key}
                 label={field.label}
                 unit={field.unit}
-                value={protocol?.[field.key]}
-                published={field.published(effectiveBand ?? publishedBand ?? weightBand(1500)!)}
+                value={activeLayer?.[field.key]}
+                published={field.published(publishedBand ?? weightBand(1500)!)}
+                inherited={protocolScope === "baby" ? unitValueFor(unitProtocol?.[field.key], "unit") : undefined}
                 hint={field.hint}
                 min={field.min}
                 max={field.max}
                 step={field.step}
-                onChange={setProtocolValue(field.key)}
+                onChange={protocolScope === "baby" ? setProtocolValue(field.key) : setUnitProtocolValue(field.key)}
               />
             ))}
             {TARGET_FIELDS.map((field) => (
@@ -1120,28 +1194,52 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                 key={field.key}
                 label={field.label}
                 unit={field.unit}
-                value={protocol?.[field.key]}
+                value={activeLayer?.[field.key]}
                 published={field.published(publishedTargets)}
+                inherited={protocolScope === "baby" ? unitValueFor(unitProtocol?.[field.key], "unit") : undefined}
                 hint={field.hint}
                 min={field.min}
                 max={field.max}
                 step={field.step}
-                onChange={setProtocolValue(field.key)}
+                onChange={protocolScope === "baby" ? setProtocolValue(field.key) : setUnitProtocolValue(field.key)}
               />
             ))}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {usingProtocol && (
-              <button type="button" className="btn-ghost" onClick={() => setField("protocol", undefined)}>
-                Use the published values
-              </button>
+            {protocolScope === "baby" ? (
+              <>
+                {babyHasOverrides && (
+                  <button type="button" className="btn-ghost" onClick={() => setField("protocol", undefined)}>
+                    Clear this baby&apos;s figures
+                  </button>
+                )}
+                <span className="text-[10px] text-slate-500">Saved with the chart, and applies to this baby only.</span>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-primary" onClick={saveUnitProtocol} disabled={unitSaving}>
+                  {unitSaving ? "Saving…" : `Save for the whole ${d.baby.unit.toUpperCase()}`}
+                </button>
+                {unitHasOverrides && (
+                  <button type="button" className="btn-ghost" onClick={() => setUnitDraft(undefined)}>
+                    Clear the unit&apos;s figures
+                  </button>
+                )}
+                <span className="text-[10px] text-slate-500">
+                  {unitDirty
+                    ? "unsaved — applies to every baby in this unit once saved"
+                    : unitHasOverrides
+                      ? `saved for every baby in ${d.baby.unit.toUpperCase()}`
+                      : `no unit figures saved — every baby uses the published band`}
+                </span>
+              </>
             )}
-            <span className="text-[10px] text-slate-500">
-              {usingProtocol
-                ? `${Object.values(protocol ?? {}).filter((v) => v !== undefined).length} figure(s) replaced — the suggestion says so in its notes.`
-                : `Published band for this weight: ${publishedBand?.label ?? "no weight"} · ${publishedBand ? `${bandIntervalHours(publishedBand)}-hourly feeds, full feeds ${publishedBand.fullFeeds} ml/kg/day` : "enter a weight to see the band"}.`}
-            </span>
           </div>
+          <p className="mt-2 text-[10px] text-slate-500">
+            {usingProtocol
+              ? `${Object.values(protocol ?? {}).filter((v) => v !== undefined).length} figure(s) in force for this baby — the suggestion says so in its notes.`
+              : `Published band for this weight: ${publishedBand?.label ?? "no weight"} · ${publishedBand ? `${bandIntervalHours(publishedBand)}-hourly feeds, full feeds ${publishedBand.fullFeeds} ml/kg/day` : "enter a weight to see the band"}.`}
+          </p>
         </details>
 
         {/* --- the audit trail -------------------------------------------- */}

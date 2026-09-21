@@ -16,8 +16,10 @@ import {
   feedPhase,
   FEED_PHASES,
   FORTIFY_AT_ML_KG_DAY,
+  mergeProtocols,
   PROTOCOL_FIELDS,
   protocolInUse,
+  type ProtocolOverrides,
   STOP_LIPID_AT_ML_KG_DAY,
   suggestFluids,
   TARGET_FIELDS,
@@ -344,6 +346,38 @@ ok(girProtocol.fields.dextrosePct > suggestFluids({ weightG: 600, dol: 1 }).fiel
 ok(feedPhase({ weightG: 1200, enteralMlKgDay: 155, ivMlKgDay: 0 }).id === "wean", "155 is full feeds on the published figures");
 ok(feedPhase({ weightG: 1200, enteralMlKgDay: 155, ivMlKgDay: 0, protocol: { fullFeeds: 180 } }).id === "fortify",
    "and still advancing for a unit whose full feeds is 180");
+
+
+// The layers: this baby's figures beat the unit's, which beat the published
+// guidance. A cleared box must really fall through, or the editor lies.
+ok(mergeProtocols() === undefined, "no layers means no protocol");
+ok(mergeProtocols(undefined, null, {}) === undefined, "empty layers mean no protocol");
+ok(mergeProtocols({ increment: 10 })?.increment === 10, "a single layer passes through");
+ok(mergeProtocols({ increment: 20 }, { increment: 10 })?.increment === 20, "the earlier layer wins");
+ok(mergeProtocols({ increment: 20 }, { fullFeeds: 180 })?.fullFeeds === 180,
+   "and a figure only the later layer sets is kept");
+ok(mergeProtocols({}, { increment: 10 })?.increment === 10, "an empty earlier layer falls through");
+ok(mergeProtocols({ increment: undefined }, { increment: 10 })?.increment === 10,
+   "an explicitly cleared figure falls through");
+ok(mergeProtocols({ increment: Number.NaN }, { increment: 10 })?.increment === 10,
+   "a non-finite figure is dropped rather than shipped");
+ok(!("junk" in (mergeProtocols({ junk: 5 } as unknown as ProtocolOverrides) ?? {})), "a key that is not a figure is dropped");
+ok(Object.keys(mergeProtocols({ increment: 10, proteinMin: 4 }) ?? {}).length === 2, "real figures all survive the merge");
+ok(mergeProtocols({ increment: 10, proteinMin: 4 }) !== undefined, "a multi-figure merge returns a protocol");
+
+// And the merged result is what the suggestion actually uses.
+const layered = suggestFluids({
+  weightG: 1200,
+  dol: 6,
+  enteralMlKgDay: 120,
+  protocol: mergeProtocols({ increment: 25 }, { increment: 10, fullFeeds: 180 }),
+});
+ok(layered.fields.enteralMlKgDay === 145, `the baby's advance of 25 wins over the unit's 10 (${layered.fields.enteralMlKgDay})`);
+ok(layered.fields.feedIncrementMlKgDay === 25, `and the step-up is a full increment, since the unit's full feeds of 180 leaves room (${layered.fields.feedIncrementMlKgDay})`);
+ok(
+  suggestFluids({ weightG: 1200, dol: 6, enteralMlKgDay: 120, protocol: { increment: 25 } }).fields.feedIncrementMlKgDay === 15,
+  "on the published full feeds of 160 the same increment is cut to the 15 ml/kg/day of room left",
+);
 
 
 console.log(`Feed guide tests passed (${checks} checks)`);

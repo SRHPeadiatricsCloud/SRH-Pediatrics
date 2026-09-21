@@ -19,6 +19,44 @@ Rules:
 
 ---
 
+## 3.5.0
+
+New features, so the minor segment moves. The protocol figures can now be set
+once for the whole unit instead of baby by baby.
+
+### Added
+
+- **A unit-wide feeding protocol.** One record per unit holds the figures that
+  unit replaces from the published guidance. Set the daily advance once and
+  every baby in the unit is prescribed against it. New `unit_protocols` table,
+  `GET`/`POST /api/unit-protocol`, and the same DDL in `src/db/index.ts`
+  (in-memory fallback) and `supabase/schema.sql`.
+- **Layers, in the order they should win.** This baby's figure beats the unit's,
+  which beats the published value. Each row says what a cleared box falls back
+  to, so clearing a baby's figure hands it back to the unit rather than to the
+  guidance. `mergeProtocols()` in `src/lib/feed-guide.ts` does the merge and
+  drops any key that is not a real figure.
+- **A scope switch in the protocol editor** — "This baby only" saves with the
+  chart, "Whole unit" saves through the API and says whether it has unsaved
+  changes. Writing to the unit requires a signed-in editor; an unsigned write is
+  refused with 401.
+- **`PROTOCOL_KEYS` / `isProtocolKey`** so only real figures can be stored or
+  merged — a mistyped or invented key cannot reach a prescription.
+
+### Changed
+
+- The disclosure is now "Protocol figures" rather than "Unit protocol for this
+  baby", since it edits either layer.
+- **`scripts/test-feed-guide.ts` grew to 340 checks**, covering the merge: layer
+  precedence, cleared figures falling through, non-finite and unknown keys
+  dropped, and a merged protocol driving the suggestion and its step-up cap.
+- **`scripts/test-fluids-tab.mjs` grew to 83 checks**, serving the unit protocol
+  over a stubbed fetch: the unit's figure driving the suggestion, this baby's
+  beating it, clearing falling back to the unit, and a unit-scope save posting
+  the unit and the figure without touching the chart.
+
+---
+
 ## 3.4.0
 
 New features, so the minor segment moves. Feeds & fluids is now a working model

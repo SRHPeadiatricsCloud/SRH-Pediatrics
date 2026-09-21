@@ -242,6 +242,29 @@ export function applyProtocol(
   return next;
 }
 
+/**
+ * Layer protocols: a baby's own figures beat the unit's, which beat the
+ * published guidance. A key that is absent (or not a finite number) falls
+ * through to the next layer, so clearing a field really does hand it back.
+ *
+ * Returns undefined when nothing is overridden, which keeps "no protocol" and
+ * "an empty protocol" the same thing for every caller.
+ */
+export function mergeProtocols(
+  ...layers: (ProtocolOverrides | null | undefined)[]
+): ProtocolOverrides | undefined {
+  const out: Record<string, number> = {};
+  for (const layer of layers) {
+    if (!layer) continue;
+    for (const [key, value] of Object.entries(layer)) {
+      if (key in out) continue; // an earlier layer already set this figure
+      if (!isProtocolKey(key)) continue; // not a figure this engine reads
+      if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
+    }
+  }
+  return Object.keys(out).length ? (out as ProtocolOverrides) : undefined;
+}
+
 /** True when the unit has replaced at least one published figure. */
 export function protocolInUse(protocol?: ProtocolOverrides | null): boolean {
   return Object.values(protocol ?? {}).some((v) => v !== undefined && Number.isFinite(v as number));
@@ -301,6 +324,19 @@ export const TARGET_FIELDS: readonly TargetField[] = [
   { key: "proteinMin", label: "Protein low", unit: "g/kg/d", min: 1, max: 6, step: 0.5, decimals: 1, published: (t) => t.protein[0], hint: "Drives how much IV amino acid fills the gap." },
   { key: "proteinMax", label: "Protein high", unit: "g/kg/d", min: 1, max: 8, step: 0.5, decimals: 1, published: (t) => t.protein[1], hint: "Above this, check AA g/kg/day against ml." },
 ];
+
+/**
+ * Every figure that can be overridden, so an unknown key can never be stored or
+ * merged into a prescription.
+ */
+export const PROTOCOL_KEYS: readonly (keyof ProtocolOverrides)[] = [
+  ...PROTOCOL_FIELDS.map((field) => field.key),
+  ...TARGET_FIELDS.map((field) => field.key),
+];
+
+export function isProtocolKey(key: string): key is keyof ProtocolOverrides {
+  return (PROTOCOL_KEYS as readonly string[]).includes(key);
+}
 
 /* ------------------------------- the phases -------------------------------- */
 

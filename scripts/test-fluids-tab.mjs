@@ -52,13 +52,33 @@ const { window } = dom;
 for (const key of [
   "window", "document", "HTMLElement", "HTMLInputElement", "HTMLSelectElement",
   "HTMLButtonElement", "HTMLTextAreaElement", "Element", "Node", "Event",
-  "FocusEvent", "MouseEvent", "localStorage", "requestAnimationFrame", "cancelAnimationFrame",
+  "FocusEvent", "MouseEvent", "CustomEvent", "localStorage", "requestAnimationFrame", "cancelAnimationFrame",
 ]) {
   globalThis[key] = window[key];
 }
 globalThis.getComputedStyle = window.getComputedStyle.bind(window);
 Object.defineProperty(globalThis, "navigator", { value: window.navigator, configurable: true });
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// api() will not send a write without a signed-in editor, so sign one in.
+window.localStorage.setItem("neo_session", JSON.stringify({ name: "Dr Test", code: "1234", role: "Consultant", unit: "nicu" }));
+
+// The tab fetches the unit protocol on mount. Serve it from the test so the
+// layered figures can be exercised without a database.
+const unitStore = { protocol: undefined };
+const unitRequests = [];
+globalThis.fetch = async (url, init = {}) => {
+  const target = String(url);
+  if (target.startsWith("/api/unit-protocol")) {
+    if (init.method === "POST") {
+      const body = JSON.parse(init.body ?? "{}");
+      unitRequests.push(body);
+      unitStore.protocol = body.protocol ?? {};
+      return { ok: true, status: 200, json: async () => ({ unit: body.unit, row: { protocol: unitStore.protocol } }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ unit: "nicu", row: unitStore.protocol ? { protocol: unitStore.protocol } : null }) };
+  }
+  return { ok: true, status: 200, json: async () => ({}) };
+};
 
 const React = (await import("react")).default;
 const { act } = await import("react");
@@ -86,7 +106,7 @@ const click = (el, what) => {
 };
 const flush = async () => {
   await act(async () => {
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 };
 const setNativeValue = (el, value) => {
@@ -180,7 +200,7 @@ async function render(fluids, over = {}) {
   ok(/Against the target/.test(t), "the target comparison is rendered");
   ok(/Copy the guideline in/.test(t), "one button copies the guideline in");
   ok(!/Apply today's plan/.test(t), "the old two-button apply is gone");
-  ok(/Feed details & tolerance/.test(t) && /Fortification/.test(t) && /Unit protocol for this baby/.test(t) && /How these numbers are worked out/.test(t),
+  ok(/Feed details & tolerance/.test(t) && /Fortification/.test(t) && /Protocol figures/.test(t) && /How these numbers are worked out/.test(t),
      "the long tail sits behind four disclosures");
   const dailyFields = all(el, "div.lbl").filter((d) => !d.closest("details"));
   ok(dailyFields.length <= 9, `the daily surface is short (${dailyFields.length} fields outside the disclosures)`);
@@ -305,7 +325,7 @@ async function render(fluids, over = {}) {
   await flush();
   ok(saved[0]?.clinical?.fluids?.protocol?.increment === 10, `the protocol is saved on the chart (got ${JSON.stringify(saved[0]?.clinical?.fluids?.protocol)})`);
 
-  click(byText(el, "button", "Use the published values"), "use the published values");
+  click(byText(el, "button", "Clear this baby's figures"), "clear this baby's figures");
   ok(/guideline 150/.test(text(el)), "clearing the protocol restores the published figures");
   click(byExact(el, "button", "Save feeds & fluids"), "save");
   await flush();
@@ -361,6 +381,56 @@ async function render(fluids, over = {}) {
   const legacy = await render({ totalMlKgDay: 140 }, { currentWeight: 1500 });
   ok(/recorded total/.test(text(legacy.el)), "a recorded total with no split is still shown");
   ok(/≈ 210 ml\/day/.test(text(legacy.el)), `and still converted (${(text(legacy.el).match(/≈ \d+ ml\/day/) ?? ["none"])[0]})`);
+}
+
+/* --- 10. the unit's protocol, and this baby's beating it ---------------- */
+{
+  unitStore.protocol = { increment: 10 };
+  unitRequests.length = 0;
+  const { el, saved } = await render({ enteralMlKgDay: 120, feedFreq: "3 hourly" }, { currentWeight: 1200 });
+  await flush();
+  ok(/guideline 130/.test(text(el)), `the unit's advance of 10 drives the suggestion (${(text(el).match(/guideline \d+/) ?? ["none"])[0]})`);
+  ok(/Whole unit/.test(text(el)), "the editor offers a whole-unit scope");
+  ok(/unit 10/.test(text(el)), "each row says what a cleared box falls back to");
+
+  // This baby's own figure beats the unit's.
+  setNative(protocolInput(el, "Daily advance"), "20", "daily advance");
+  ok(/guideline 140/.test(text(el)), `this baby's 20 beats the unit's 10 (${(text(el).match(/guideline \d+/) ?? ["none"])[0]})`);
+  ok(/this baby — published 30/.test(text(el)), "and the row says the figure is now this baby's own");
+
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  ok(saved[0]?.clinical?.fluids?.protocol?.increment === 20, `the baby's figure is saved on the chart (got ${JSON.stringify(saved[0]?.clinical?.fluids?.protocol)})`);
+
+  // Clearing this baby's figure falls back to the unit's, not to published.
+  click(byText(el, "button", "Clear this baby's figures"), "clear this baby's figures");
+  ok(/guideline 130/.test(text(el)), `clearing falls back to the unit's figure (${(text(el).match(/guideline \d+/) ?? ["none"])[0]})`);
+
+  click(byText(el, "button", "Whole unit"), "whole unit scope");
+  ok(/saved for every baby in NICU/.test(text(el)), "the unit scope reports that its figures are saved");
+  unitStore.protocol = undefined;
+}
+
+/* --- 11. editing in the unit scope saves for the whole unit ------------- */
+{
+  unitStore.protocol = undefined;
+  unitRequests.length = 0;
+  const { el, saved } = await render({ enteralMlKgDay: 120, feedFreq: "3 hourly" }, { currentWeight: 1200 });
+  await flush();
+  ok(/guideline 150/.test(text(el)), "with no unit figures the published advance applies");
+  click(byText(el, "button", "Whole unit"), "whole unit scope");
+  ok(/unsaved — applies to every baby in this unit once saved/.test(text(el)) || /no unit figures saved/.test(text(el)),
+     "the unit scope says what saving will do");
+  setNative(protocolInput(el, "Daily advance"), "15", "daily advance");
+  click(byText(el, "button", "Save for the whole NICU"), "save for the whole unit");
+  await flush();
+  ok(unitRequests.length === 1, `one request was sent (${unitRequests.length})`);
+  ok(unitRequests[0]?.unit === "nicu" && unitRequests[0]?.protocol?.increment === 15,
+     `it carries the unit and the figure (got ${JSON.stringify(unitRequests[0])})`);
+  // The chart itself is untouched by a unit-level save.
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  ok(saved[0]?.clinical?.fluids?.protocol === undefined, `a unit save does not write to the chart (got ${JSON.stringify(saved[0]?.clinical?.fluids?.protocol)})`);
 }
 
 rmSync(work, { recursive: true, force: true });
