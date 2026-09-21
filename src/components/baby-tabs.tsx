@@ -26,6 +26,7 @@ import {
   SYSTEMS,
   type SystemKey,
 } from "@/lib/catalog";
+import { FEED_PHASES, suggestFluids } from "@/lib/feed-guide";
 import type { Detail } from "@/lib/types";
 import {
   calcNutrition,
@@ -440,6 +441,53 @@ export function RespTab({
   );
 }
 
+/**
+ * Actual value against its target band. The shaded band is the target and the
+ * fill is where the baby is, so "are we there yet" is one glance.
+ */
+function TargetBar({
+  label,
+  value,
+  target,
+  unit,
+  decimals = 1,
+}: {
+  label: string;
+  value: number;
+  target: [number, number];
+  unit: string;
+  decimals?: number;
+}) {
+  const [lo, hi] = target;
+  const span = hi > 0 ? hi : 1;
+  const pct = Math.max(0, Math.min(100, (value / span) * 100));
+  const loPct = Math.max(0, Math.min(100, (lo / span) * 100));
+  const inBand = value >= lo && value <= hi;
+  const low = value < lo;
+  const bar = value === 0 ? "bg-slate-600" : inBand ? "bg-emerald-400" : low ? "bg-amber-400" : "bg-rose-400";
+  const text = value === 0 ? "text-slate-400" : inBand ? "text-emerald-200" : low ? "text-amber-200" : "text-rose-200";
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="lbl !mb-0">{label}</span>
+        <span className={`text-sm font-black tabular-nums ${text}`}>
+          {value.toFixed(decimals)} <span className="text-[10px] font-normal text-slate-400">{unit}</span>
+        </span>
+      </div>
+      <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="absolute inset-y-0 bg-emerald-400/20" style={{ left: `${loPct}%`, width: `${Math.max(0, 100 - loPct)}%` }} />
+        <div className={`absolute inset-y-0 left-0 ${bar} opacity-80`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+        <span>target {lo}–{hi}</span>
+        <span>
+          {value === 0 ? "nothing recorded" : inBand ? "in range" : low ? `${(lo - value).toFixed(decimals)} short` : `${(value - hi).toFixed(decimals)} over`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
   const f = d.baby.clinical?.fluids ?? {};
   const [s, setS] = useState({ ...f });
@@ -449,6 +497,10 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     feedVol: f.feedVolManual === true,
   });
   const wt = d.baby.currentWeight / 1000;
+  // Day of life, 1 = the day of birth. Drives the fluid ramp and the targets.
+  // Captured once so the calculation is pure during render.
+  const [now] = useState(() => Date.now());
+  const dol = Math.max(1, Math.floor((now - +new Date(d.baby.dob)) / 86400000) + 1);
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
   // The feed plan resolves today's enteral + IV volumes from the TFI target.
   // The same resolver runs inside calcNutrition, so the energy panel and the
@@ -495,7 +547,44 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       },
     },
     d.baby.currentWeight,
+    { dol },
   );
+  // A guideline-based prescription for today, from this baby's size, day of
+  // life and what they are already on. Nothing is written until "Apply" is used.
+  const guide = suggestFluids({
+    weightG: d.baby.currentWeight,
+    dol,
+    gestWeeks: d.baby.gestWeeks,
+    enteralMlKgDay: enteralForNutrition,
+    ivMlKgDay: s.ivMlKgDay,
+    feedRoute: s.feedRoute,
+    tfiMlKgDay: s.tfiMlKgDay,
+    enteralProteinGKgDay: nutrition.enteralProtein,
+  });
+  const applyGuide = () =>
+    setS((p) => ({
+      ...p,
+      ...guide.fields,
+      feedType: p.feedType ?? "Expressed breast milk (EBM)",
+      feedVolManual: false,
+    }));
+  const guideRows: { label: string; value: string; why: string }[] = [
+    { label: "Feeds today", value: `${guide.fields.enteralMlKgDay} ml/kg/d`, why: guide.why.enteralMlKgDay },
+    { label: "Total fluids", value: `${guide.fields.tfiMlKgDay} ml/kg/d`, why: guide.why.tfiMlKgDay },
+    { label: "IV fluids", value: `${guide.fields.ivMlKgDay} ml/kg/d`, why: guide.why.ivMlKgDay },
+    { label: "Dextrose", value: `D${guide.fields.dextrosePct}%`, why: guide.why.dextrosePct },
+    { label: "Amino acids", value: `${guide.fields.aminoAcid} g/kg/d`, why: guide.why.aminoAcid },
+    { label: "Lipid", value: `${guide.fields.lipid} g/kg/d`, why: guide.why.lipid },
+    { label: "Step up tomorrow", value: `${guide.fields.feedIncrementMlKgDay} ml/kg/d`, why: guide.why.feedIncrementMlKgDay },
+    { label: "Feed interval", value: guide.fields.feedFreq, why: guide.why.feedFreq },
+    ...(guide.fields.fortifierProductId
+      ? [{
+          label: "Fortify",
+          value: `${guide.fields.fortificationAmount} sachet in 25 ml x ${guide.fields.fortificationDosesPerDay}/day`,
+          why: guide.why.fortificationAmount,
+        }]
+      : []),
+  ];
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
   const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
@@ -559,11 +648,76 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   return (
     <div className="grid gap-3">
       <Section
-        title="Fluids, feeds & fortification - corrected GIR & protein"
-        sub="Rectified: GIR = dextrose% x IV ml/kg/day x10 /1440 (0-20 clamp), dextrose g = GIRx1.44, protein = enteral ml x protein/ml + AA (AA 0-4 cap). Gross >300 kcal or >10g protein flagged."
+        title="Feeds & fluids"
+        sub={`Day ${dol} of life - what this baby should be on today, what they are actually getting, and where it misses the target. Apply the plan or edit any value below.`}
         right={<button type="button" className="btn-primary" onClick={saveFluids}>Save</button>}
       >
-        <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite">
+        {/* --- 1. where this baby is on the feeding pathway ------------------ */}
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
+          <div className="flex flex-wrap items-center gap-1">
+            {FEED_PHASES.map((ph, i) => {
+              const active = ph.id === guide.phase.id;
+              const done = i < guide.phase.step;
+              return (
+                <span
+                  key={ph.id}
+                  className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
+                    active
+                      ? "bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/40"
+                      : done
+                        ? "text-emerald-200/80"
+                        : "text-slate-500"
+                  }`}
+                >
+                  {done ? "✓" : i + 1} {ph.label}
+                  {i < FEED_PHASES.length - 1 && <span className="text-slate-600">→</span>}
+                </span>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-slate-300">
+            <b className="text-white">{guide.phase.label}</b> &mdash; {guide.phase.blurb}
+          </p>
+        </div>
+
+        {/* --- 2. today's plan, one click ----------------------------------- */}
+        <div className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-black text-cyan-50">Suggested for today</div>
+              <div className="text-[11px] text-cyan-200/80">{guide.headline}</div>
+            </div>
+            <button type="button" className="btn-primary" onClick={applyGuide}>
+              Apply this plan
+            </button>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {guideRows.map((row) => (
+              <div key={row.label} className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+                <div className="lbl !mb-0">{row.label}</div>
+                <div className="text-sm font-black text-white">{row.value}</div>
+                <div className="mt-1 text-[10px] leading-relaxed text-slate-400">{row.why}</div>
+              </div>
+            ))}
+          </div>
+          {guide.notes.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-[11px] leading-relaxed text-slate-300">
+              {guide.notes.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* --- 3. against the target ---------------------------------------- */}
+        <div className="mt-3 grid gap-2 lg:grid-cols-3">
+          <TargetBar label="Fluids" value={nutrition.totalFluids} target={nutrition.fluidsTarget} unit="ml/kg/d" />
+          <TargetBar label="Energy" value={nutrition.totalKcal} target={nutrition.kcalTarget} unit="kcal/kg/d" />
+          <TargetBar label="Protein" value={nutrition.totalProtein} target={nutrition.proteinTarget} unit="g/kg/d" decimals={2} />
+        </div>
+        <p className="mt-1 text-[10px] text-slate-500">Targets sized to this baby: {nutrition.targetsBasis}</p>
+
+        <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite">
           <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm text-cyan-50">Live calculations - corrected</b><span className="text-[10px] font-bold text-cyan-200">Edit to override, automatic uses clamped physiological ranges</span></div>
           <div className="mt-2 grid grid-cols-1 gap-2 text-xs leading-relaxed text-slate-200 sm:grid-cols-3">
             <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
@@ -737,16 +891,21 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         </fieldset>
 
-        <fieldset className="mt-6 border-t border-white/10 pt-5">
-          <legend className="text-base font-black text-slate-100">Calculated and editable values - manual overrides stay until reset</legend>
-          <p className="mt-1 text-xs text-slate-400">Automatic recalculates from source inputs with clamps.</p>
+        <details className="mt-6 border-t border-white/10 pt-5">
+          <summary className="cursor-pointer text-base font-black text-slate-100">
+            Manual overrides &amp; formulas
+          </summary>
+          <p className="mt-1 text-xs text-slate-400">
+            Only needed when the automatic value is wrong for this baby. Automatic recalculates from the
+            source inputs with physiological clamps.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div><NumField label={`GIR mg/kg/min - ${manualDerived.gir ? "manual" : "automatic"} (0-20)`} value={girValue} onChange={setDerived("gir")} min={0} max={20} step={0.1} decimals={2} placeholder="waiting" />{manualDerived.gir && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("gir")}>Use automatic GIR</button>}</div>
             <div><NumField label={`Energy kcal/kg/d - ${manualDerived.kcal ? "manual" : "automatic"} (0-300)`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="waiting" />{manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}</div>
             <div><NumField label={`Feed volume / feed ml - ${manualDerived.feedVol ? "manual" : "automatic"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="waiting" />{manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}<span className="mt-1 block text-[10px] text-slate-500">{feedVolumeHint}</span></div>
           </div>
-          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
-        </fieldset>
+          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas: GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
+        </details>
 
         <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total {wt > 0 ? `~ ${Math.round(nutrition.totalFluids * wt)} ml/day` : "per kg - no weight on record"} ({nutrition.totalFluids} ml/kg/d = enteral {nutrition.enteralMl} + IV {nutrition.ivMl}) - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
         {/* Every kcal and gram of protein, traced to its source. */}

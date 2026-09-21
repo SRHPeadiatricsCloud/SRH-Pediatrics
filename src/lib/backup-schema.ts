@@ -18,7 +18,7 @@ export const BACKUP_SCHEMA_VERSION = 2;
  *   PATCH — existing features rewritten or fixed
  * Never edit a released entry in CHANGELOG.md; add a new one.
  */
-export const APP_VERSION = "3.1.2";
+export const APP_VERSION = "3.2.0";
 
 export type BackupEnvelope = {
   kind: "srh-nicu-backup";

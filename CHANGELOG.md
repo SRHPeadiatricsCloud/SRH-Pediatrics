@@ -19,6 +19,52 @@ Rules:
 
 ---
 
+## 3.2.0
+
+New features, so the minor segment moves. Feeds & fluids rebuilt around the way a
+Level 3B unit actually prescribes, for babies from 24 weeks / 500 g to discharge.
+
+### Added
+
+- **Feeding pathway strip** — Stabilise → Advance feeds → Fortify → Full feeds →
+  Wean IV → Oral / discharge, with the baby's current position marked and a line
+  explaining what it means. The phase is derived from the volume the baby is
+  actually on, not from what the plan says they should be on.
+- **"Suggested for today"** — a one-click, guideline-based prescription computed
+  from weight, day of life and current intake: feeds, total fluids, IV, dextrose
+  %, amino acids, lipid, feed interval, tomorrow's step-up and fortification.
+  Every value carries its own rationale and source, and nothing is written to the
+  chart until "Apply this plan" is pressed.
+- **Target bars** for fluids, energy and protein: actual against the target band,
+  colour-coded, with how far short or over.
+- **`src/lib/feed-guide.ts`** — the guideline engine as pure functions: weight
+  bands (≤750, 751–1000, 1001–1500, 1501–2000, >2000 g), the day-by-day fluid
+  ramp, feed intervals (2-hourly below 1250 g, 3-hourly above), the
+  100 ml/kg/day fortification threshold with half strength first, and the
+  parenteral build-up.
+- **Weight- and day-banded targets** replacing the single fixed preterm pair:
+  energy 115–140 kcal/kg/day below 1000 g (110–135 to 1800 g, 100–130 above),
+  protein 4.0–4.5 g/kg/day below 1000 g, and a fluid target that follows the
+  day ramp early instead of measuring a day-1 baby against full feeds. The
+  warnings now quote the target that actually applied.
+
+### Changed
+
+- Manual GIR/energy/feed-volume overrides and the formula footnote are collapsed
+  behind a "Manual overrides & formulas" disclosure, so the tab opens on the
+  decision rather than the arithmetic.
+- The suggestion knows when the feed plan can carry it. The plan derives the
+  enteral volume from the total fluid target, which only works once feeds are
+  essentially the whole intake; while the IV carries most of the fluid, the
+  volumes are written directly and any stale TFI is cleared so it cannot hijack
+  the enteral volume later.
+
+Verified by `scripts/test-feed-guide.ts` (255 checks) and a rendered `FluidsTab`
+test covering the pathway, the suggested plan, applying it in both plan and
+direct modes, the target bands, and the hand-off at full feeds.
+
+---
+
 ## 3.1.2
 
 Feeds & fluids audited end to end. The arithmetic was already correct — what was

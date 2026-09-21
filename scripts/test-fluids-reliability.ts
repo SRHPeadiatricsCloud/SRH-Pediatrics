@@ -256,7 +256,51 @@ ok(
   "and a total that matches is not flagged",
 );
 
-/* --- 11. The arithmetic itself is unchanged -------------------------------- */
+/* --- 11. Energy below the target says so, not just below basal -------------- */
+const underTarget = calcNutrition(
+  fluids({
+    feedType: "Expressed breast milk (EBM)",
+    enteralMlKgDay: 20,
+    ivMlKgDay: 140,
+    dextrosePct: 7,
+    aminoAcid: 3.5,
+    lipid: 3,
+  }),
+  1080,
+  { dol: 10 },
+);
+ok(underTarget.totalKcal > 80, "this plan clears the basal floor");
+ok(underTarget.totalKcal < underTarget.kcalTarget[0], "but sits under the energy target");
+ok(
+  has(underTarget, /is below the 110–135 target for 1001–1500 g/),
+  "so the shortfall against the target is named, with the basis",
+);
+ok(
+  !has(underTarget, /below basal needs/),
+  "and the basal warning is not repeated on top of it",
+);
+// Full-volume unfortified EBM is still short of the energy target — which is
+// the whole reason fortification exists — so the warning should stand.
+const unfortified = calcNutrition(
+  fluids({ feedType: "Expressed breast milk (EBM)", enteralMlKgDay: 160, ivMlKgDay: 0 }),
+  1080,
+  { dol: 10 },
+);
+ok(unfortified.totalKcal === 107.2, `160 ml/kg/day of EBM is 107.2 kcal/kg/day (got ${unfortified.totalKcal})`);
+ok(
+  has(unfortified, /is below the 110–135 target/),
+  "so full unfortified feeds are still flagged as short on energy",
+);
+// The same volume, fortified, reaches the target and is left alone.
+const fortified = calcNutrition(
+  fluids({ feedType: "EBM + HMF", enteralMlKgDay: 160, ivMlKgDay: 0 }),
+  1080,
+  { dol: 10 },
+);
+ok(fortified.totalKcal >= fortified.kcalTarget[0], "fortified milk at full feeds reaches the target");
+ok(!has(fortified, /is below the .* target/), "and no shortfall is claimed");
+
+/* --- 12. The arithmetic itself is unchanged -------------------------------- */
 const reference = calcNutrition(
   fluids({
     feedType: "Expressed breast milk (EBM)",

@@ -1,3 +1,4 @@
+import { targetsFor } from "./feed-guide";
 export type GrowthEntry = {
   at: string;
   weight: number;
@@ -399,8 +400,14 @@ export type NutritionCalc = {
   lipidProtein: number;
   kcalTarget: [number, number];
   proteinTarget: [number, number];
+  /** Total fluid target, ml/kg/day — the day ramp early on, full feeds later. */
+  fluidsTarget: [number, number];
+  /** What sized these targets, e.g. "751–1000 g, day 4 ramp". */
+  targetsBasis: string;
   kcalDeficit: number;
   proteinDeficit: number;
+  /** Total fluids short of (negative) or above (positive) the target. */
+  fluidsGap: number;
   /** Resolved feed plan (static / increasing) behind these numbers. */
   feedPlan: FeedPlan;
   warnings: string[];
@@ -567,7 +574,12 @@ export function resolveFeedPlan(
  *   day" into an absolute daily amount, so the uplift falls back to assuming
  *   the fortified feeds are an equal share of the day.
  */
-export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
+/**
+ * @param ctx Optional day of life, which moves the fluid target onto the
+ *            day-by-day ramp instead of measuring a day-1 baby against full
+ *            feeds. Energy and protein targets come from the weight alone.
+ */
+export function calcNutrition(c: Clinical, weightG?: number, ctx?: { dol?: number }): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
   const density = KCAL_PER_ML[feedType] ?? 0.67;
@@ -729,8 +741,13 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   const lipidProtein = Math.round(lipidG * LIPID_PROTEIN_G_PER_G * 100) / 100;
   const totalProtein = Math.round((enteralProtein + aaG + lipidProtein) * 100) / 100;
 
-  const kcalTarget: [number, number] = [110, 135];
-  const proteinTarget: [number, number] = [3.5, 4.5]; // widened to 3.5-4.5 for preterm, was 3.5-4
+  // Targets follow the baby's size and day of life rather than one fixed
+  // preterm pair — a 600 g microprem and a 2.2 kg growing preterm are not
+  // aiming at the same numbers.
+  const targets = targetsFor({ weightG, dol: ctx?.dol });
+  const kcalTarget = targets.kcal;
+  const proteinTarget = targets.protein;
+  const fluidsTarget = targets.fluids;
 
   if (gir > 0 && gir < 4) warnings.push(`Low GIR ${gir} mg/kg/min (<4) — risk hypoglycaemia`);
   if (gir > 8 && gir <= 12) warnings.push(`High GIR ${gir} mg/kg/min (>8) — monitor glucose, consider central line if >10`);
@@ -755,8 +772,19 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
       `Manual GIR ${storedGir} mg/kg/min disagrees with ${derivedGir} derived from dextrose ${f.dextrosePct}% × IV ${ivMl} ml/kg/day — one of the two is wrong`,
     );
   }
-  if (totalKcal > 0 && totalKcal < 80) warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
-  if (totalKcal > 150) warnings.push(`High energy ${totalKcal} kcal/kg/day (>150) — exceeds target 110-135`);
+  if (totalKcal > 0 && totalKcal < 80) {
+    warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
+  } else if (totalKcal > 0 && totalKcal < kcalTarget[0]) {
+    warnings.push(
+      `Energy ${totalKcal} kcal/kg/day is below the ${kcalTarget[0]}–${kcalTarget[1]} target for ${targets.basis}`,
+    );
+  }
+  if (totalKcal > kcalTarget[1]) {
+    warnings.push(`High energy ${totalKcal} kcal/kg/day — above the ${kcalTarget[0]}–${kcalTarget[1]} target for ${targets.basis}`);
+  }
+  if (totalProtein > 0 && totalProtein < proteinTarget[0]) {
+    warnings.push(`Protein ${totalProtein} g/kg/day is below the ${proteinTarget[0]}–${proteinTarget[1]} target for ${targets.basis}`);
+  }
   if (totalProtein > 0 && totalProtein < 2) warnings.push(`Low protein ${totalProtein} g/kg/day (<2) — inadequate for growth`);
   if (totalProtein > 5) warnings.push(`High protein ${totalProtein} g/kg/day (>5) — exceeds safe limit, check AA + enteral`);
 
@@ -773,6 +801,15 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   if (f.kcalManual === true && f.kcal !== undefined && Math.abs(f.kcal - totalKcal) > 5) {
     warnings.push(
       `This chart carries a manual energy of ${f.kcal} kcal/kg/day but the inputs calculate ${totalKcal} — reset to automatic or correct the inputs`,
+    );
+  }
+
+  const totalFluidsValue = plan.active
+    ? Math.round((enteralMl + ivMl) * 10) / 10
+    : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10;
+  if (totalFluidsValue > fluidsTarget[1] + 10) {
+    warnings.push(
+      `Total fluids ${totalFluidsValue} ml/kg/day is more than 10 above the ${fluidsTarget[0]}–${fluidsTarget[1]} target for ${targets.basis}`,
     );
   }
 
@@ -796,9 +833,7 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
     ivKcal,
     totalKcal,
     totalProtein,
-    totalFluids: plan.active
-      ? Math.round((enteralMl + ivMl) * 10) / 10
-      : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10,
+    totalFluids: totalFluidsValue,
     ivMl,
     fortified,
     // Spread across the whole day, so effectiveKcalPerMl = density + this.
@@ -823,6 +858,9 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
     feedPlan: plan,
     kcalTarget,
     proteinTarget,
+    fluidsTarget,
+    targetsBasis: targets.basis,
+    fluidsGap: Math.round((totalFluidsValue - fluidsTarget[0]) * 10) / 10,
     kcalDeficit: Math.round((totalKcal - kcalTarget[0]) * 10) / 10,
     proteinDeficit: Math.round((totalProtein - proteinTarget[0]) * 100) / 100,
     warnings,
