@@ -167,6 +167,141 @@ export function weightBand(weightG?: number | null): WeightBand | undefined {
   return WEIGHT_BANDS.find((b) => weightG >= b.min && weightG <= b.max);
 }
 
+/* ------------------------- the unit's own protocol ------------------------- */
+
+/**
+ * Figures a unit may replace with its own protocol.
+ *
+ * The published values below are guidance, and units differ — some start amino
+ * acids at 2 g/kg/day, some feed 3-hourly at 1000 g, some aim for 180 ml/kg/day.
+ * Rather than argue with the chart, every figure that drives a suggestion can be
+ * replaced here, per baby, and the suggestion then follows the unit's numbers.
+ * Anything not set falls back to the published value.
+ */
+export type ProtocolOverrides = {
+  day1Fluid?: number;
+  day2Fluid?: number;
+  day3Fluid?: number;
+  /** Daily advance after day 3, ml/kg/day. */
+  increment?: number;
+  /** First feed volume, ml/kg/day. */
+  feedStart?: number;
+  /** Enteral volume treated as full feeds, ml/kg/day. */
+  fullFeeds?: number;
+  /** Hours between feeds. */
+  feedIntervalHours?: number;
+  /** Starting IV amino acids, g/kg/day. */
+  aaStart?: number;
+  /** Starting glucose infusion rate, mg/kg/min. */
+  girStart?: number;
+  /** Energy target, kcal/kg/day. */
+  kcalMin?: number;
+  kcalMax?: number;
+  /** Protein target, g/kg/day. */
+  proteinMin?: number;
+  proteinMax?: number;
+};
+
+const within = (value: number | undefined, fallback: number, min: number, max: number) =>
+  value === undefined || !Number.isFinite(value) ? fallback : Math.min(max, Math.max(min, value));
+
+/**
+ * A weight band with the unit's protocol applied. Pure: the published bands are
+ * never mutated, so two babies on different protocols cannot affect each other.
+ */
+export function applyProtocol(
+  band: WeightBand | undefined,
+  protocol?: ProtocolOverrides | null,
+): WeightBand | undefined {
+  if (!band) return undefined;
+  const p = protocol ?? {};
+  const fullFeeds = within(p.fullFeeds, band.fullFeeds, 60, 250);
+  const next: WeightBand = {
+    ...band,
+    day1Fluid: within(p.day1Fluid, band.day1Fluid, 20, 250),
+    day2Fluid: within(p.day2Fluid, band.day2Fluid, 20, 250),
+    day3Fluid: within(p.day3Fluid, band.day3Fluid, 20, 250),
+    increment: within(p.increment, band.increment, 0, 60),
+    feedStart: within(p.feedStart, band.feedStart, 0, 100),
+    fullFeeds,
+    aaStart: within(p.aaStart, band.aaStart, 0, 4.5),
+    girStart: within(p.girStart, band.girStart, 2, 14),
+  };
+  // Moving one anchor moves the band that is quoted beside it, so the rationale
+  // never shows a published range the unit has just overridden.
+  if (p.day1Fluid !== undefined) {
+    next.day1FluidRange = [Math.max(0, next.day1Fluid - 10), next.day1Fluid + 20];
+  }
+  if (p.fullFeeds !== undefined) {
+    const width = Math.max(0, band.fullFeedsRange[1] - band.fullFeedsRange[0]);
+    next.fullFeedsRange = [Math.max(0, fullFeeds - width), fullFeeds];
+  }
+  if (p.feedIntervalHours !== undefined) {
+    next.feedFreq = `${within(p.feedIntervalHours, 2, 1, 6)} hourly`;
+  }
+  return next;
+}
+
+/** True when the unit has replaced at least one published figure. */
+export function protocolInUse(protocol?: ProtocolOverrides | null): boolean {
+  return Object.values(protocol ?? {}).some((v) => v !== undefined && Number.isFinite(v as number));
+}
+
+/** The feed interval a band uses, in hours. */
+export function bandIntervalHours(band: WeightBand | undefined): number {
+  return Number(/^(\d+(?:\.\d+)?)/.exec(band?.feedFreq ?? "2 hourly")?.[1] ?? 2);
+}
+
+export type ProtocolField = {
+  key: keyof ProtocolOverrides;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  decimals?: number;
+  /** Why the published value is what it is, shown beside the field. */
+  hint: string;
+  /** The published figure this replaces, so the default can be shown. */
+  published: (band: WeightBand) => number;
+};
+
+/**
+ * Every figure the unit may replace, with the published value beside it. The UI
+ * renders this list, so adding a field here adds it to the editor.
+ */
+export const PROTOCOL_FIELDS: readonly ProtocolField[] = [
+  { key: "day1Fluid", label: "Day 1 fluids", unit: "ml/kg/d", min: 20, max: 250, step: 5, published: (b) => b.day1Fluid, hint: "Smaller babies lose more water, so they start higher." },
+  { key: "day2Fluid", label: "Day 2 fluids", unit: "ml/kg/d", min: 20, max: 250, step: 5, published: (b) => b.day2Fluid, hint: "Insensible loss falls once the ductus and kidneys settle." },
+  { key: "day3Fluid", label: "Day 3 fluids", unit: "ml/kg/d", min: 20, max: 250, step: 5, published: (b) => b.day3Fluid, hint: "The anchor the daily increment is added to." },
+  { key: "increment", label: "Daily advance", unit: "ml/kg/d", min: 0, max: 60, step: 5, published: (b) => b.increment, hint: "Faster advancement reaches full feeds sooner without more NEC." },
+  { key: "feedStart", label: "First feed", unit: "ml/kg/d", min: 0, max: 100, step: 5, published: (b) => b.feedStart, hint: "Trophic volume, within 24 h of birth if the baby is stable." },
+  { key: "fullFeeds", label: "Full feeds", unit: "ml/kg/d", min: 60, max: 250, step: 5, published: (b) => b.fullFeeds, hint: "Where IV fluids and amino acids can stop." },
+  { key: "feedIntervalHours", label: "Feed interval", unit: "h", min: 1, max: 6, step: 0.5, decimals: 1, published: (b) => bandIntervalHours(b), hint: "3-hourly is non-inferior to 2-hourly above 1000 g." },
+  { key: "aaStart", label: "Amino acids start", unit: "g/kg/d", min: 0, max: 4.5, step: 0.5, decimals: 1, published: (b) => b.aaStart, hint: "Day 1-2 dose; after that the protein gap drives it." },
+  { key: "girStart", label: "GIR start", unit: "mg/kg/min", min: 2, max: 14, step: 0.5, decimals: 1, published: (b) => b.girStart, hint: "ELBW are prone to hyperglycaemia, so they start lower." },
+];
+
+export type TargetField = {
+  key: keyof ProtocolOverrides;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  decimals?: number;
+  hint: string;
+  /** The published bound, from the unmodified targets for this baby. */
+  published: (targets: NutritionTargets) => number;
+};
+
+export const TARGET_FIELDS: readonly TargetField[] = [
+  { key: "kcalMin", label: "Energy low", unit: "kcal/kg/d", min: 40, max: 200, step: 5, published: (t) => t.kcal[0], hint: "Below this the baby is not growing." },
+  { key: "kcalMax", label: "Energy high", unit: "kcal/kg/d", min: 40, max: 250, step: 5, published: (t) => t.kcal[1], hint: "Above this, check ml/day against ml/kg/day." },
+  { key: "proteinMin", label: "Protein low", unit: "g/kg/d", min: 1, max: 6, step: 0.5, decimals: 1, published: (t) => t.protein[0], hint: "Drives how much IV amino acid fills the gap." },
+  { key: "proteinMax", label: "Protein high", unit: "g/kg/d", min: 1, max: 8, step: 0.5, decimals: 1, published: (t) => t.protein[1], hint: "Above this, check AA g/kg/day against ml." },
+];
+
 /* ------------------------------- the phases -------------------------------- */
 
 export type FeedPhaseId = "stabilise" | "advance" | "fortify" | "full" | "wean" | "oral";
@@ -200,6 +335,8 @@ export type FeedPhaseContext = {
   ivMlKgDay?: number;
   /** Feed route on the chart, e.g. "Oral", "OG tube". */
   feedRoute?: string;
+  /** The unit's own figures, replacing the published ones where set. */
+  protocol?: ProtocolOverrides | null;
 };
 
 /**
@@ -209,7 +346,7 @@ export type FeedPhaseContext = {
 export function feedPhase(ctx: FeedPhaseContext): FeedPhase {
   const enteral = ctx.enteralMlKgDay ?? 0;
   const iv = ctx.ivMlKgDay ?? 0;
-  const band = weightBand(ctx.weightG);
+  const band = applyProtocol(weightBand(ctx.weightG), ctx.protocol);
   const full = band?.fullFeeds ?? 150;
   const oral = /oral|breast|cup|spoon|nipple/i.test(ctx.feedRoute ?? "");
   const step = (id: FeedPhaseId) => FEED_PHASES.findIndex((p) => p.id === id);
@@ -292,18 +429,34 @@ export type NutritionTargets = {
 export function targetsFor(input: {
   weightG?: number | null;
   dol?: number;
+  /** The unit's own figures, replacing the published ones where set. */
+  protocol?: ProtocolOverrides | null;
 }): NutritionTargets {
-  const band = weightBand(input.weightG);
+  const band = applyProtocol(weightBand(input.weightG), input.protocol);
   const dol = input.dol;
   const weightG = input.weightG ?? undefined;
+  const p = input.protocol ?? {};
 
-  const kcal: [number, number] =
+  const publishedKcal: [number, number] =
     weightG !== undefined && weightG < 1000 ? [115, 140] : weightG !== undefined && weightG > 1800 ? [100, 130] : [110, 135];
-  const protein: [number, number] =
+  const publishedProtein: [number, number] =
     weightG !== undefined && weightG < 1000 ? [4, 4.5] : weightG !== undefined && weightG > 1800 ? [3, 4] : [3.5, 4.5];
+  const kcal: [number, number] = [
+    within(p.kcalMin, publishedKcal[0], 40, 200),
+    within(p.kcalMax, publishedKcal[1], 40, 250),
+  ];
+  const protein: [number, number] = [
+    within(p.proteinMin, publishedProtein[0], 1, 6),
+    within(p.proteinMax, publishedProtein[1], 1, 8),
+  ];
+  // A target band the unit has typed the wrong way round is corrected, not
+  // shipped: the low end can never sit above the high end.
+  if (kcal[0] > kcal[1]) kcal.reverse();
+  if (protein[0] > protein[1]) protein.reverse();
+  const suffix = protocolInUse(p) ? " \u00b7 unit protocol" : "";
 
   if (!band) {
-    return { kcal, protein, fluids: [140, 160], basis: "Enter a weight for size-specific targets" };
+    return { kcal, protein, fluids: [140, 160], basis: "Enter a weight for size-specific targets" + suffix };
   }
 
   // Before full feeds the target is where the ramp should have got to today.
@@ -313,14 +466,14 @@ export function targetsFor(input: {
       kcal,
       protein,
       fluids: [Math.max(0, ramp - 10), ramp + 10],
-      basis: `${band.label}, day ${dol ?? "?"} ramp — full feeds ${band.fullFeedsRange[0]}–${band.fullFeedsRange[1]}`,
+      basis: `${band.label}, day ${dol ?? "?"} ramp — full feeds ${band.fullFeedsRange[0]}–${band.fullFeedsRange[1]}${suffix}`,
     };
   }
   return {
     kcal,
     protein,
     fluids: band.fullFeedsRange,
-    basis: `${band.label} at full feeds`,
+    basis: `${band.label} at full feeds${suffix}`,
   };
 }
 
@@ -400,7 +553,7 @@ export type SuggestionContext = FeedPhaseContext & {
  * would suggest, the suggestion keeps the higher volume.
  */
 export function suggestFluids(ctx: SuggestionContext): FeedSuggestion {
-  const band = weightBand(ctx.weightG);
+  const band = applyProtocol(weightBand(ctx.weightG), ctx.protocol);
   const phase = feedPhase(ctx);
   const targets = targetsFor(ctx);
   const dol = ctx.dol ?? 1;
@@ -513,6 +666,9 @@ export function suggestFluids(ctx: SuggestionContext): FeedSuggestion {
     notes.push(`Not yet time to fortify — the threshold is ${FORTIFY_AT_ML_KG_DAY} ml/kg/day of enteral feeds.`);
   }
   if (!ctx.weightG) notes.push("No weight on record — the whole suggestion assumes 1500 g. Enter the weight.");
+  if (protocolInUse(ctx.protocol)) {
+    notes.push("Using your unit's protocol figures for this baby, not the published defaults.");
+  }
 
   const usesPlan = enteral >= tfi - 0.5;
 

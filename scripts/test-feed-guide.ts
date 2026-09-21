@@ -10,12 +10,17 @@
  */
 import assert from "node:assert/strict";
 import {
+  applyProtocol,
+  bandIntervalHours,
   dayRampFluid,
   feedPhase,
   FEED_PHASES,
   FORTIFY_AT_ML_KG_DAY,
+  PROTOCOL_FIELDS,
+  protocolInUse,
   STOP_LIPID_AT_ML_KG_DAY,
   suggestFluids,
+  TARGET_FIELDS,
   targetsFor,
   WEIGHT_BANDS,
   weightBand,
@@ -247,5 +252,98 @@ for (const ctx of [
     ok(g.why[key] !== undefined, `every suggested field carries a rationale (${key})`);
   }
 }
+
+/* --- the unit's own protocol figures ------------------------------------- */
+
+const unitBand = weightBand(1200)!;
+
+// The published bands must never be mutated: two babies on different protocols
+// share the same band objects, so a change for one would leak into the other.
+ok(applyProtocol(unitBand, { increment: 10 }) !== unitBand, "applying a protocol returns a new band");
+ok(unitBand.increment === 30, `the published band is untouched (${unitBand.increment})`);
+ok(applyProtocol(unitBand, { increment: 10 })?.increment === 10, "the override is applied");
+ok(applyProtocol(unitBand, undefined)?.increment === 30, "no protocol means the published figures");
+ok(applyProtocol(unitBand, {})?.increment === 30, "an empty protocol means the published figures");
+ok(applyProtocol(undefined, { increment: 10 }) === undefined, "no weight still means no band");
+
+// An override moves the band that is quoted beside it, so the rationale never
+// shows a published range the unit has just replaced.
+const day1Band = applyProtocol(weightBand(600)!, { day1Fluid: 80 })!;
+ok(day1Band.day1Fluid === 80, "the day-1 fluid follows the protocol");
+ok(day1Band.day1FluidRange[1] === 100, `and the quoted range moves with it (${day1Band.day1FluidRange.join("-")})`);
+ok(dayRampFluid(day1Band, 1) === 80, "so the day-1 ramp is the protocol's number");
+
+const fullFeeds = applyProtocol(unitBand, { fullFeeds: 180 })!;
+ok(fullFeeds.fullFeeds === 180, "full feeds follow the protocol");
+ok(fullFeeds.fullFeedsRange[1] === 180, `and the full-feed range moves with it (${fullFeeds.fullFeedsRange.join("-")})`);
+ok(dayRampFluid(fullFeeds, 12) === 180, "so the ramp can now reach the protocol's full feeds");
+
+const interval = applyProtocol(unitBand, { feedIntervalHours: 3 })!;
+ok(interval.feedFreq === "3 hourly", "the feed interval follows the protocol");
+ok(bandIntervalHours(interval) === 3, "and reads back as hours");
+ok(bandIntervalHours(unitBand) === 3, "the published VLBW interval is already 3-hourly");
+
+// Absurd input is clamped, never shipped: a mistyped 9999 must not become a
+// 9999 ml/kg/day prescription.
+ok(applyProtocol(unitBand, { day1Fluid: 9999 })?.day1Fluid === 250, "an impossible day-1 fluid is clamped to 250");
+ok(applyProtocol(unitBand, { increment: -50 })?.increment === 0, "a negative advance is clamped to 0");
+ok(applyProtocol(unitBand, { aaStart: 99 })?.aaStart === 4.5, "an impossible amino acid start is clamped");
+ok(applyProtocol(unitBand, { girStart: 0 })?.girStart === 2, "an impossible GIR start is clamped");
+ok(applyProtocol(unitBand, { day1Fluid: Number.NaN })?.day1Fluid === unitBand.day1Fluid, "a non-number falls back to the published figure");
+
+ok(protocolInUse(undefined) === false, "no protocol is not in use");
+ok(protocolInUse({}) === false, "an empty protocol is not in use");
+ok(protocolInUse({ increment: undefined }) === false, "all-undefined is not in use");
+ok(protocolInUse({ increment: 10 }) === true, "one figure makes it in use");
+
+// The targets follow the protocol, and a band typed the wrong way round is
+// corrected rather than shipped.
+const published = targetsFor({ weightG: 1200, dol: 6 });
+const proteinTarget = targetsFor({ weightG: 1200, dol: 6, protocol: { proteinMin: 4, proteinMax: 5 } });
+ok(proteinTarget.protein[0] === 4 && proteinTarget.protein[1] === 5, `the protein target follows the protocol (${proteinTarget.protein.join("-")})`);
+ok(published.protein[0] === 3.5, "and the published target is unchanged");
+ok(/unit protocol/.test(proteinTarget.basis), `the basis says the protocol is applied (${proteinTarget.basis})`);
+ok(!/unit protocol/.test(published.basis), "the published basis does not claim a protocol");
+const reversed = targetsFor({ weightG: 1200, dol: 6, protocol: { kcalMin: 150, kcalMax: 90 } });
+ok(reversed.kcal[0] === 90 && reversed.kcal[1] === 150, `a reversed target band is corrected (${reversed.kcal.join("-")})`);
+const fullFeedsTarget = targetsFor({ weightG: 1200, dol: 30, protocol: { fullFeeds: 180 } });
+ok(fullFeedsTarget.fluids[1] === 180, `the fluid target follows the protocol's full feeds (${fullFeedsTarget.fluids.join("-")})`);
+
+// Every overridable figure has a published value to show as its placeholder.
+for (const field of PROTOCOL_FIELDS) {
+  const value = field.published(unitBand);
+  ok(Number.isFinite(value) && value > 0, `${field.key} has a usable published value (${value})`);
+  ok(value >= field.min && value <= field.max, `${field.key}'s published value sits inside its own input range (${value} vs ${field.min}-${field.max})`);
+}
+for (const field of TARGET_FIELDS) {
+  const value = field.published(published);
+  ok(Number.isFinite(value) && value > 0, `${field.key} has a usable published value (${value})`);
+  ok(value >= field.min && value <= field.max, `${field.key}'s published value sits inside its own input range (${value})`);
+}
+
+// The suggestion itself follows the protocol.
+const suggested = suggestFluids({ weightG: 1200, dol: 6, enteralMlKgDay: 120 });
+const slower = suggestFluids({ weightG: 1200, dol: 6, enteralMlKgDay: 120, protocol: { increment: 10 } });
+ok(suggested.fields.enteralMlKgDay === 150, `the published advance gives 150 (${suggested.fields.enteralMlKgDay})`);
+ok(slower.fields.enteralMlKgDay === 130, `a 10 ml/kg/day protocol advance gives 130 (${slower.fields.enteralMlKgDay})`);
+ok(slower.notes.some((n) => /unit's protocol/.test(n)), "the suggestion says whose figures it used");
+ok(!suggested.notes.some((n) => /unit's protocol/.test(n)), "and stays quiet when the published figures are used");
+
+const firstFeed = suggestFluids({ weightG: 600, dol: 1, protocol: { feedStart: 25 } });
+ok(firstFeed.fields.enteralMlKgDay === 25, `the protocol's first feed volume is used (${firstFeed.fields.enteralMlKgDay})`);
+
+const aaProtocol = suggestFluids({ weightG: 600, dol: 1, protocol: { aaStart: 2 } });
+ok(aaProtocol.fields.aminoAcid === 2, `the protocol's amino acid start is used (${aaProtocol.fields.aminoAcid})`);
+
+const girProtocol = suggestFluids({ weightG: 600, dol: 1, protocol: { girStart: 6 } });
+ok(girProtocol.fields.dextrosePct > suggestFluids({ weightG: 600, dol: 1 }).fields.dextrosePct,
+   `a higher protocol GIR asks for more dextrose (${girProtocol.fields.dextrosePct})`);
+
+// The phase thresholds move with the protocol's full-feed volume, so a baby at
+// 150 ml/kg/day is not called "full feeds" by a unit that aims for 180.
+ok(feedPhase({ weightG: 1200, enteralMlKgDay: 155, ivMlKgDay: 0 }).id === "wean", "155 is full feeds on the published figures");
+ok(feedPhase({ weightG: 1200, enteralMlKgDay: 155, ivMlKgDay: 0, protocol: { fullFeeds: 180 } }).id === "fortify",
+   "and still advancing for a unit whose full feeds is 180");
+
 
 console.log(`Feed guide tests passed (${checks} checks)`);

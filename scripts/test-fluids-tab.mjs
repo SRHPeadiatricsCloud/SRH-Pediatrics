@@ -89,6 +89,43 @@ const flush = async () => {
     await Promise.resolve();
   });
 };
+const setNativeValue = (el, value) => {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set;
+  setter.call(el, value);
+};
+/** A plain controlled input: one event is enough. */
+const setNative = (el, value, what) => {
+  if (!el) throw new Error(`input not found: ${what}`);
+  act(() => {
+    setNativeValue(el, value);
+    el.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+};
+/**
+ * NumField keeps a local draft while editing and commits on blur, so the two
+ * events go in separate act() calls: batching them would let the blur handler
+ * see the pre-edit draft and commit nothing.
+ */
+const typeInto = (el, value, what) => {
+  if (!el) throw new Error(`input not found: ${what}`);
+  act(() => {
+    setNativeValue(el, value);
+    el.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  act(() => {
+    el.dispatchEvent(new window.FocusEvent("focusout", { bubbles: true }));
+  });
+};
+/** The input belonging to a NumField with this label. */
+const fieldInput = (root, label) => {
+  const lbl = all(root, "div.lbl").find((d) => text(d).toLowerCase().startsWith(label.toLowerCase()));
+  return lbl?.parentElement?.querySelector("input");
+};
+/** The input belonging to a unit-protocol row with this label. */
+const protocolInput = (root, label) => {
+  const row = all(root, "label").find((l) => text(l).toLowerCase().startsWith(label.toLowerCase()));
+  return row?.querySelector("input");
+};
 
 function detail(fluids, over = {}) {
   return {
@@ -125,7 +162,7 @@ async function render(fluids, over = {}) {
   return { el: container, saved };
 }
 
-/* --- 1. a day-6 VLBW baby: layout, and what Apply + Save really write ------ */
+/* --- 1. a day-6 VLBW baby: the streamlined layout ------------------------ */
 {
   const { el, saved } = await render(
     {
@@ -138,22 +175,21 @@ async function render(fluids, over = {}) {
     { currentWeight: 1200, birthWeight: 1100 },
   );
   const t = text(el);
-  ok(/Today's prescription/.test(t), "the prescription card is rendered");
-  ok(/Running now/.test(t), "the running-now summary is rendered");
-  ok(/Apply today's plan/.test(t), "the one-click apply button is rendered");
-  ok(/Copy the values only/.test(t), "the copy-without-plan button is rendered");
-  ok(
-    /1 \u00b7 Enteral feeds/.test(t) && /2 \u00b7 IV fluids/.test(t) && /3 \u00b7 Fortification/.test(t),
-    "the inputs are grouped in prescription order",
-  );
-  ok(/How these numbers are worked out/.test(t), "the audit trail is behind a disclosure");
-  ok(/18 ml per feed/.test(t), `per-feed volume is worked out (got ${(t.match(/\S+ ml per feed/) ?? ["none"])[0]})`);
-  ok(/30 short/.test(t), "the gap to target is a number, not an adjective");
-  ok(/Start fortification as suggested/.test(t), "fortification is offered past 100 ml/kg/day");
-  ok(/Targets sized to this baby/.test(t), "the target basis is quoted");
+  ok(/Today's prescription/.test(t), "the prescription is the first thing on the tab");
+  ok(/Every box is editable/.test(t), "the tab says the fields are editable");
+  ok(/Against the target/.test(t), "the target comparison is rendered");
+  ok(/Copy the guideline in/.test(t), "one button copies the guideline in");
+  ok(!/Apply today's plan/.test(t), "the old two-button apply is gone");
+  ok(/Feed details & tolerance/.test(t) && /Fortification/.test(t) && /Unit protocol for this baby/.test(t) && /How these numbers are worked out/.test(t),
+     "the long tail sits behind four disclosures");
+  const dailyFields = all(el, "div.lbl").filter((d) => !d.closest("details"));
+  ok(dailyFields.length <= 9, `the daily surface is short (${dailyFields.length} fields outside the disclosures)`);
+  ok(/18 ml per feed|18 ml\/day/.test(t) || /8 feeds\/24 h/.test(t), `the day is split into feeds (${(t.match(/\d+ feeds\/24 h/) ?? ["none"])[0]})`);
+  ok(/guideline 150/.test(t), "the guideline value sits under the feed field");
+  ok(/30 short|40 short/.test(t), "the gap to target is a number");
 
-  click(byText(el, "button", "Apply today's plan"), "apply");
-  ok(/unsaved changes on this tab/.test(text(el)), "applying marks the tab dirty");
+  click(byText(el, "button", "Copy the guideline in"), "copy the guideline in");
+  ok(/unsaved changes on this tab/.test(text(el)), "copying marks the tab dirty");
   click(byExact(el, "button", "Save feeds & fluids"), "save");
   await flush();
   const f = saved[0]?.clinical?.fluids;
@@ -168,21 +204,21 @@ async function render(fluids, over = {}) {
     `fortifier is 1 sachet in 8 feeds (got ${f?.fortifierProductId}/${f?.fortificationAmount}/${f?.fortificationDosesPerDay})`,
   );
   ok(
-    f?.tfiMlKgDay === undefined && f?.totalMlKgDay === 160,
-    `the plan is not armed at 150/160, the total is written directly (tfi ${f?.tfiMlKgDay}, total ${f?.totalMlKgDay})`,
+    f?.feedPlan === undefined && f?.tfiMlKgDay === undefined && f?.totalMlKgDay === 160,
+    `the plan is not armed and the total is written directly (plan ${f?.feedPlan}, tfi ${f?.tfiMlKgDay}, total ${f?.totalMlKgDay})`,
   );
-  ok(f?.kcal > 100 && f?.kcal < 250, `energy is computed (${f?.kcal})`);
   ok(f?.feedVol === 22.5, `per-feed volume saved as 150 x 1.2 / 8 (got ${f?.feedVol})`);
+  ok(f?.feedType === "Expressed breast milk (EBM)", `the recorded feed type is kept (got ${f?.feedType})`);
 }
 
-/* --- 2. a day-1 ELBW baby: trophic feeds, and no plan hijack -------------- */
+/* --- 2. a day-1 ELBW baby: trophic feeds, and no plan hijack ------------- */
 {
   const { el, saved } = await render(
     {},
     { currentWeight: 600, birthWeight: 600, gestWeeks: 25, dob: new Date(Date.now() - 6 * 3600000).toISOString() },
   );
   ok(/Nothing recorded yet/.test(text(el)), "an empty chart says what to do");
-  click(byText(el, "button", "Apply today's plan"), "apply");
+  click(byText(el, "button", "Copy the guideline in"), "copy the guideline in");
   click(byExact(el, "button", "Save feeds & fluids"), "save");
   await flush();
   const f = saved[0]?.clinical?.fluids;
@@ -197,9 +233,9 @@ async function render(fluids, over = {}) {
   ok(f?.fortifierProductId === undefined, `no fortifier at 10 ml/kg/day (got ${f?.fortifierProductId})`);
 }
 
-/* --- 3. the feed plan locks the enteral field, and can be released -------- */
+/* --- 3. nothing is locked, and editing beats the feed plan --------------- */
 {
-  const { el } = await render(
+  const { el, saved } = await render(
     {
       feedPlan: "increasing",
       tfiMlKgDay: 150,
@@ -210,15 +246,85 @@ async function render(fluids, over = {}) {
     },
     { currentWeight: 1500, birthWeight: 1400 },
   );
-  ok(all(el, "input[readonly]").length >= 1, `the enteral field is locked (${all(el, "input[readonly]").length} read-only inputs)`);
-  ok(/set by the feed plan/i.test(text(el)), "the lock says why");
-  ok(/Turn the plan off/.test(text(el)), "the plan can be released");
-  click(byText(el, "button", "Turn the plan off"), "turn the plan off");
-  ok(all(el, "input[readonly]").length === 0, "releasing the plan unlocks the field");
-  ok(/150 ml\/kg\/d/.test(text(el)), "the volume is kept when the plan is released");
+  ok(all(el, "input[readonly]").length === 0, `no field on the tab is read-only (${all(el, "input[readonly]").length} found)`);
+  ok(/set by the feed plan/.test(text(el)), "the plan still says it is driving the volume");
+  ok(/Turn the plan off/.test(text(el)), "the plan can be released by hand");
+
+  // Typing a feed volume takes the volume over instead of being discarded.
+  typeInto(fieldInput(el, "Feeds ml/kg/day"), "140", "feeds ml/kg/day");
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  const f = saved[0]?.clinical?.fluids;
+  ok(f?.enteralMlKgDay === 140, `the typed volume is what is saved (got ${f?.enteralMlKgDay})`);
+  ok(f?.feedPlan === undefined && f?.tfiMlKgDay === undefined, `the plan is released, not silently re-applied (plan ${f?.feedPlan}, tfi ${f?.tfiMlKgDay})`);
+  ok(f?.feedVol === 26.25, `the per-feed volume follows (140 x 1.5 / 8, got ${f?.feedVol})`);
 }
 
-/* --- 4. the feed-due clock ------------------------------------------------ */
+/* --- 4. every field can be typed into, and the guideline is one tap ------ */
+{
+  const { el, saved } = await render({ feedFreq: "3 hourly" }, { currentWeight: 1200 });
+  typeInto(fieldInput(el, "Feeds ml/kg/day"), "95", "feeds");
+  typeInto(fieldInput(el, "IV fluids ml/kg/day"), "65", "IV");
+  typeInto(fieldInput(el, "Dextrose %"), "12.5", "dextrose");
+  typeInto(fieldInput(el, "Amino acids g/kg/day"), "3.2", "amino acids");
+  typeInto(fieldInput(el, "Lipid g/kg/day"), "2.5", "lipid");
+  typeInto(fieldInput(el, "Per feed ml"), "14", "per feed");
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  const f = saved[0]?.clinical?.fluids;
+  ok(f?.ivMlKgDay === 65, `IV is what was typed (got ${f?.ivMlKgDay})`);
+  ok(f?.dextrosePct === 12.5, `dextrose is what was typed (got ${f?.dextrosePct})`);
+  ok(f?.aminoAcid === 3.2, `amino acids are what was typed (got ${f?.aminoAcid})`);
+  ok(f?.lipid === 2.5, `lipid is what was typed (got ${f?.lipid})`);
+  ok(f?.feedVol === 14, `the per-feed volume is what was typed (got ${f?.feedVol})`);
+  ok(f?.enteralMlKgDay === 93.33, `and it converts back to ml/kg/day (14 x 8 / 1.2, got ${f?.enteralMlKgDay})`);
+  ok(f?.gir === 5.64, `GIR is derived from what was typed (12.5 x 65 x 10 / 1440, got ${f?.gir})`);
+
+  // One field, adopted from the guideline, leaving the rest alone.
+  const fresh = await render({ feedFreq: "3 hourly", enteralMlKgDay: 95, ivMlKgDay: 65 }, { currentWeight: 1200 });
+  click(byText(fresh.el, "button", "guideline 125"), "use the guideline feed volume");
+  click(byExact(fresh.el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  const g = fresh.saved[0]?.clinical?.fluids;
+  ok(g?.enteralMlKgDay === 125, `one field adopted from the guideline (got ${g?.enteralMlKgDay})`);
+  ok(g?.ivMlKgDay === 65, `and the rest of the chart is left alone (got ${g?.ivMlKgDay})`);
+}
+
+/* --- 5. the unit's own protocol figures drive the suggestion ------------- */
+{
+  const { el, saved } = await render({ enteralMlKgDay: 120, feedFreq: "3 hourly" }, { currentWeight: 1200 });
+  ok(/guideline 150/.test(text(el)), "the published advance gives 150");
+  ok(!/unit protocol/.test(text(el)), "no protocol is in use yet");
+
+  setNative(protocolInput(el, "Daily advance"), "10", "daily advance");
+  ok(/guideline 130/.test(text(el)), `the suggestion follows the unit's advance of 10 (got ${(text(el).match(/guideline \d+/) ?? ["none"])[0]})`);
+  ok(/Using your unit's protocol figures/.test(text(el)), "the tab says whose numbers these are");
+  ok(/unit protocol/.test(text(el)), "the target basis says the protocol is applied");
+
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  ok(saved[0]?.clinical?.fluids?.protocol?.increment === 10, `the protocol is saved on the chart (got ${JSON.stringify(saved[0]?.clinical?.fluids?.protocol)})`);
+
+  click(byText(el, "button", "Use the published values"), "use the published values");
+  ok(/guideline 150/.test(text(el)), "clearing the protocol restores the published figures");
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  ok(saved[1]?.clinical?.fluids?.protocol === undefined, `the protocol is cleared (got ${JSON.stringify(saved[1]?.clinical?.fluids?.protocol)})`);
+}
+
+/* --- 6. a protocol loaded from the chart changes the targets ------------- */
+{
+  const { el } = await render(
+    { enteralMlKgDay: 120, feedFreq: "3 hourly", protocol: { proteinMin: 4, proteinMax: 5, fullFeeds: 180 } },
+    { currentWeight: 1200 },
+  );
+  const t = text(el);
+  ok(/using your figures/.test(t), "the disclosure says the protocol is in use");
+  ok(/target 4–5/.test(t), `the protein target follows the protocol (${(t.match(/target [\d.]+–[\d.]+/g) ?? []).join(", ")})`);
+  ok(/guideline 150/.test(t), `full feeds of 180 still advances to 150 (${(t.match(/guideline \d+/) ?? ["none"])[0]})`);
+}
+
+/* --- 7. the feed-due clock ---------------------------------------------- */
 {
   const late = await render(
     { enteralMlKgDay: 100, feedFreq: "3 hourly", lastFeedAt: new Date(Date.now() - 4 * 3600000).toISOString() },
@@ -230,38 +336,31 @@ async function render(fluids, over = {}) {
     { enteralMlKgDay: 100, feedFreq: "3 hourly", lastFeedAt: new Date().toISOString() },
     { currentWeight: 1500 },
   );
-  ok(/next feed due in/.test(text(onTime.el)), "an on-time feed shows the countdown");
+  ok(/next feed in/.test(text(onTime.el)), "an on-time feed shows the countdown");
   ok(!/feed is late/.test(text(onTime.el)), "an on-time feed is not flagged");
 }
 
-/* --- 5. held feeds and residuals ask for a review ------------------------- */
+/* --- 8. held feeds, and no weight --------------------------------------- */
 {
   const held = await render({ enteralMlKgDay: 100, feedsHeldToday: 2, residualMl: 3 }, { currentWeight: 1500 });
   ok(/review for feed intolerance/.test(text(held.el)), "a held feed prompts a review");
   const clean = await render({ enteralMlKgDay: 100 }, { currentWeight: 1500 });
   ok(!/review for feed intolerance/.test(text(clean.el)), "no prompt when nothing is held");
+  const noWeight = await render({ enteralMlKgDay: 100 }, { currentWeight: 0 });
+  ok(/No weight on record/.test(text(noWeight.el)), "a missing weight is called out");
+  ok(/Growth/.test(text(noWeight.el)), "the banner says where to fix it");
 }
 
-/* --- 6. no weight: say so instead of dosing anyway ------------------------ */
+/* --- 9. the derived total is a readout, not a box you can type into ------ */
 {
-  const { el } = await render({ enteralMlKgDay: 100 }, { currentWeight: 0 });
-  ok(/No weight on record/.test(text(el)), "a missing weight is called out");
-  ok(/Growth/.test(text(el)), "the banner says where to fix it");
-}
-
-/* --- 7. copying the values must not arm the plan -------------------------- */
-{
-  const { el, saved } = await render({}, { currentWeight: 1200 });
-  click(byText(el, "button", "Copy the values only"), "copy the values only");
-  click(byExact(el, "button", "Save feeds & fluids"), "save");
-  await flush();
-  const f = saved[0]?.clinical?.fluids;
-  ok(
-    f?.feedPlan === undefined && f?.tfiMlKgDay === undefined,
-    `the plan is left alone (feedPlan ${f?.feedPlan}, tfi ${f?.tfiMlKgDay})`,
-  );
-  ok(f?.enteralMlKgDay > 0, `but the suggested volumes are copied (got ${f?.enteralMlKgDay})`);
-  ok(f?.ivMlKgDay > 0, `and the IV that covers the gap (got ${f?.ivMlKgDay})`);
+  const { el } = await render({ enteralMlKgDay: 100, ivMlKgDay: 50 }, { currentWeight: 1500 });
+  ok(!fieldInput(el, "Total fluids ml/kg/day"), "the total is not an editable field");
+  ok(/worked out, not typed/.test(text(el)), "the total says it is derived");
+  ok(/≈ 225 ml\/day/.test(text(el)), `the total is in ml/day too (${(text(el).match(/≈ \d+ ml\/day/) ?? ["none"])[0]})`);
+  // A legacy chart that recorded only a total must not lose it.
+  const legacy = await render({ totalMlKgDay: 140 }, { currentWeight: 1500 });
+  ok(/recorded total/.test(text(legacy.el)), "a recorded total with no split is still shown");
+  ok(/≈ 210 ml\/day/.test(text(legacy.el)), `and still converted (${(text(legacy.el).match(/≈ \d+ ml\/day/) ?? ["none"])[0]})`);
 }
 
 rmSync(work, { recursive: true, force: true });

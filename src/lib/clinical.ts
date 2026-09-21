@@ -1,4 +1,4 @@
-import { targetsFor } from "./feed-guide";
+import { targetsFor, type ProtocolOverrides } from "./feed-guide";
 export type GrowthEntry = {
   at: string;
   weight: number;
@@ -135,6 +135,12 @@ export type Clinical = {
     residualMl?: number;
     feedsHeldToday?: number;
     feedNotes?: string;
+    /**
+     * The unit's own protocol figures, replacing the published guidance for this
+     * baby. Anything unset falls back to the published value, so an empty or
+     * absent object behaves exactly as before.
+     */
+    protocol?: ProtocolOverrides;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: {
@@ -588,7 +594,7 @@ export function resolveFeedPlan(
  *            day-by-day ramp instead of measuring a day-1 baby against full
  *            feeds. Energy and protein targets come from the weight alone.
  */
-export function calcNutrition(c: Clinical, weightG?: number, ctx?: { dol?: number }): NutritionCalc {
+export function calcNutrition(c: Clinical, weightG?: number, ctx?: { dol?: number; protocol?: ProtocolOverrides | null }): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
   const density = KCAL_PER_ML[feedType] ?? 0.67;
@@ -753,7 +759,7 @@ export function calcNutrition(c: Clinical, weightG?: number, ctx?: { dol?: numbe
   // Targets follow the baby's size and day of life rather than one fixed
   // preterm pair — a 600 g microprem and a 2.2 kg growing preterm are not
   // aiming at the same numbers.
-  const targets = targetsFor({ weightG, dol: ctx?.dol });
+  const targets = targetsFor({ weightG, dol: ctx?.dol, protocol: c.fluids?.protocol ?? ctx?.protocol });
   const kcalTarget = targets.kcal;
   const proteinTarget = targets.protein;
   const fluidsTarget = targets.fluids;

@@ -19,6 +19,50 @@ Rules:
 
 ---
 
+## 3.4.0
+
+New features, so the minor segment moves. Feeds & fluids is now a working model
+for the daily round: one editable prescription instead of a suggestion you apply
+and a set of panels you correct afterwards.
+
+### Changed
+
+- **One editable grid replaces the suggestion card and the input fieldsets.**
+  Feeds, per-feed volume, interval, IV, dextrose, amino acids, lipid and
+  tomorrow's increase are all on one screen and all editable. The published
+  figure sits under each box with a one-tap "use", so adopting the guideline is
+  a choice per field rather than an all-or-nothing button.
+- **Nothing on the tab is read-only any more.** Where the feed plan was driving
+  the feed volume, the field used to be locked; typing in it now releases the
+  plan and keeps what you typed, instead of discarding it on the next render.
+- **Total fluids is a readout, not a box.** It is enteral + IV and Save writes
+  exactly that number, so a field you could type into would have shown one thing
+  and stored another. A legacy chart that recorded only a total still shows it.
+- **The long tail is behind four closed disclosures** — feed details &
+  tolerance, fortification, unit protocol, and how the numbers are worked out.
+  Nine labelled fields are on the daily surface; fifteen are one click away.
+
+### Added
+
+- **Unit protocol, per baby.** Every figure that drives a suggestion — day 1/2/3
+  fluids, the daily advance, the first feed, full feeds, the feed interval, the
+  amino acid and GIR starts, and the energy and protein targets — can be
+  replaced with the unit's own number. Leave a box empty for the published
+  value, which the placeholder shows. Suggestions, targets and the feeding
+  pathway all follow, the basis line and the notes say whose figures are in use,
+  and an override typed the wrong way round or far out of range is clamped or
+  corrected rather than shipped. `src/lib/feed-guide.ts` gained
+  `applyProtocol`, `protocolInUse`, `bandIntervalHours`, `PROTOCOL_FIELDS` and
+  `TARGET_FIELDS`; the published bands are never mutated.
+- **`scripts/test-feed-guide.ts` grew 65 checks** (326 total) covering the
+  protocol: purity, clamping, moved ranges, corrected target bands, and that the
+  suggestion and the phase thresholds follow the unit's figures.
+- **`scripts/test-fluids-tab.mjs` grew to 70 checks**, now including typing into
+  every field, editing a plan-driven volume, adopting one guideline value, and
+  the protocol editor end to end.
+
+---
+
 ## 3.3.0
 
 New features, so the minor segment moves. The Feeds & fluids tab is now rebuilt
