@@ -126,6 +126,15 @@ export type Clinical = {
     residual?: string;
     tpn?: boolean;
     notes?: string;
+    /**
+     * Bedside tolerance record for the current 24 h. `lastFeedAt` drives the
+     * feed-due clock (it is the only field here that is a timestamp), and a
+     * held feed or a residual prompts a review before the next increase.
+     */
+    lastFeedAt?: string;
+    residualMl?: number;
+    feedsHeldToday?: number;
+    feedNotes?: string;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: {

@@ -43,7 +43,6 @@ import {
   CareTab,
   CourseTab,
   DrugsTab,
-  FluidsTab,
   GrowthTab,
   HandoverTab,
   LabsTab,
@@ -53,6 +52,7 @@ import {
   VitalsTab,
 } from "@/components/baby-tabs";
 import { EventLogTab } from "@/components/event-log";
+import { FluidsTab } from "@/components/fluids-tab";
 import { ConsolidatedImpression } from "@/components/interpret-ui";
 import type { Clinical } from "@/lib/clinical";
 import {
@@ -397,6 +397,8 @@ function Overview({
   const v = d.vitals[0] ?? {};
   const { unit } = useTempUnit();
   const b = d.baby;
+  // Once, and sized to this baby's age so the summary and the feeds tab agree.
+  const overviewNutrition = calcNutrition(c, b.currentWeight, { dol: dayOfLife(b.dob) });
   const babyLite = {
     unit: b.unit,
     dob: b.dob,
@@ -527,7 +529,7 @@ function Overview({
           <Row k="TPN" v={c.fluids?.tpn ? `AA ${c.fluids.aminoAcid ?? "—"} g/kg · Lipid ${c.fluids.lipid ?? "—"} g/kg` : "No"} />
           <Row
             k="Energy (auto)"
-            v={`${calcNutrition(c, b.currentWeight).totalKcal} kcal/kg/day · protein ${calcNutrition(c, b.currentWeight).totalProtein} g/kg/day`}
+            v={`${overviewNutrition.totalKcal} kcal/kg/day · protein ${overviewNutrition.totalProtein} g/kg/day`}
           />
           <Row k="Lines" v={(c.lines ?? []).map((l) => `${l.name} D${l.day}`).join(", ") || "None"} />
           <Row k="Drugs" v={(c.drugs ?? []).map((x) => `${x.name}${x.ofDays ? ` D${x.day}/${x.ofDays}` : x.dose ? ` (${x.dose})` : ""}`).join(", ") || "None"} />

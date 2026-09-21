@@ -6,7 +6,7 @@ import { FlagsList } from "@/components/interpret-ui";
 import { WeightInput } from "@/components/weight-input";
 import type { Clinical, GrowthEntry } from "@/lib/clinical";
 import { anthropometryFlags, growthFlags } from "@/lib/interpret";
-import { calcNutrition, fmtTime, gainGPerKgDay } from "@/lib/clinical";
+import { calcNutrition, dayOfLife, fmtTime, gainGPerKgDay } from "@/lib/clinical";
 
 type BabyLite = {
   dob: string;
@@ -48,7 +48,7 @@ export function DailyProgressTab({
   user: string;
 }) {
   const c = baby.clinical ?? {};
-  const n = useMemo(() => calcNutrition(c, baby.currentWeight), [c, baby.currentWeight]);
+  const n = calcNutrition(c, baby.currentWeight, { dol: dayOfLife(baby.dob) });
   const useKg = baby.unit !== "nicu";
   const [w, setW] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);

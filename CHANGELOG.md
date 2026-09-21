@@ -19,6 +19,59 @@ Rules:
 
 ---
 
+## 3.3.0
+
+New features, so the minor segment moves. The Feeds & fluids tab is now rebuilt
+rather than extended: the panels that were stacked underneath the arithmetic are
+gone, and the tab is organised the way a prescription is written.
+
+### Changed
+
+- **The tab reads top-down as one prescription.** Where this baby is on the
+  feeding pathway → today's guideline prescription → what is actually running
+  now against the target → what the calculation had to assume → the inputs, in
+  the order they are prescribed (1 · Enteral feeds, 2 · IV fluids & parenteral
+  nutrition, 3 · Fortification) → the working, behind a disclosure → Save.
+- **"Running now" replaces the three duplicate summary panels.** One row for
+  feeds (with the per-feed volume and how many feeds a day), one for IV fluids
+  (with the GIR and the total in ml/day), one for energy and protein. Each
+  carries the shortfall or excess as a number — "30 short", not "below target".
+- **The inputs moved out of `baby-tabs.tsx`** into `src/components/fluids-tab.tsx`.
+  Nothing about the stored record changed; the same `clinical.fluids` fields are
+  read and written.
+- **The audit trail is collapsed by default** behind "How these numbers are
+  worked out" — the energy and protein breakdowns, the GIR/energy/protein cards
+  and the manual overrides are all there, one click away instead of six scrolls.
+- **Targets are now sized to the baby everywhere**, not just on this tab: the
+  Overview summary, the daily progress note and the discharge sheet all pass the
+  day of life into `calcNutrition`, so they quote the same targets as the tab.
+  The Overview also stopped calling `calcNutrition` twice in one expression.
+
+### Added
+
+- **Feed-due clock.** Recording when the last feed was given starts a countdown
+  to the next one at the recorded interval; ten minutes past the interval it
+  reads "feed is late".
+- **Tolerance record.** Last residual, feeds held today and a feeding note. A
+  held feed or a residual asks for a review before the next increase.
+- **"Copy the values only"** — takes the suggested numbers without arming the
+  feed plan, for a clinician who wants the volumes but not the TFI-driven
+  behaviour.
+- **A per-feed ladder** on the suggestion: what one feed is at 2, 3, 4, 6 and 8
+  feeds a day, so the sachet-and-ml arithmetic is already done.
+- **`scripts/test-fluids-tab.mjs`** — 47 checks that render the real component
+  in a DOM and assert what the redesign puts on screen and what Save writes.
+  Verified against the pre-redesign tab, where it fails.
+
+### Fixed
+
+- Copying the suggested values used to leave the chart untouched when the
+  suggestion was not using the feed plan; it now writes the volumes directly and
+  leaves `feedPlan` and `tfiMlKgDay` alone, so a stale TFI cannot take the
+  enteral volume back over.
+
+---
+
 ## 3.2.0
 
 New features, so the minor segment moves. Feeds & fluids rebuilt around the way a

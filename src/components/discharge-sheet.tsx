@@ -9,7 +9,7 @@
  * order that never depends on which tab was open.
  */
 import { DISCHARGE_CRITERIA } from "@/lib/catalog";
-import { calcNutrition, correctedGA, weightChangePct } from "@/lib/clinical";
+import { calcNutrition, correctedGA, dayOfLife, weightChangePct } from "@/lib/clinical";
 import type { DischargeRecord } from "@/lib/clinical";
 import type { Detail } from "@/lib/types";
 import { OUTCOME_LABEL, lengthOfStayDays } from "@/lib/discharge";
@@ -69,7 +69,8 @@ export function DischargeSheet({
   const b = d.baby;
   const c = b.clinical ?? {};
   const rec = record ?? c.dischargeRecord ?? null;
-  const nutrition = calcNutrition(c, b.currentWeight);
+  // Sized to the age the baby reached, so the sheet quotes the right targets.
+  const nutrition = calcNutrition(c, b.currentWeight, { dol: dayOfLife(b.dob) });
   const los = lengthOfStayDays({
     id: b.id,
     babyName: b.babyName,
