@@ -33,25 +33,10 @@ import { FEED_ROUTE, FEED_TYPE } from "@/lib/catalog";
  * Small pieces shared by the tab.
  * ------------------------------------------------------------------ */
 
-/** Signed difference against a target, coloured by whether it is short or over. */
-function DeltaChip({ actual, target, decimals = 0 }: { actual: number; target: [number, number]; decimals?: number }) {
-  const [lo, hi] = target;
-  if (actual === 0) return <span className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-bold text-slate-400">nothing recorded</span>;
-  if (actual < lo) {
-    return (
-      <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">
-        {Math.abs(actual - lo).toFixed(decimals)} short
-      </span>
-    );
-  }
-  if (actual > hi) {
-    return (
-      <span className="rounded bg-rose-400/15 px-1.5 py-0.5 text-[9px] font-bold text-rose-200">
-        {(actual - hi).toFixed(decimals)} over
-      </span>
-    );
-  }
-  return <span className="rounded bg-emerald-400/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-200">in range</span>;
+/** A gap reads better without a trailing ".0". */
+function trimNum(value: number, decimals: number): string {
+  const rounded = Number(value.toFixed(decimals));
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(decimals);
 }
 
 /**
@@ -96,7 +81,16 @@ function TargetRow({
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
         <span>target {lo}&ndash;{hi}</span>
-        <span className="text-right">{note}</span>
+        <span className={`text-right ${inBand ? "" : low ? "text-amber-200/80" : "text-rose-200/80"}`}>
+          {note ??
+            (value === 0
+              ? "nothing recorded"
+              : inBand
+                ? "in range"
+                : low
+                  ? `${trimNum(lo - value, decimals)} short`
+                  : `${trimNum(value - hi, decimals)} over`)}
+        </span>
       </div>
     </div>
   );
@@ -135,69 +129,6 @@ function PhaseRail({ step, activeId }: { step: number; activeId: string }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * An editable prescription field with the guideline value beside it.
- *
- * The field is never locked: the number on the chart is the number that is
- * used. The guideline sits underneath as a nudge with a one-tap "use", so
- * adopting it is a choice rather than the default.
- */
-function RxField({
-  label,
-  value,
-  onValue,
-  suggested,
-  suggestedText,
-  onUseSuggested,
-  min,
-  max,
-  step,
-  decimals = 0,
-  placeholder,
-  note,
-}: {
-  label: string;
-  value: number | undefined;
-  onValue: (v: number) => void;
-  suggested?: number;
-  suggestedText?: string;
-  onUseSuggested?: () => void;
-  min: number;
-  max: number;
-  step: number;
-  decimals?: number;
-  placeholder?: string;
-  note?: string;
-}) {
-  const matches = suggested !== undefined && value !== undefined && Math.abs(suggested - value) < 1e-9;
-  return (
-    <div>
-      <NumField
-        label={label}
-        value={value}
-        onChange={onValue}
-        min={min}
-        max={max}
-        step={step}
-        decimals={decimals}
-        placeholder={placeholder}
-      />
-      <div className="mt-1 flex min-h-4 items-start justify-between gap-1 text-[10px] leading-tight">
-        <span className="truncate text-slate-500">{note}</span>
-        {suggested !== undefined && onUseSuggested && (
-          matches ? (
-            <span className="shrink-0 text-emerald-200/80">✓ guideline</span>
-          ) : (
-            <button type="button" className="shrink-0 font-bold text-cyan-200 underline" onClick={onUseSuggested}>
-              guideline {suggestedText ?? suggested} &rarr; use
-            </button>
-          )
-        )}
-      </div>
     </div>
   );
 }
@@ -621,237 +552,189 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             </span>
           </p>
         )}
-
-        {/* --- today's prescription: one editable grid --------------------- */}
+        {/* --- today: the whole order on one card -------------------------- */}
         <div className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-sm font-black text-cyan-50">Today&apos;s prescription</div>
-              <div className="text-[10px] text-cyan-200/80">
-                Every box is editable &mdash; what you type is what is used. The guideline sits under each one.
-              </div>
+              <div className="text-sm font-black text-cyan-50">Today</div>
+              <div className="text-[10px] text-cyan-200/80">{guide.headline}</div>
             </div>
-            <button type="button" className="btn-primary" onClick={copyGuide}>Copy the guideline in</button>
-          </div>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <RxField
-              label="Feeds ml/kg/day"
-              value={plan.active ? plan.enteralMlKgDay : (manualEnteralFromVolume ?? s.enteralMlKgDay)}
-              onValue={setEnteral}
-              suggested={guide.fields.enteralMlKgDay}
-              onUseSuggested={() => setEnteral(guide.fields.enteralMlKgDay)}
-              min={0}
-              max={250}
-              step={5}
-              placeholder="enter"
-              note={plan.active ? "set by the feed plan — edit to take over" : guide.why.enteralMlKgDay}
-            />
-            <RxField
-              label="Per feed ml"
-              value={feedVolumeValue}
-              onValue={setPerFeed}
-              suggested={guidePerFeed}
-              suggestedText={guidePerFeed !== undefined ? `${guidePerFeed} ml` : undefined}
-              onUseSuggested={() => guidePerFeed !== undefined && setPerFeed(guidePerFeed)}
-              min={0}
-              max={120}
-              step={0.5}
-              decimals={1}
-              placeholder="waiting"
-              note={
-                feedsToday
-                  ? `${feedsToday} feeds/24 h${wt > 0 ? ` · ≈ ${Math.round((perFeedMl ?? 0) * feedsToday)} ml/day` : ""}`
-                  : "choose an interval to split the day"
-              }
-            />
-            <div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
-                <div className="lbl mb-1 truncate">Feed interval</div>
-                <div className="flex flex-wrap gap-1">
-                  {FEED_INTERVALS.map((option) => (
-                    <Chip
-                      key={option}
-                      label={option.replace(" hourly", " h")}
-                      on={s.feedFreq === option}
-                      onClick={() => setField("feedFreq", option)}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="mt-1 flex min-h-4 items-start justify-between gap-1 text-[10px] leading-tight">
-                <span className="truncate text-slate-500">{s.feedFreq && !FEED_INTERVALS.includes(s.feedFreq as never) ? s.feedFreq : "continuous / on demand in Feed details"}</span>
-                {s.feedFreq !== guide.fields.feedFreq && (
-                  <button
-                    type="button"
-                    className="shrink-0 font-bold text-cyan-200 underline"
-                    onClick={() => setField("feedFreq", guide.fields.feedFreq)}
-                  >
-                    guideline {guide.fields.feedFreq} &rarr; use
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Total fluids is worked out, not typed: it is enteral + IV, and
-                save writes exactly this number. A box you can type into here
-                would show one thing and store another. */}
-            <div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2">
-                <div className="lbl mb-1 truncate">Total fluids ml/kg/day</div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-base font-black tabular-nums text-white">{totalFluidsShown}</span>
-                  {totalMlDay !== undefined && <span className="text-[10px] text-slate-400">≈ {totalMlDay} ml/day</span>}
-                </div>
-              </div>
-              <div className="mt-1 min-h-4 text-[10px] leading-tight text-slate-500">
-                {nutrition.enteralMl + nutrition.ivMl > 0
-                  ? `enteral ${nutrition.enteralMl} + IV ${nutrition.ivMl} — worked out, not typed`
-                  : totalFluidsShown > 0
-                    ? "recorded total — no enteral/IV split on the chart yet"
-                    : "enter the feeds and the IV above"}
-              </div>
-            </div>
-            <RxField
-              label="IV fluids ml/kg/day"
-              value={s.ivMlKgDay ?? undefined}
-              onValue={setNum("ivMlKgDay")}
-              suggested={guide.fields.ivMlKgDay}
-              onUseSuggested={() => setNum("ivMlKgDay")(guide.fields.ivMlKgDay)}
-              min={0}
-              max={250}
-              step={5}
-              placeholder="enter"
-              note={guide.why.ivMlKgDay}
-            />
-            <RxField
-              label="Dextrose %"
-              value={s.dextrosePct ?? undefined}
-              onValue={setNum("dextrosePct")}
-              suggested={guide.fields.dextrosePct}
-              suggestedText={`D${guide.fields.dextrosePct}%`}
-              onUseSuggested={() => setNum("dextrosePct")(guide.fields.dextrosePct)}
-              min={0}
-              max={25}
-              step={0.5}
-              decimals={1}
-              placeholder="for auto GIR"
-              note={girValue !== undefined ? `GIR ${girValue} mg/kg/min · ${nutrition.dextroseG} g/kg/day` : "needs an IV volume"}
-            />
-
-            <RxField
-              label="Amino acids g/kg/day"
-              value={s.aminoAcid ?? undefined}
-              onValue={setNum("aminoAcid")}
-              suggested={guide.fields.aminoAcid}
-              onUseSuggested={() => setNum("aminoAcid")(guide.fields.aminoAcid)}
-              min={0}
-              max={6}
-              step={0.1}
-              decimals={1}
-              placeholder="g/kg/day"
-              note={guide.why.aminoAcid}
-            />
-            <RxField
-              label="Lipid g/kg/day"
-              value={s.lipid ?? undefined}
-              onValue={setNum("lipid")}
-              suggested={guide.fields.lipid}
-              onUseSuggested={() => setNum("lipid")(guide.fields.lipid)}
-              min={0}
-              max={6}
-              step={0.1}
-              decimals={1}
-              placeholder="g/kg/day"
-              note={guide.why.lipid}
-            />
-            <RxField
-              label="Increase planned tomorrow ml/kg/day"
-              value={s.feedIncrementMlKgDay ?? undefined}
-              onValue={setNum("feedIncrementMlKgDay")}
-              suggested={guide.fields.feedIncrementMlKgDay}
-              onUseSuggested={() => setNum("feedIncrementMlKgDay")(guide.fields.feedIncrementMlKgDay)}
-              min={0}
-              max={250}
-              step={5}
-              placeholder="0"
-              note={guide.why.feedIncrementMlKgDay}
-            />
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300">
-            <span>
-              <b className="text-slate-100">{s.feedType ?? "no feed type"}</b> via {s.feedRoute ?? "no route"}
-            </span>
-            <span className="text-slate-500">·</span>
-            <span>
-              {nutrition.fortified
-                ? `fortified ${s.fortificationAmount} ${s.fortificationAmountUnit ?? "sachet"} × ${nutrition.fortDosesPerDay}/day`
-                : guide.fields.fortifierProductId
-                  ? "not fortified yet"
-                  : "no fortifier"}
-            </span>
-            <button
-              type="button"
-              className="font-bold text-cyan-200 underline"
-              onClick={() => {
-                if (feedDetailsRef.current) feedDetailsRef.current.open = true;
-              }}
-            >
-              change feed details
+            <button type="button" className="btn-primary" onClick={copyGuide}>
+              Use the guideline
             </button>
           </div>
 
-          {guide.notes.length > 0 && (
-            <ul className="mt-2 list-disc pl-5 text-[10px] leading-relaxed text-slate-400">
-              {guide.notes.map((n, i) => (
-                <li key={i}>{n}</li>
+          {/* Feeds */}
+          <div className="mt-3">
+            <div className="lbl !mb-1.5">Feeds</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <NumField
+                label="Feeds ml/kg/day"
+                value={plan.active ? plan.enteralMlKgDay : (manualEnteralFromVolume ?? s.enteralMlKgDay)}
+                onChange={setEnteral}
+                min={0}
+                max={250}
+                step={5}
+                placeholder="enter"
+              />
+              <NumField
+                label="Per feed ml"
+                value={feedVolumeValue}
+                onChange={setPerFeed}
+                min={0}
+                max={120}
+                step={0.5}
+                decimals={1}
+                placeholder="—"
+              />
+              <label className="block">
+                <span className="lbl mb-1 block">Interval</span>
+                <select
+                  className="inp min-h-11"
+                  value={s.feedFreq ?? ""}
+                  onChange={(event) => setField("feedFreq", event.target.value)}
+                >
+                  <option value="">not set</option>
+                  {FEED_INTERVALS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                  {s.feedFreq && !FEED_INTERVALS.includes(s.feedFreq as never) && (
+                    <option value={s.feedFreq}>{s.feedFreq}</option>
+                  )}
+                </select>
+              </label>
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+              {feedsToday && perFeedMl
+                ? `${perFeedMl} ml × ${feedsToday} feeds`
+                : "set an interval to split the day into feeds"}
+              {totalMlDay !== undefined && nutrition.enteralMl > 0 ? ` · ≈ ${Math.round(nutrition.enteralMl * wt)} ml/day` : ""}
+              {s.feedType ? ` · ${s.feedType}` : ""}
+              {s.feedRoute ? ` via ${s.feedRoute}` : ""}
+              {clockLabel ? (
+                <span className={feedOverdue ? "font-bold text-rose-200" : ""}>
+                  {" · "}
+                  {clockLabel}
+                  {feedOverdue && " — feed is late"}
+                </span>
+              ) : (
+                ""
+              )}
+              {plan.active ? " · set by the feed plan" : ""}
+            </p>
+          </div>
+
+          {/* IV */}
+          <div className="mt-3">
+            <div className="lbl !mb-1.5">IV fluids</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <NumField
+                label="IV ml/kg/day"
+                value={s.ivMlKgDay ?? undefined}
+                onChange={setNum("ivMlKgDay")}
+                min={0}
+                max={250}
+                step={5}
+                placeholder="enter"
+              />
+              <NumField
+                label="Dextrose %"
+                value={s.dextrosePct ?? undefined}
+                onChange={setNum("dextrosePct")}
+                min={0}
+                max={25}
+                step={0.5}
+                decimals={1}
+                placeholder="—"
+              />
+              <div className="flex flex-col justify-end rounded-xl border border-white/10 bg-slate-900/50 p-2 text-[10px] leading-relaxed text-slate-400">
+                <div>
+                  GIR <b className="text-slate-100">{girValue ?? "—"}</b> mg/kg/min
+                </div>
+                <div>{nutrition.dextroseG} g/kg/day dextrose</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Parenteral nutrition */}
+          <div className="mt-3">
+            <div className="lbl !mb-1.5">Parenteral nutrition</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <NumField
+                label="Amino acids g/kg/day"
+                value={s.aminoAcid ?? undefined}
+                onChange={setNum("aminoAcid")}
+                min={0}
+                max={6}
+                step={0.1}
+                decimals={1}
+                placeholder="—"
+              />
+              <NumField
+                label="Lipid g/kg/day"
+                value={s.lipid ?? undefined}
+                onChange={setNum("lipid")}
+                min={0}
+                max={6}
+                step={0.1}
+                decimals={1}
+                placeholder="—"
+              />
+              <div className="flex flex-col justify-end rounded-xl border border-white/10 bg-slate-900/50 p-2 text-[10px] leading-relaxed text-slate-400">
+                <div>
+                  Protein <b className="text-slate-100">{nutrition.totalProtein}</b> g/kg/day
+                </div>
+                <div>
+                  {nutrition.fortified
+                    ? `fortified ${s.fortificationAmount} ${s.fortificationAmountUnit ?? "sachet"} × ${nutrition.fortDosesPerDay}/day`
+                    : "not fortified"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* The day's total, against the target for this baby */}
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="lbl !mb-0">
+                Total today {totalFluidsShown} ml/kg/day
+                {totalMlDay !== undefined ? ` ≈ ${totalMlDay} ml` : ""}
+              </div>
+              <div className="text-[10px] text-slate-500">{nutrition.targetsBasis}</div>
+            </div>
+            <div className="mt-2 grid gap-3 lg:grid-cols-3">
+              <TargetRow label="Fluids" value={nutrition.totalFluids} target={nutrition.fluidsTarget} unit="ml/kg/d" />
+              <TargetRow label="Energy" value={kcalValue ?? 0} target={nutrition.kcalTarget} unit="kcal/kg/d" />
+              <TargetRow label="Protein" value={nutrition.totalProtein} target={nutrition.proteinTarget} unit="g/kg/d" decimals={2} />
+            </div>
+          </div>
+
+          {/* The guideline, as one sentence, with the reasoning behind it */}
+          <details className="mt-3 border-t border-white/10 pt-2">
+            <summary className="cursor-pointer text-[10px] leading-relaxed text-slate-400">
+              Guideline for {guide.band?.label ?? "this baby"} on day {dol}: feeds {guide.fields.enteralMlKgDay} · IV{" "}
+              {guide.fields.ivMlKgDay} · D{guide.fields.dextrosePct}% · amino acids {guide.fields.aminoAcid} · lipid{" "}
+              {guide.fields.lipid} · {guide.fields.feedFreq} · step up {guide.fields.feedIncrementMlKgDay} tomorrow
+              {guide.fields.fortifierProductId ? ` · fortify ${guide.fields.fortificationAmount} sachet × ${guide.fields.fortificationDosesPerDay}` : ""}
+              {" — why?"}
+            </summary>
+            <ul className="mt-2 space-y-1 pl-4 text-[10px] leading-relaxed text-slate-400">
+              <li>Feeds: {guide.why.enteralMlKgDay}</li>
+              <li>Fluids: {guide.why.tfiMlKgDay}</li>
+              <li>IV: {guide.why.ivMlKgDay}</li>
+              <li>Dextrose: {guide.why.dextrosePct}</li>
+              <li>Amino acids: {guide.why.aminoAcid}</li>
+              <li>Lipid: {guide.why.lipid}</li>
+              <li>Interval: {guide.why.feedFreq}</li>
+              {guide.notes.map((note, i) => (
+                <li key={i} className="text-slate-300">
+                  {note}
+                </li>
               ))}
             </ul>
-          )}
-        </div>
-
-        {/* --- against the target ------------------------------------------ */}
-        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/50 p-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div className="text-xs font-black text-slate-100">Against the target</div>
-            <div className="text-[10px] text-slate-400">{nutrition.targetsBasis}</div>
-          </div>
-          <div className="mt-2 grid gap-3 lg:grid-cols-3">
-            <TargetRow
-              label="Total fluids"
-              value={nutrition.totalFluids}
-              target={nutrition.fluidsTarget}
-              unit="ml/kg/d"
-              note={nutrition.feedPlan.active ? "set by the feed plan" : `enteral ${nutrition.enteralMl} + IV ${nutrition.ivMl}`}
-            />
-            <TargetRow
-              label="Energy"
-              value={kcalValue ?? 0}
-              target={nutrition.kcalTarget}
-              unit="kcal/kg/d"
-              note={`enteral ${nutrition.enteralKcal} + IV ${nutrition.ivKcal}`}
-            />
-            <TargetRow
-              label="Protein"
-              value={nutrition.totalProtein}
-              target={nutrition.proteinTarget}
-              unit="g/kg/d"
-              decimals={2}
-              note={`milk ${nutrition.enteralProtein} + AA ${nutrition.aaProtein}`}
-            />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2 text-[10px]">
-            <DeltaChip actual={nutrition.totalFluids} target={nutrition.fluidsTarget} />
-            <DeltaChip actual={kcalValue ?? 0} target={nutrition.kcalTarget} />
-            <DeltaChip actual={nutrition.totalProtein} target={nutrition.proteinTarget} decimals={2} />
-            {clockLabel && (
-              <span className={`flex items-center gap-1 font-bold ${feedOverdue ? "text-rose-200" : "text-slate-400"}`}>
-                <Clock size={11} /> {clockLabel}
-                {feedOverdue && " — feed is late"}
-              </span>
-            )}
-          </div>
+          </details>
         </div>
 
         {nutrition.warnings.length > 0 && (

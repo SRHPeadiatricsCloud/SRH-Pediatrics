@@ -19,6 +19,36 @@ Rules:
 
 ---
 
+## 3.6.0
+
+New features, so the minor segment moves. Feeds & fluids cut down: the same
+information, far less on screen at once.
+
+### Changed
+
+- **One card instead of two.** The prescription and the target comparison were
+  separate cards repeating each other's numbers. They are now a single "Today"
+  card: the order at the top, the day's total against the target underneath.
+- **The inputs are grouped the way an order is written** — Feeds (volume, per
+  feed, interval), IV fluids (volume, dextrose), Parenteral nutrition (amino
+  acids, lipid) — instead of one undifferentiated 3×3 grid of identical boxes.
+- **Buttons on the daily surface fell from 33 to 17.** The eight per-field
+  "guideline → use" links are gone; the guideline is one sentence with a single
+  "Use the guideline" button, and the per-field reasoning moved behind "why?".
+- **Two fields left the daily surface.** "Increase planned tomorrow" only means
+  anything to the feed plan, and the total-fluids box was a readout sitting
+  among editable fields; the total is now one line above the target bars.
+- **Feed interval is a select rather than six chips.**
+- **Every target bar now states its own gap** ("30 short"), so the separate row
+  of delta chips was redundant and is gone.
+
+### Fixed
+
+- A gap of 30 read as "30.0 short". Whole numbers no longer carry an empty
+  decimal.
+
+---
+
 ## 3.5.0
 
 New features, so the minor segment moves. The protocol figures can now be set
