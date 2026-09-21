@@ -207,7 +207,7 @@ export function VitalsTab({
       <div className="lg:col-span-2">
         <Section
           title="Quick observation round"
-          sub="Pre-filled with the last set - tap ± only for what changed, then save."
+          sub="Pre-filled with the last set."
           right={
             <div className="flex items-center gap-2">
               <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on</span>
@@ -696,7 +696,7 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
           />
         </div>
         <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2 text-[10px] leading-relaxed text-cyan-100">
-          <b>Therapy day is medicine-specific.</b> For an existing or transferred case, set the first-dose date for each antibiotic below. A medicine started three days ago will show D4; a medicine started today will show D1.
+          <b>Therapy day is medicine-specific.</b> Set the first-dose date for each antibiotic.
         </div>
         <div className="lbl mt-4 mb-1">Running medications - current as of now</div>
         <div className="space-y-2">
@@ -1026,7 +1026,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
           />
           {summaryEdited && (
             <p className="mt-1 text-[10px] text-emerald-200">
-              Your note is kept — the generated summary will not overwrite it.
+              Your note is kept.
             </p>
           )}
           <div className="lbl mt-3 mb-1">Synthesis</div>
@@ -1034,7 +1034,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
         </Section>
         <Section
           title="Handover action list"
-          sub="Tap a preset to add it as editable text - alter freely before signing."
+          sub="Presets are editable text."
         >
           <div className="lbl mb-1">Quick add (tapped text can be edited below)</div>
           <div className="flex flex-wrap gap-1.5">

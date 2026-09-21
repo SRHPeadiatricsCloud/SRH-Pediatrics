@@ -178,7 +178,7 @@ function ArchivePrint() {
 
         {ready && selected.length === 0 && !error && (
           <div className="card p-6 text-center text-sm text-slate-400">
-            No babies match this export. Pick a day or month from the discharge register.
+            No babies match this export.
           </div>
         )}
       </div>

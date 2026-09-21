@@ -355,7 +355,7 @@ export default function BoardClient() {
           <section className="card mt-5 p-4">
             <h3 className="text-sm font-black text-amber-200">Recently deleted</h3>
             <p className="mb-3 text-[11px] text-slate-400">
-              Hidden from the live board. Restore brings them back. A local backup is always kept.
+              Hidden from the board. A local backup is kept.
             </p>
             <div className="space-y-1.5">
               {deleted.map((b) => (

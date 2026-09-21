@@ -562,9 +562,7 @@ export function PediatricEmergencyTriage({
         )}
       </div>
       <p className="text-[10px] text-slate-500">
-        Based on the attached Pediatric Emergency Triage Classification form (PAT + ABCDE + final physiological
-        category + Level 1–5). Auto-classification supports—not replaces—clinical judgement; manual category and
-        level remain available.
+        PAT + ABCDE + Level 1–5. Supports—not replaces—clinical judgement.
       </p>
     </div>
   );

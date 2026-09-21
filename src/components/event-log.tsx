@@ -112,7 +112,7 @@ export function EventLogTab({
     <div className="space-y-4">
       <Section
         title="NICU Event Log — MRD/089 — Color-coded as per unit sheet"
-        sub="Same order and colors as paper: Ventilation → CPAP → Surfactant → Nasal Flow → Caffeine → UVC → PICC → NS Boluses → Antibiotics → Blood Cultures → Event → First/Full Feed → HMF → PO Feeds → DBF → NEC → CUS1-3 → ECHO1-2 → ROP Screen 1-2 → Phototherapy"
+        sub="Same order and colours as the paper sheet"
         right={
           <div className="flex items-center gap-2">
             <span className="hidden text-[10px] text-emerald-300 sm:inline">Auto-save on blur — Save to cloud</span>
@@ -266,12 +266,12 @@ export function EventLogTab({
           })}
         </div>
 
-        <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-[11px] text-slate-300">
-          <p className="font-bold text-cyan-200">How this matches the paper:</p>
-          <p className="mt-1 text-[11px] text-slate-400">
+        <details className="quiet mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-[11px] text-slate-300">
+          <summary>How this matches the paper</summary>
+          <p className="text-[11px] text-slate-400">
             Order left→right as on MRD/089 sheet: VENTILATION (sky blue) → CPAP (green) → SURFACTANT (peach) → NASAL FLOW (lavender) → CAFFEINE (pink) → UVC (yellow) → PICC (pale yellow) → NS BOLUSES (amber) → ANTIBIOTICS (amber) → BLOOD CULTURES (gray) → EVENT (yellow) → FIRST FEED / FULL FEED / HMF / PO FEEDS / DBF / NEC (light green) → CUS1-3 (stone) → ECHO1-2 (light blue) → ROP SCREEN 1-2 (sage) → PHOTOTHERAPY (amber). DATE/STARTING and RESULT/ENDING rows replicate the handwritten log.
           </p>
-        </div>
+        </details>
       </Section>
 
       <Section title="Event log history" sub="Recent saves">

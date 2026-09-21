@@ -72,8 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             iOS · Android · Windows
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
-            Install as an app — iOS: Share → Add to Home Screen · Android: Install app · Windows: install from the
-            browser bar · Use the 🔗 Share link button to invite your team
+            Install as an app · use the 🔗 Share link to invite your team
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
             V.{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.

@@ -113,7 +113,7 @@ export function WeightInput({
         </label>
         {outOfRange && (
           <span className="font-semibold text-amber-300">
-            ⚠ Outside standard range — enable manual override to keep this value.
+            ⚠ Outside standard range — enable manual override.
           </span>
         )}
       </div>

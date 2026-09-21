@@ -100,8 +100,7 @@ export function DischargeModal({
           {baby.motherName ? ` · Mother: ${baby.motherName}` : ""}
         </p>
         <p className="mt-2 text-[11px] text-slate-400">
-          The card leaves the live board and moves to the discharge register, where it stays reviewable, archivable and
-          exportable as a PDF for MRD.
+          Moves to the discharge register; still exportable as a PDF for MRD.
         </p>
 
         <label className="lbl mt-4 mb-1 block">Outcome</label>

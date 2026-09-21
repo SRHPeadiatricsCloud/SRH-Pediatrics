@@ -167,7 +167,7 @@ export default function RosterPage() {
       const count = Object.keys(parsed.data).length;
       if (!count) {
         setImportError(
-          "No dated duty lines found. Expected lines like “01/09/2026  NICU: Dr. X  PICU: Dr. Y” or a sheet with a Day column. You can still add days manually below.",
+          "No dated duty lines found. Add days manually below.",
         );
       }
       setPreview(parsed.data);
@@ -272,7 +272,7 @@ export default function RosterPage() {
           {/* month label strip */}
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
             <span className="text-lg font-black uppercase tracking-widest text-fuchsia-300">{monthLabel(month)}</span>
-            <span className="text-[11px] text-slate-500">tap any day to edit · tap Import to load a roster file</span>
+            <span className="text-[11px] text-slate-500">tap a day to edit</span>
             <div className="ml-auto flex flex-wrap gap-1.5">
               {ROLE_KEYS.map((k) => {
                 const Icon = ROLE_ICON[k];
@@ -449,7 +449,7 @@ export default function RosterPage() {
 
         {locked && (
           <p className="mt-3 text-center text-[11px] text-amber-200/90">
-            🔒 View-only — sign your name in “Signed as” to edit or import the roster.
+            🔒 View-only — sign your name in “Signed as” to edit.
           </p>
         )}
       </div>

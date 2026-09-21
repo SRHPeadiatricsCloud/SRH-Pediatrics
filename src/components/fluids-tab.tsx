@@ -801,10 +801,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <div className="mt-4 rounded-lg border border-white/10 bg-slate-900/50 p-2">
             <div className="text-[11px] font-black text-slate-200">Feed plan {plan.active ? "— active" : "— off"}</div>
             <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-              Optional. Drives the enteral volume from a total fluid intake target instead of typing it.{" "}
-              <b className="text-slate-200">Static</b>: the whole TFI is enteral, divided across the day.{" "}
-              <b className="text-slate-200">Increasing</b>: enter the TFI and the step-up, then choose whether the step-up is
-              given IV today or becomes tomorrow&apos;s feed target. Editing the feed volume above releases the plan.
+              Drives the enteral volume from a TFI target. Editing the feed volume above turns it off.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Chip label="Static" on={planMode !== "increasing"} onClick={() => setField("feedPlan", "static")} />
@@ -887,8 +884,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             Fortification {nutrition.fortified ? `— ${s.fortificationAmount} ${s.fortificationAmountUnit ?? "sachet"} × ${nutrition.fortDosesPerDay}/day` : "— none recorded"}
           </summary>
           <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-            Record exactly as prepared — product, amount, and the volume it was mixed into. Nothing is rescaled: only the feeds
-            the fortifier is actually given in are uplifted.
+            Record exactly as prepared — nothing is rescaled.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Picking a stocked product fills the per-unit values, the dose unit
@@ -1042,11 +1038,8 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             Protocol figures {usingProtocol ? "— using your figures" : "— published values"}
           </summary>
           <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-            The published figures are guidance, and units differ. Any of them can be replaced for{" "}
-            <b className="text-slate-200">this baby</b> or for the <b className="text-slate-200">whole unit</b>. This
-            baby&apos;s figure beats the unit&apos;s, which beats the published value; leave a box empty to fall through to
-            the layer below, and the placeholder shows what that gives. Suggestions, targets and the feeding pathway all
-            follow.
+            Any figure can be set for <b className="text-slate-200">this baby</b> or the{" "}
+            <b className="text-slate-200">whole unit</b>. Baby beats unit, unit beats published; empty falls through.
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip label="This baby only" on={protocolScope === "baby"} onClick={() => setProtocolScope("baby")} />
@@ -1096,7 +1089,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                     Clear this baby&apos;s figures
                   </button>
                 )}
-                <span className="text-[10px] text-slate-500">Saved with the chart, and applies to this baby only.</span>
+                <span className="text-[10px] text-slate-500">This baby only.</span>
               </>
             ) : (
               <>
@@ -1272,12 +1265,14 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         </div>
       </Section>
 
-      <p className="px-1 text-[10px] leading-relaxed text-slate-500">
-        Guideline values are drawn from published preterm nutrition guidance (Patel et al. <i>Nutrients</i> 2015, ESPGHAN/AAP
-        enteral and parenteral targets, UC Davis and CHOP NICU nutrition protocols, WHO KMC guidance) and live in{" "}
-        <code>src/lib/feed-guide.ts</code>{usingProtocol ? ", with this baby's unit protocol applied on top" : ""}. They are
-        decision support only — the prescription is the clinician&apos;s, and every figure can be changed on this tab.
-      </p>
+      <details className="quiet px-1">
+        <summary>Sources</summary>
+        <p className="text-[10px] leading-relaxed text-slate-500">
+          Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
+          protocols · WHO KMC guidance, in <code>src/lib/feed-guide.ts</code>
+          {usingProtocol ? ", with this unit's protocol applied" : ""}. Decision support only — every figure is editable.
+        </p>
+      </details>
     </div>
   );
 }

@@ -185,7 +185,7 @@ export function DailyProgressTab({
         {/* ---------------- calorie auto-calculator ---------------- */}
         <Section
           title="Energy & protein auto-calculator"
-          sub="Computed live from the feed type, volume and TPN prescription"
+          sub="Computed live from the prescription"
         >
           <div className="space-y-1.5 text-xs">
             <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml`} />
@@ -258,7 +258,7 @@ export function DailyProgressTab({
         <div className="lg:col-span-2">
           <Section
             title="Daily progress — auto-compiled"
-            sub="Weight gain / loss, cumulative loss from birth weight, velocity and calories for every day"
+            sub="Gain, cumulative loss, velocity and calories"
             right={
               <div className="flex items-end gap-1.5">
                 <div className="w-32">
@@ -354,7 +354,7 @@ export function DailyProgressTab({
                   {rows.length === 0 && (
                     <tr>
                       <td colSpan={10} className="p-4 text-center text-slate-400">
-                        No daily weights yet — enter today&apos;s weight and tap “Compile today”.
+                        No daily weights yet.
                       </td>
                     </tr>
                   )}
@@ -362,11 +362,10 @@ export function DailyProgressTab({
               </table>
             </div>
 
-            <p className="mt-2 text-[10px] text-slate-400">
-              Auto-rules (AAP / NNF / IAP): acceptable early loss ≤10% term and ≤15% preterm by day 5–7 · regain
-              birth weight by day 10–14 · target velocity 15–20 g/kg/day · energy 110–135 kcal/kg/day · protein
-              3.5–4 g/kg/day.
-            </p>
+            <details className="quiet"><summary>Auto-rules · AAP / NNF / IAP</summary><p className="text-[10px] text-slate-400">
+              Acceptable early loss ≤10% term and ≤15% preterm by day 5–7 · regain birth weight by day 10–14 ·
+              velocity 15–20 g/kg/day · energy 110–135 kcal/kg/day · protein 3.5–4 g/kg/day.
+            </p></details>
           </Section>
         </div>
       </div>

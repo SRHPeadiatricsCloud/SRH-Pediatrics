@@ -54,8 +54,7 @@ export function DeleteConfirmModal({
           {baby.motherName ? ` · Mother: ${baby.motherName}` : ""}
         </p>
         <p className="mt-2 text-[11px] text-amber-200">
-          The card leaves the unit board but is <b>not erased immediately</b>. You will get a 60-second Undo, then it
-          stays in Recently deleted. A local backup is saved on this device before the delete.
+          Leaves the board but is <b>not erased</b>. 60-second Undo, then Recently deleted.
         </p>
         <label className="lbl mt-4 mb-1 block">Type YES to confirm delete</label>
         <input
@@ -332,9 +331,7 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
               schema v{BACKUP_SCHEMA_VERSION} · app {APP_VERSION}
             </span>
             <span>
-              Unchanged data is skipped, snapshots trigger on tab hide / close and 5 s after a save, and retention is
-              tiered — last 6 frequent, then hourly for 24 h, then daily for 7 days, then weekly. Pre-delete snapshots
-              are always kept.
+              Unchanged data is skipped; retention is tiered.
             </span>
           </div>
           <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-3 sm:grid-cols-2">
@@ -401,7 +398,7 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
               />
             </div>
             <p className="text-[10px] text-slate-500">
-              Tip: Keep tiered + 15 min + dedup ON for best space saving without losing data. Pre-edit and pre-delete are always kept.
+              Pre-edit and pre-delete snapshots are always kept.
             </p>
           </div>
           </div>
@@ -410,7 +407,7 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
 
       {open && (
         <div className="mt-3 max-h-80 space-y-1.5 overflow-auto">
-          {rows.length === 0 && <p className="text-xs text-slate-400">No local backups yet — they appear after the first edit.</p>}
+          {rows.length === 0 && <p className="text-xs text-slate-400">No local backups yet.</p>}
           {rows.map((r) => (
             <div key={r.id ?? r.at} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-2 py-1.5 text-[11px]">
               <span className="rounded bg-white/10 px-1.5 py-0.5 font-bold uppercase text-cyan-300">{r.reason}</span>

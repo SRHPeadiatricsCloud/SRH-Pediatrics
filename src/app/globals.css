@@ -7980,6 +7980,20 @@ html:not(.light) .chip-on {
    a print block placed earlier in the file loses and the sheet comes out as
    near-white text on white paper — i.e. blank.
    ============================================================ */
+/* --- subtle disclosure: long rationale collapses behind a one-line trigger --- */
+details.quiet { margin-top: 10px; }
+details.quiet > summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; color: #7d8ba1; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+details.quiet > summary::-webkit-details-marker { display: none; }
+details.quiet > summary::after { content: "+"; margin-left: auto; font-size: 12px; opacity: .65; }
+details.quiet[open] > summary::after { content: "\2212"; }
+details.quiet[open] > summary { margin-bottom: 8px; }
+details.quiet > summary svg { flex: 0 0 auto; }
+html.light details.quiet > summary { color: #52698a; }
+/* a box that is already a flex/grid card can still be a disclosure */
+details.dose-disclaimer, details.bp-limitations { display: block; }
+details.bp-limitations > summary { display: flex; align-items: center; gap: 9px; }
+details.dose-disclaimer > summary { display: flex; align-items: center; gap: 9px; }
+
 @media print {
   /* Browsers drop backgrounds unless colour adjustment is forced. Shadows
      print as grey smudges. The ink baseline uses the universal selector on

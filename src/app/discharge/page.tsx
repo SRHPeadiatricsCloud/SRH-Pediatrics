@@ -114,8 +114,7 @@ export default function DischargePage() {
             <div>
               <h1 className="text-lg font-black text-white">Discharge register &amp; MRD archive</h1>
               <p className="mt-0.5 text-[11px] text-slate-400">
-                Every baby marked discharged, grouped by the day they left. Export one record, a whole day, or a
-                consolidated month.
+                Grouped by the day they left.
               </p>
             </div>
             <Link href="/" className="btn-ghost">
@@ -164,7 +163,7 @@ export default function DischargePage() {
                 : "Nothing matches that search."}
             </p>
             <p className="mt-1 text-[11px] text-slate-500">
-              Use the discharge button on a baby card on the live board — it sits next to delete.
+              Use the discharge button on a baby card.
             </p>
           </div>
         )}

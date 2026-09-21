@@ -309,7 +309,7 @@ function AdmitForm() {
           </div>
         </div>
 
-        <Section title="Case timeline" sub="Set this before entering an older or transferred baby. It prevents every treatment from being labelled D1.">
+        <Section title="Case timeline" sub="Set for an older or transferred baby.">
           <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-slate-900/35 p-1">
             <button type="button" className={`rounded-lg px-3 py-2 text-left text-xs font-bold ${admissionMode === "new" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-400"}`} onClick={() => setAdmissionMode("new")}>
               New admission<small className="mt-0.5 block text-[9px] font-normal opacity-75">Birth / first treatment today</small>
@@ -323,8 +323,7 @@ function AdmitForm() {
             <label className="block"><span className="lbl mb-1 block">Record as of</span><input className="inp" type="datetime-local" value={recordedAt} onChange={(event) => setRecordedAt(event.target.value)} /></label>
           </div>
           <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] text-cyan-100">
-            {dayOfLifePreview(birthDateTime, recordedAt) ? <>Calculated day of life at entry: <b>DOL {dayOfLifePreview(birthDateTime, recordedAt)}</b>.</> : <>Check the birth and record dates — the record date must be after birth.</>}
-            {admissionMode === "existing-transfer" && <span className="ml-1 text-slate-400">After saving, set each medicine&apos;s first-dose date in Drugs &amp; medications.</span>}
+            {dayOfLifePreview(birthDateTime, recordedAt) ? <>Calculated day of life at entry: <b>DOL {dayOfLifePreview(birthDateTime, recordedAt)}</b>.</> : <>Record date must be after birth.</>}
           </div>
         </Section>
 
@@ -584,7 +583,7 @@ function AdmitForm() {
           {isNeo && (
             <Section
               title="Antenatal & perinatal risk factors"
-              sub="Tap a preset to add it as editable text — add extra detail before admitting."
+              sub="Presets are editable text."
             >
               <EditableListField
                 options={ANTENATAL}
@@ -598,7 +597,7 @@ function AdmitForm() {
 
           <Section
             title={`Admission diagnoses — ${u.short}`}
-            sub="Core multi-select · pick many systems · selections aggregate and are saved on admit"
+            sub="Multi-select"
           >
             <div className="mb-3 flex flex-wrap gap-1.5">
               {systems.map((s) => {
@@ -651,7 +650,7 @@ function AdmitForm() {
           </button>
           <span className="text-xs text-slate-400">
             {locked
-              ? "View-only — type your name in “Signed as” (top bar) to enable admitting."
+              ? "View-only — sign your name to admit."
               : weightInvalid
                 ? "Enter measured birth weight to continue"
                 : `${dx.length} diagnoses · ${antenatal.length + resus.length} risk factors`}

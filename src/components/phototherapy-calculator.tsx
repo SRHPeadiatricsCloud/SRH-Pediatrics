@@ -162,8 +162,7 @@ export function PhototherapyNomogramCalculator() {
             <b className="text-white">SRH Bilirubin Nomograms — MRD/090, MRD/091, &gt;35-week Phototherapy & Exchange</b>
           </p>
           <p className="mt-1 leading-relaxed text-slate-400">
-            Auto-selects the correct pathway by gestation, weight, ABO or Rh status, and added neurotoxicity risk factors.
-            For the term / near-term pathway, the Bhutani chart notes are shown below the graph in a clean footer strip. Charts now show <b className="text-slate-200">both mg/dL and µmol/L</b> with color-coded hologram styling.
+            Pathway chosen from gestation, weight and risk factors. Charts show <b className="text-slate-200">mg/dL and µmol/L</b>.
           </p>
         </div>
       </div>
@@ -240,10 +239,8 @@ export function PhototherapyNomogramCalculator() {
             <p className="text-xs text-slate-400">No ABO or Rh incompatibility flag and no extra clinical risk factor selected.</p>
           )}
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] text-slate-400">
-            <p>
-              <b className="text-slate-200">Auto-selection:</b> MRD/090 is used first for birth weight under 1250 g. MRD/091 is used for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks, the term chart chooses lower-, medium-, or higher-risk lines using gestation plus the entered risk flags.
-            </p>
-            <p className="mt-2">{selection.rationale}</p>
+            <p>{selection.rationale}</p>
+            <details className="quiet"><summary>Auto-selection rules</summary><p>MRD/090 first for birth weight under 1250 g. MRD/091 for infants under 35 weeks with birth weight 1250 g or above. At ≥35 weeks the term chart chooses the lower-, medium- or higher-risk line from gestation plus the entered risk flags.</p></details>
           </div>
         </div>
       </div>

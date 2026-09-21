@@ -19,6 +19,41 @@ Rules:
 
 ---
 
+## 3.7.0
+
+New release of the presentation layer, so the minor segment moves. The app
+carried a paragraph of explanation above most controls. The explanations are
+now short, and the long ones are collapsed.
+
+### Changed
+
+- **Prose cut by a fifth.** A compiler-walked count of every string this app
+  renders went from 5,932 words to 4,755 (`scripts/measure-prose-src.ts`).
+- **Sentences you have to read: 94 to 29.** Runs of 12 words or more fell from
+  2,155 words to 701 — a 67% drop in text that interrupts a glance.
+- **Long rationale now sits behind a one-line trigger.** Safety disclaimers,
+  source lists, the BP evidence panel, the auto-rules on the growth chart, the
+  phototherapy auto-selection rules and the event-log column order all moved
+  into collapsed `<details>`. Nothing clinical was deleted.
+- **Hero paragraphs removed** from the drug-dose and calculator workspaces, and
+  the step-by-step "choose this, then enter that" captions under card headings.
+- **Helper text reduced to a phrase** — "Choose the row that matches the child.
+  Confirm route and maximum dose." became "From the product label."
+
+### Added
+
+- `details.quiet` — one shared disclosure style used wherever long text was
+  folded away. Placed before the print block so print styles still win.
+- `scripts/measure-prose-src.ts` — walks the TSX AST and reports rendered
+  word counts, so density can be checked rather than guessed.
+
+### Fixed
+
+- `package-lock.json` was missing the `jsdom` and `esbuild` devDependencies
+  that `package.json` declares; `npm install` now syncs it.
+
+---
+
 ## 3.6.0
 
 New features, so the minor segment moves. Feeds & fluids cut down: the same

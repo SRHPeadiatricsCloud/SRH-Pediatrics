@@ -211,12 +211,12 @@ export function OnCallCard({ compact = false }: { compact?: boolean }) {
 
       {!locked && !editing && filled === 0 && (
         <p className="border-t border-white/10 px-4 py-2 text-[11px] text-amber-200/90">
-          No roster for {day} yet — tap <b>Edit roster</b> (or carry forward yesterday) and type the names on duty.
+          No roster for {day} yet — tap <b>Edit roster</b>.
         </p>
       )}
       {locked && (
         <p className="border-t border-white/10 px-4 py-2 text-[11px] text-slate-500">
-          Sign your name in “Signed as” to update the duty roster.
+          Sign your name in “Signed as” to edit.
         </p>
       )}
       {/* keep name referenced for signed attribution on save */}

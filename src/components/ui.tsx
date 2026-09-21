@@ -1113,8 +1113,7 @@ export function LockBanner() {
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2 text-[11px] font-semibold text-amber-200">
         <LockIcon size={12} strokeWidth={2.5} aria-hidden />
         <span>
-          <b>View-only privacy mode.</b> Clinical content is blurred until you sign in with your <b>employee code</b>
-          {" "}(top-right). The navigation tabs remain available.
+          <b>View-only.</b> Sign in with your <b>employee code</b> to see clinical content.
         </span>
       </div>
     </div>
