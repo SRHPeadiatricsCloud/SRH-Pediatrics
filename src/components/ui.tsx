@@ -363,6 +363,7 @@ export function NumField({
   unit = "",
   decimals = 0,
   placeholder = "—",
+  readOnly = false,
 }: {
   label: string;
   value: number | undefined | null;
@@ -373,6 +374,12 @@ export function NumField({
   unit?: string;
   decimals?: number;
   placeholder?: string;
+  /**
+   * The value is driven by something else (e.g. the feed plan sets the enteral
+   * volume). Editing it would be silently discarded, so the field is locked and
+   * the reason is shown instead of pretending it can be typed into.
+   */
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = value === undefined || value === null || Number.isNaN(value) ? "" : String(value);
@@ -388,6 +395,7 @@ export function NumField({
     onChange(Math.min(max, Math.max(min, Number(n.toFixed(decimals)))));
   };
   const nudge = (delta: number) => {
+    if (readOnly) return;
     const base = editing && draft?.trim() ? Number(draft) : value ?? min;
     const safeBase = Number.isNaN(base) ? min : base;
     onChange(Math.min(max, Math.max(min, Number((safeBase + delta).toFixed(decimals)))));
@@ -400,16 +408,21 @@ export function NumField({
         <button
           type="button"
           onClick={() => nudge(-step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={readOnly}
+          aria-hidden={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 disabled:active:scale-100"
         >
           −
         </button>
         <input
           inputMode="decimal"
-          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed read-only:text-slate-400"
           value={editing ? draft : shown}
           placeholder={placeholder}
-          onFocus={() => setDraft(shown)}
+          readOnly={readOnly}
+          title={readOnly ? "Set by the feed plan — change the TFI target or the increase instead" : undefined}
+          onFocus={() => { if (!readOnly) setDraft(shown); }}
           onChange={(e) => {
             const raw = e.target.value;
             // Allow a genuinely empty field and a single decimal point while editing.
@@ -438,7 +451,10 @@ export function NumField({
         <button
           type="button"
           onClick={() => nudge(step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={readOnly}
+          aria-hidden={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 disabled:active:scale-100"
         >
           +
         </button>

@@ -487,6 +487,9 @@ export function resolveFeedPlan(
     f.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
   const notes: string[] = [];
   const enteredIv = f.ivMlKgDay !== undefined ? clampMl(f.ivMlKgDay) : 0;
+  if (f.ivMlKgDay !== undefined && f.ivMlKgDay > 250) {
+    notes.push(`IV ${f.ivMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
+  }
   const inactive: FeedPlan = {
     active: false,
     mode,
@@ -571,14 +574,28 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
 
   // --- Feed plan: TFI target split into today's enteral + IV volumes ---
-  const plan = resolveFeedPlan(f);
+  // The weight goes in so per-feed volumes resolve for every caller, not just
+  // the feed tab that happens to pass one.
+  const weightKg = weightG != null && weightG > 0 ? weightG / 1000 : undefined;
+  const plan = resolveFeedPlan(f, weightKg);
+
+  const warnings: string[] = [];
+  // The plan's own findings (TFI clamped, total above target, no frequency to
+  // split the day) have to travel with the calculation: the discharge, print
+  // and daily-progress views only ever see `warnings`, never `plan.notes`.
+  warnings.push(...plan.notes);
 
   // --- Input sanitization with physiological limits ---
   const rawEnteral = plan.active && plan.enteralMlKgDay !== undefined ? plan.enteralMlKgDay : f.enteralMlKgDay ?? 0;
   const enteralMl = clampMl(rawEnteral); // cap 250 ml/kg/day
+  if (rawEnteral > 250) {
+    warnings.push(`Enteral ${rawEnteral} ml/kg/day is above the 250 cap — the calculation used 250, check the entry`);
+  }
 
   const rawIv = plan.active && plan.ivMlKgDay !== undefined ? plan.ivMlKgDay : f.ivMlKgDay ?? 0;
   const ivMl = clampMl(rawIv);
+  // An IV entry above the cap is already reported by the feed plan's notes,
+  // which travel with these warnings — no second copy of the same message.
 
   // GIR: an explicit manual value wins. Otherwise DERIVE it from dextrose% and
   // the IV volume, so IV energy is never silently dropped on the screens that
@@ -608,7 +625,20 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   const lipidG = Math.max(0, Math.min(6, rawLipid)); // lipid max 3-4 g/kg/day
   const lipidKcal = Math.round(lipidG * 9 * 10) / 10; // 9 kcal/g
 
-  const warnings: string[] = [];
+  // --- Feed type: the density behind every enteral kcal and gram of protein --
+  // An unrecognised feed type silently falls back to EBM values, which is the
+  // single quietest way to get the wrong answer on this screen. Say so.
+  if (f.feedType === undefined || f.feedType.trim() === "") {
+    if (enteralMl > 0) {
+      warnings.push(
+        `No feed type chosen — the ${enteralMl} ml/kg/day of feeds is priced as EBM at ${density} kcal/ml and ${protPerMl} g protein/ml`,
+      );
+    }
+  } else if (!(feedType in KCAL_PER_ML)) {
+    warnings.push(
+      `"${feedType}" is not in the milk density table — using ${density} kcal/ml and ${protPerMl} g protein/ml. Pick a listed feed type or the energy and protein will be wrong`,
+    );
+  }
 
   // --- Fortification: uplift the milk density from the recorded preparation ---
   // The product sets the per-unit values; amount ÷ volume it was mixed into
@@ -621,10 +651,14 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   const kcalPerUnit = f.fortifierKcalPerUnit ?? fortProduct?.kcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
   const proteinPerUnit = f.fortifierProteinPerUnit ?? fortProduct?.proteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
   const fortified = fortAmount > 0;
+  if (fortified && /hmf|fortif/i.test(feedType)) {
+    warnings.push(
+      `Feed type "${feedType}" is already priced as fortified milk at ${density} kcal/ml — recording a fortifier as well counts it twice. Use plain EBM as the feed type, or remove the fortifier entry`,
+    );
+  }
 
   const fortFeedsPerDay = feedsPerDay(f.feedFreq);
   const fortDosesPerDay = fortified ? (f.fortificationDosesPerDay ?? fortFeedsPerDay ?? 1) : 0;
-  const weightKg = weightG != null && weightG > 0 ? weightG / 1000 : undefined;
   let fortFraction = fortified ? 1 : 0;
   if (fortified && fortFeedsPerDay && fortDosesPerDay > fortFeedsPerDay) {
     warnings.push(
@@ -642,17 +676,33 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
     fortProteinPerMl = (fortAmount * proteinPerUnit) / fortMixedMl;
     // How much of the day's enteral volume is actually the fortified mixture:
     // mixed volume × doses/day, which needs the weight to express per kg.
+    if (fortDosesPerDay === 1 && f.fortificationDosesPerDay === undefined && fortFeedsPerDay === undefined) {
+      warnings.push(
+        `"Times per day" is not set and "${f.feedFreq ?? "no frequency"}" gives no fixed number of feeds, so only 1 dose/day of fortifier has been counted — enter how many times a day it is given`,
+      );
+    }
     if (weightKg) {
       const fortifiedMlPerKgDay = (fortMixedMl * fortDosesPerDay) / weightKg;
-      if (fortifiedMlPerKgDay > enteralMl + 0.001) {
+      if (enteralMl <= 0) {
+        warnings.push(
+          "A fortifier is recorded but there is no enteral volume — enter the enteral ml/kg/day so its energy and protein can be counted",
+        );
+      } else if (fortifiedMlPerKgDay > enteralMl + 0.001) {
         warnings.push(
           `Fortifier mix volume ${fortMixedMl} ml × ${fortDosesPerDay} dose(s)/day exceeds the recorded enteral volume — the uplift is capped at the enteral volume`,
         );
       }
       fortFraction = enteralMl > 0 ? Math.min(1, fortifiedMlPerKgDay / enteralMl) : 0;
-    } else if (fortFeedsPerDay) {
-      // No weight on record: fall back to the share of feeds that are fortified.
-      fortFraction = Math.max(0, Math.min(1, fortDosesPerDay / fortFeedsPerDay));
+    } else {
+      // No weight on record: fall back to the share of feeds that are fortified,
+      // and say so — without a weight the fortified share cannot be checked
+      // against the enteral volume, so this is an upper bound.
+      fortFraction = fortFeedsPerDay
+        ? Math.max(0, Math.min(1, fortDosesPerDay / fortFeedsPerDay))
+        : 1;
+      warnings.push(
+        `No weight on record — the fortifier is credited to ${(fortFraction * 100).toFixed(0)}% of the enteral volume, which is an upper bound until the weight is entered`,
+      );
     }
     fortKcalPerMlEffective = fortKcalPerMl * fortFraction;
     fortProteinPerMlEffective = fortProteinPerMl * fortFraction;
@@ -695,6 +745,16 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
       `IV ${ivMl} ml/kg/day carries no energy here — enter dextrose% (or GIR) if the IV fluid contains dextrose`,
     );
   }
+  if ((f.dextrosePct ?? 0) > 0 && ivMl <= 0 && !f.girManual) {
+    warnings.push(
+      `Dextrose ${f.dextrosePct}% is recorded with no IV volume — the dextrose energy cannot be calculated until "IV ml/kg/d" is filled in`,
+    );
+  }
+  if (f.girManual && derivedGir > 0 && Math.abs(storedGir - derivedGir) >= 1) {
+    warnings.push(
+      `Manual GIR ${storedGir} mg/kg/min disagrees with ${derivedGir} derived from dextrose ${f.dextrosePct}% × IV ${ivMl} ml/kg/day — one of the two is wrong`,
+    );
+  }
   if (totalKcal > 0 && totalKcal < 80) warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
   if (totalKcal > 150) warnings.push(`High energy ${totalKcal} kcal/kg/day (>150) — exceeds target 110-135`);
   if (totalProtein > 0 && totalProtein < 2) warnings.push(`Low protein ${totalProtein} g/kg/day (<2) — inadequate for growth`);
@@ -703,6 +763,18 @@ export function calcNutrition(c: Clinical, weightG?: number): NutritionCalc {
   // Detect gross errors from old logic: if totalKcal >300 or protein >10 likely data entry error (e.g., ml/day entered as ml/kg/day)
   if (totalKcal > 300) warnings.push(`Grossly high energy ${totalKcal} — likely ml/day entered as ml/kg/day, please check weight and volumes`);
   if (totalProtein > 10) warnings.push(`Grossly high protein ${totalProtein} — likely unit error, check AA g/kg/day vs ml/kg/day`);
+
+  const totalFromInputs = Math.round((enteralMl + ivMl) * 10) / 10;
+  if (!plan.active && f.totalMlKgDay !== undefined && Math.abs(f.totalMlKgDay - totalFromInputs) > 1) {
+    warnings.push(
+      `Recorded total fluids ${f.totalMlKgDay} ml/kg/day does not match enteral ${enteralMl} + IV ${ivMl} = ${totalFromInputs} — check which one is current`,
+    );
+  }
+  if (f.kcalManual === true && f.kcal !== undefined && Math.abs(f.kcal - totalKcal) > 5) {
+    warnings.push(
+      `This chart carries a manual energy of ${f.kcal} kcal/kg/day but the inputs calculate ${totalKcal} — reset to automatic or correct the inputs`,
+    );
+  }
 
   const isAbnormal = warnings.length > 0;
 

@@ -509,7 +509,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   };
   // totalMlKgDay is what the board, the handover sheet and the print sheet all
   // read, so keep it in step with the plan instead of leaving a stale total.
-  const saveFluids = () => patch({ clinical: { fluids: { ...s, totalMlKgDay: nutrition.totalFluids, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
+  const saveFluids = () => patch({ clinical: { fluids: { ...s, ...(plan.active && plan.enteralMlKgDay !== undefined ? { enteralMlKgDay: plan.enteralMlKgDay } : {}), totalMlKgDay: nutrition.totalFluids, gir: girValue, kcal: kcalValue, feedVol: feedVolumeValue, girManual: manualDerived.gir, kcalManual: manualDerived.kcal, feedVolManual: manualDerived.feedVol } } });
 
   const girFlag: Flag = girValue === undefined || girValue === 0
     ? { key: "gir", label: "GIR waiting for dextrose% and IV ml/kg/day", sev: "info" }
@@ -549,9 +549,13 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
 
   const feedVolumeHint = manualDerived.feedVol
     ? "Manual override"
-    : intervalHours && wt > 0 && s.enteralMlKgDay !== undefined
-      ? `Auto from ${intervalHours} hourly feeds`
-      : "Choose an hourly frequency and enteral target";
+    : plan.active && plan.perFeedMl !== undefined
+      ? `Auto from the feed plan - ${plan.feedsPerDay} feeds/day`
+      : intervalHours && wt > 0 && s.enteralMlKgDay !== undefined
+        ? `Auto from ${intervalHours} hourly feeds`
+        : wt > 0
+          ? "Choose an hourly frequency and enteral target"
+          : "Needs a weight and an hourly frequency";
   return (
     <div className="grid gap-3">
       <Section
@@ -720,7 +724,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             {!plan.active && (
               <NumField label="Total fluids ml/kg/d (0-250)" value={s.totalMlKgDay ?? undefined} onChange={set("totalMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             )}
-            <NumField label={`Enteral ml/kg/d (0-250)${plan.active ? ` - plan sets ${plan.enteralMlKgDay}` : ""}`} value={plan.active ? plan.enteralMlKgDay : s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
+            <NumField label={`Enteral ml/kg/d (0-250)${plan.active ? ` - set by the feed plan (${plan.enteralMlKgDay})` : ""}`} value={plan.active ? plan.enteralMlKgDay : s.enteralMlKgDay ?? undefined} onChange={set("enteralMlKgDay")} min={0} max={250} step={1} placeholder="enter" readOnly={plan.active} />
             <NumField label="IV ml/kg/d (0-250) - entered by you" value={s.ivMlKgDay ?? undefined} onChange={set("ivMlKgDay")} min={0} max={250} step={1} placeholder="enter" />
             <NumField label="Dextrose % (0-25) for auto GIR" value={s.dextrosePct ?? undefined} onChange={set("dextrosePct")} min={0} max={25} step={0.5} decimals={1} placeholder="for auto GIR" />
             <NumField label="Amino acid g/kg/d (0-4.5, cap 6)" value={s.aminoAcid ?? undefined} onChange={set("aminoAcid")} min={0} max={6} step={0.1} decimals={1} placeholder="g/kg/d, not ml" />
@@ -744,7 +748,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
         </fieldset>
 
-        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ~ {Math.round(nutrition.totalFluids * wt)} ml/day ({nutrition.totalFluids} ml/kg/d = enteral {nutrition.enteralMl} + IV {nutrition.ivMl}) - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
+        <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total {wt > 0 ? `~ ${Math.round(nutrition.totalFluids * wt)} ml/day` : "per kg - no weight on record"} ({nutrition.totalFluids} ml/kg/d = enteral {nutrition.enteralMl} + IV {nutrition.ivMl}) - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
         {/* Every kcal and gram of protein, traced to its source. */}
         <div className="mt-3 grid gap-2 lg:grid-cols-2">
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-xs">
