@@ -57,7 +57,7 @@ export function DailyRoundChecklist({ detail, onNavigateTab }: DailyRoundCheckli
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200">
-            Level IIIB Daily Ward Round Check
+            Ward rounds check
           </h3>
         </div>
         <div className="flex items-center gap-2 text-[11px]">

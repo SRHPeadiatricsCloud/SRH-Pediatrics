@@ -370,6 +370,35 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       feedVolManual: false,
     }));
 
+  /** 1-Tap Daily Feed Advancement with automatic IV weaning compensation */
+  const stepIncrement = guide.band?.increment ?? 20;
+  const currentEnteral = s.enteralMlKgDay ?? guide.fields.enteralMlKgDay ?? 0;
+  const currentIv = s.ivMlKgDay ?? 0;
+  const fullFeedsCap = guide.band?.fullFeeds ?? 150;
+  const canAdvance = currentEnteral < fullFeedsCap;
+  const actualStep = Math.min(stepIncrement, Math.max(0, fullFeedsCap - currentEnteral));
+
+  const hasToleranceIssue = (s.feedsHeldToday ?? 0) > 0 || (s.residualMl ?? 0) > 2;
+
+  const advanceFeeds = () => {
+    const nextEnteral = currentEnteral + actualStep;
+    const nextIv = Math.max(0, currentIv - actualStep);
+    setS((p) => ({
+      ...p,
+      enteralMlKgDay: nextEnteral,
+      ivMlKgDay: nextIv,
+      feedVolManual: false,
+      // If passing fortification threshold (100 ml/kg/day), prime fortifier if not already set
+      ...(nextEnteral >= 100 && !p.fortifierProductId && guide.fields.fortifierProductId
+        ? {
+            fortifierProductId: guide.fields.fortifierProductId,
+            fortificationAmount: guide.fields.fortificationAmount ?? 1,
+            fortificationDosesPerDay: guide.fields.fortificationDosesPerDay ?? 8,
+          }
+        : {}),
+    }));
+  };
+
   const setUnitProtocolValue = (key: keyof ProtocolOverrides) => (v: number | undefined) =>
     setUnitDraft((current) => {
       const next = { ...(current ?? {}) };
@@ -496,6 +525,12 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
         right={saveButtons}
       >
         <PhaseRail step={guide.phase.step} activeId={guide.phase.id} />
+        {/* Line removal safety reminder when feeds reach >= 120 ml/kg/day */}
+        {(s.enteralMlKgDay ?? 0) >= 120 && (d.baby.clinical?.lines ?? []).length > 0 && (
+          <div className="mt-2 flex items-center justify-between rounded-lg border border-amber-400/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+            <span className="font-semibold">⚠️ Feeds ≥ 120 ml/kg/day: Review vascular lines ({(d.baby.clinical?.lines ?? []).map((l) => l.name).join(", ")}) for timely removal to prevent CLABSI.</span>
+          </div>
+        )}
         <p className="mt-1.5 text-[11px] leading-relaxed text-slate-300">{guide.phase.blurb}</p>
 
         {missingWeight && (
@@ -523,9 +558,25 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               <div className="text-sm font-black text-cyan-50">Today</div>
               <div className="text-[10px] text-cyan-200/80">{guide.headline}</div>
             </div>
-            <button type="button" className="btn-primary" onClick={copyGuide}>
-              Use the guideline
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {canAdvance && actualStep > 0 && (
+                <button
+                  type="button"
+                  onClick={advanceFeeds}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm transition ${
+                    hasToleranceIssue
+                      ? "border border-amber-500/40 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
+                      : "border border-emerald-400/40 bg-emerald-500/25 text-emerald-100 hover:bg-emerald-500/35"
+                  }`}
+                  title={hasToleranceIssue ? "Feeds held or residual high — review tolerance before advancing" : `Advance feeds by +${actualStep} ml/kg/day and wean IV`}
+                >
+                  {hasToleranceIssue ? "⚠️ Check tolerance & advance" : `+ Advance feeds (+${actualStep} ml/kg/d)`}
+                </button>
+              )}
+              <button type="button" className="btn-primary" onClick={copyGuide}>
+                Use the guideline
+              </button>
+            </div>
           </div>
 
           {/* Feeds */}

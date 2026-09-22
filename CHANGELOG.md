@@ -19,6 +19,27 @@ Rules:
 
 ---
 
+## 3.11.0
+
+Simplified Feed Advancement Suite & Ward Rounds Check Rebrand.
+
+### Added
+
+- **1-Tap Daily Feed Advancement (`src/components/fluids-tab.tsx`)**:
+  - Adds an intelligent one-tap `+ Advance feeds (+N ml/kg/d)` button directly on the Today's Order card.
+  - Automatically advances enteral volume by the exact protocol step (e.g. +20 or +30 ml/kg/day).
+  - Automatically weans IV fluids in tandem so Total Fluid Intake (TFI) stays rock-solid.
+  - Automatically primes Human Milk Fortifier (HMF) settings as soon as feeds reach the 100 ml/kg/day threshold.
+  - Integrates a **Tolerance Gate**: switches button to `⚠️ Check tolerance & advance` in amber whenever residuals or held feeds are flagged.
+- **CLABSI Line Weaning Alert**:
+  - Displays a timely reminder when feeds reach $\ge 120	ext{ ml/kg/day}$ with vascular lines in situ (UVC, PICC) to plan catheter removal.
+
+### Changed
+
+- Renamed **"Level IIIB Daily Ward Round Check"** to strictly **"Ward rounds check"** on the baby overview screen (`src/components/daily-round-checklist.tsx`).
+
+---
+
 ## 3.10.2
 
 Rectified TFI calculation to prevent overcalculating enteral feeds and IV fluids.
