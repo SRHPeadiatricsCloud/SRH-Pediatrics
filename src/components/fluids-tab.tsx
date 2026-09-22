@@ -992,6 +992,14 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <summary className="cursor-pointer text-xs font-black text-slate-200">
             Protocol figures {usingProtocol ? "— using your figures" : "— published values"}
           </summary>
+          <div className="mt-2.5 rounded-lg border border-cyan-500/30 bg-cyan-950/30 p-2.5 text-[11px] text-cyan-200">
+            <div className="flex items-center gap-1.5 font-bold text-cyan-300">
+              <span>📄 Unit Feeding Protocol Reference (Level IIIB NICU)</span>
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-300">
+              Guideline practicing in NICU: Enteral feeds advanced incrementally per birth weight band with trophic priming (10–20 ml/kg/day). Human milk fortification initiated at 100 ml/kg/day enteral tolerance. Custom figures saved below override baseline values for this baby or unit-wide.
+            </p>
+          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip label="This baby only" on={protocolScope === "baby"} onClick={() => setProtocolScope("baby")} />
             <Chip
@@ -1083,9 +1091,9 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       </Section>
 
       <details className="quiet px-1">
-        <summary>Sources</summary>
+        <summary>Sources &amp; Protocols</summary>
         <p className="text-[10px] leading-relaxed text-slate-500">
-          Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
+          NICU Unit Feeding Protocol · Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
           protocols · WHO KMC guidance, in <code>src/lib/feed-guide.ts</code>
           {usingProtocol ? ", with this unit's protocol applied" : ""}. Decision support only — every figure is editable.
         </p>

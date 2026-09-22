@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import {
   calculateNeonatalBp,
   calculatePediatricBp,
+  calculatePmaBp,
+  NEONATAL_PMA_BP_CENTILES,
   type AapSex,
   type BpClassification,
   type BpMode,
@@ -14,8 +16,9 @@ import {
 } from "@/lib/bpCentiles";
 
 const MODES: { key: BpMode; label: string; detail: string }[] = [
-  { key: "preterm", label: "Preterm", detail: "32–36 wk at birth" },
-  { key: "neonate", label: "Neonate", detail: "Term 37–40 wk" },
+  { key: "pma", label: "NICU PCA / PMA", detail: "26–44 wk postconceptional" },
+  { key: "preterm", label: "Preterm (GA/PNA)", detail: "32–36 wk at birth" },
+  { key: "neonate", label: "Term (GA/PNA)", detail: "37–40 wk at birth" },
   { key: "pediatrics", label: "Pediatrics", detail: "1–17 completed y" },
 ];
 
@@ -61,6 +64,47 @@ function formatValue(value: number | null): string {
   return value == null ? "Not reported" : `${value} mmHg`;
 }
 
+
+function PmaReferenceTable({ pma }: { pma: number }) {
+  const row = NEONATAL_PMA_BP_CENTILES[pma];
+  if (!row) return null;
+  return (
+    <div className="bp-table-wrap">
+      <table className="bp-threshold-table">
+        <caption>NICU Blood Pressure Reference (PCA {pma} Weeks)</caption>
+        <thead>
+          <tr>
+            <th>Percentile</th>
+            <th>SBP (mmHg)</th>
+            <th>DBP (mmHg)</th>
+            <th>MAP (mmHg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">50th Percentile <small>Median</small></th>
+            <td>{row.p50.sbp}</td>
+            <td>{row.p50.dbp}</td>
+            <td>{row.p50.map}</td>
+          </tr>
+          <tr>
+            <th scope="row">95th Percentile <small>Hypertension threshold</small></th>
+            <td>{row.p95.sbp}</td>
+            <td>{row.p95.dbp}</td>
+            <td>{row.p95.map}</td>
+          </tr>
+          <tr>
+            <th scope="row">99th Percentile <small>Severe elevation</small></th>
+            <td>{row.p99.sbp}</td>
+            <td>{row.p99.dbp}</td>
+            <td>{row.p99.map}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ThresholdTable({ thresholds, neonatal }: { thresholds: { sbp: BpThresholds; dbp: BpThresholds }; neonatal: boolean }) {
   const rows: { label: string; key: keyof BpThresholds; note?: string }[] = [
     { label: "5th centile", key: "p5", note: neonatal ? "status-wide" : "not in AAP table" },
@@ -89,6 +133,7 @@ function EvidencePanel({ mode }: { mode: BpMode }) {
     <details className="bp-evidence quiet" aria-labelledby="bp-evidence-heading">
       <summary id="bp-evidence-heading"><Info size={16} /> Evidence &amp; provenance</summary>
       <div className="bp-source-grid">
+        <div className="bp-source-card"><b>NICU Reference Chart</b><span>Postconceptional Age 26–44 wk (50th, 95th, 99th centiles for SBP, DBP, MAP)</span></div>
         <a href="https://publications.aap.org/pediatrics/article/140/3/e20171904/38358/Clinical-Practice-Guideline-for-Screening-and" target="_blank" rel="noopener noreferrer"><b>AAP 2017</b><span>Tables 4–5, normal-weight children</span><ExternalLink size={12} /></a>
         <a href="https://www.indianpediatrics.net/aug2015/aug-669-673.htm" target="_blank" rel="noopener noreferrer"><b>IAP context / Indian Pediatrics neonatal data</b><span>Samanta et al. 2015, Indian neonates</span><ExternalLink size={12} /></a>
         <a href="https://indianpediatrics.net/nov2015/939.pdf" target="_blank" rel="noopener noreferrer"><b>Indian paediatric comparison</b><span>Narang et al. 2015, Indian schoolchildren</span><ExternalLink size={12} /></a>
@@ -115,6 +160,10 @@ export function BloodPressureCentileCalculator() {
     const diastolic = Number(dbp);
     if (!sbp || !dbp || !Number.isFinite(systolic) || !Number.isFinite(diastolic)) return null;
     try {
+      if (mode === "pma") {
+        if (!gestation) return null;
+        return calculatePmaBp({ pmaWeeks: Number(gestation), sbp: systolic, dbp: diastolic });
+      }
       if (mode === "pediatrics") {
         if (!age || !height) return null;
         return calculatePediatricBp({ sex, ageYears: Number(age), heightCm: Number(height), sbp: systolic, dbp: diastolic });
@@ -131,6 +180,10 @@ export function BloodPressureCentileCalculator() {
     if (mode === "pediatrics") {
       if (age && (!Number.isInteger(Number(age)) || Number(age) < 1 || Number(age) > 17)) messages.push("AAP age is a completed year from 1–17.");
       if (height && (Number(height) < 70 || Number(height) > 200)) messages.push("Height must be 70–200 cm.");
+    } else if (mode === "pma") {
+      if (gestation && (!Number.isInteger(Number(gestation)) || Number(gestation) < 26 || Number(gestation) > 44)) {
+        messages.push("Postconceptional age must be 26–44 weeks (even weeks: 26, 28... 44).");
+      }
     } else {
       const min = mode === "preterm" ? 32 : 37;
       const max = mode === "preterm" ? 36 : 40;
@@ -149,14 +202,18 @@ export function BloodPressureCentileCalculator() {
   const neonatal = mode !== "pediatrics";
   const thresholdResult = result?.thresholds;
   const resultHeading = result
-    ? result.mode === "pediatrics"
-      ? `AAP reference at ${result.ageYears} y, ${result.heightCm} cm`
-      : `${result.mode === "preterm" ? "Preterm" : "Term neonate"} reference at ${result.gestationalAgeWeeks} wk, PNA day ${result.postnatalDay}`
+    ? result.mode === "pma"
+      ? `NICU Reference Chart at ${result.pmaWeeks} weeks Postconceptional Age`
+      : result.mode === "pediatrics"
+        ? `AAP reference at ${result.ageYears} y, ${result.heightCm} cm`
+        : `${result.mode === "preterm" ? "Preterm" : "Term neonate"} reference at ${result.gestationalAgeWeeks} wk, PNA day ${result.postnatalDay}`
     : "";
   const resultTiming = result
-    ? result.mode === "pediatrics"
-      ? `Measured height was mapped to the nearest AAP height column: ${result.heightPercentile}th height percentile (${result.heightReferenceCm} cm reference).`
-      : `PMA approximately ${result.postmenstrualAgeWeeks} weeks, derived from birth gestation plus postnatal age.`
+    ? result.mode === "pma"
+      ? `Reference values mapped to PCA ${result.pmaWeeks} weeks (50th, 95th, 99th percentiles for SBP, DBP, MAP).`
+      : result.mode === "pediatrics"
+        ? `Measured height was mapped to the nearest AAP height column: ${result.heightPercentile}th height percentile (${result.heightReferenceCm} cm reference).`
+        : `PMA approximately ${result.postmenstrualAgeWeeks} weeks, derived from birth gestation plus postnatal age.`
     : "";
 
   return (
@@ -171,14 +228,38 @@ export function BloodPressureCentileCalculator() {
         <div className="bp-section-heading"><div><span>1 · Patient and timing</span><h4>{neonatal ? "Gestation and age" : "Sex, age and height"}</h4></div></div>
         <div className="bp-input-grid">
           <fieldset className="bp-fieldset"><legend>Sex</legend><div className="bp-sex-buttons"><button type="button" className={sex === "male" ? "active" : ""} onClick={() => setSex("male")}>Male</button><button type="button" className={sex === "female" ? "active" : ""} onClick={() => setSex("female")}>Female</button></div><small>{neonatal ? "No significant sex difference in the source" : "Sex-specific AAP table"}</small></fieldset>
-          {mode === "pediatrics" ? <><NumericInput id="bp-age" label="Age (completed years)" value={age} onChange={setAge} min={1} max={17} unit="years" hint="AAP tables: 1–17" /><NumericInput id="bp-height" label="Measured height" value={height} onChange={setHeight} min={70} max={200} step={0.1} unit="cm" hint="Nearest AAP height column is selected" /></> : <><NumericInput id="bp-ga" label="Gestational age at birth" value={gestation} onChange={setGestation} min={mode === "preterm" ? 32 : 37} max={mode === "preterm" ? 36 : 40} unit="weeks" hint={mode === "preterm" ? "Reference: 32–36 wk" : "Reference: 37–40 wk"} /><label className="bp-field" htmlFor="bp-pna"><span>Postnatal day</span><div className="bp-input-wrap"><select id="bp-pna" value={postnatalDay} onChange={(event) => setPostnatalDay(Number(event.target.value) as NeonatalDay)}><option value={4}>Day 4</option><option value={7}>Day 7</option><option value={14}>Day 14</option></select><b>PNA</b></div><small>Days 4, 7 and 14 only</small></label></>}
+          {mode === "pma" ? (
+            <div className="sm:col-span-2">
+              <label className="bp-field" htmlFor="bp-pma-select">
+                <span>Postconceptional Age (weeks)</span>
+                <div className="bp-input-wrap">
+                  <select
+                    id="bp-pma-select"
+                    value={gestation}
+                    onChange={(e) => setGestation(e.target.value)}
+                  >
+                    <option value="">Select PMA</option>
+                    {[44, 42, 40, 38, 36, 34, 32, 30, 28, 26].map((w) => (
+                      <option key={w} value={w}>{w} weeks</option>
+                    ))}
+                  </select>
+                  <b>PCA</b>
+                </div>
+                <small>NICU reference chart: 26 to 44 weeks</small>
+              </label>
+            </div>
+          ) : mode === "pediatrics" ? (
+            <><NumericInput id="bp-age" label="Age (completed years)" value={age} onChange={setAge} min={1} max={17} unit="years" hint="AAP tables: 1–17" /><NumericInput id="bp-height" label="Measured height" value={height} onChange={setHeight} min={70} max={200} step={0.1} unit="cm" hint="Nearest AAP height column is selected" /></>
+          ) : (
+            <><NumericInput id="bp-ga" label="Gestational age at birth" value={gestation} onChange={setGestation} min={mode === "preterm" ? 32 : 37} max={mode === "preterm" ? 36 : 40} unit="weeks" hint={mode === "preterm" ? "Reference: 32–36 wk" : "Reference: 37–40 wk"} /><label className="bp-field" htmlFor="bp-pna"><span>Postnatal day</span><div className="bp-input-wrap"><select id="bp-pna" value={postnatalDay} onChange={(event) => setPostnatalDay(Number(event.target.value) as NeonatalDay)}><option value={4}>Day 4</option><option value={7}>Day 7</option><option value={14}>Day 14</option></select><b>PNA</b></div><small>Days 4, 7 and 14 only</small></label></>
+          )}
         </div>
         <div className="bp-section-heading bp-measure-heading"><div><span>2 · Measured blood pressure</span><h4>Measured BP</h4></div></div>
         <div className="bp-input-grid bp-measure-grid"><NumericInput id="bp-sbp" label="Systolic BP" value={sbp} onChange={setSbp} min={neonatal ? 20 : 40} max={neonatal ? 160 : 220} unit="mmHg" hint="Measured SBP" /><NumericInput id="bp-dbp" label="Diastolic BP" value={dbp} onChange={setDbp} min={neonatal ? 10 : 20} max={neonatal ? 120 : 140} unit="mmHg" hint="Measured DBP" /><button type="button" className="bp-reset" onClick={reset} disabled={!age && !height && !gestation && !sbp && !dbp}>Clear entries</button></div>
         {validation.length > 0 && <div className="bp-validation" role="alert">{validation.map((message) => <span key={message}>{message}</span>)}</div>}
       </div>
 
-      {result && thresholdResult ? <section className="bp-results" aria-live="polite"><div className="bp-results-heading"><div><span>3 · Thresholds and interpretation</span><h4>{resultHeading}</h4></div><span className={`bp-overall-badge ${CLASS_STYLE[result.classification.overall.category]}`}>Highest category: {result.classification.overall.label}</span></div><div className="bp-observed-grid"><ClassificationCard label="Systolic" classification={result.classification.sbp} observed={Number(sbp)} /><ClassificationCard label="Diastolic" classification={result.classification.dbp} observed={Number(dbp)} /></div><ThresholdTable thresholds={thresholdResult} neonatal={neonatal} /><div className="bp-result-notes"><p><b>Reference timing:</b> {resultTiming}</p><p><b>Interpretation:</b> {result.sourceNote}</p></div></section> : <div className="bp-empty-result"><Info size={17} /><span>Enter the patient details and both BP values.</span></div>}
+      {result && thresholdResult ? <section className="bp-results" aria-live="polite"><div className="bp-results-heading"><div><span>3 · Thresholds and interpretation</span><h4>{resultHeading}</h4></div><span className={`bp-overall-badge ${CLASS_STYLE[result.classification.overall.category]}`}>Highest category: {result.classification.overall.label}</span></div><div className="bp-observed-grid"><ClassificationCard label="Systolic" classification={result.classification.sbp} observed={Number(sbp)} /><ClassificationCard label="Diastolic" classification={result.classification.dbp} observed={Number(dbp)} /></div>{result.mode === "pma" ? <PmaReferenceTable pma={result.pmaWeeks} /> : <ThresholdTable thresholds={thresholdResult} neonatal={neonatal} />}<div className="bp-result-notes"><p><b>Reference timing:</b> {resultTiming}</p><p><b>Interpretation:</b> {result.sourceNote}</p></div></section> : <div className="bp-empty-result"><Info size={17} /><span>Enter the patient details and both BP values.</span></div>}
 
       <details className="bp-limitations quiet"><summary><ShieldAlert size={16} /> Measurement and safety</summary><p>Use an appropriate cuff, repeat an unexpectedly high or low value, and correlate with perfusion, symptoms, illness and treatment. Neonatal values are population references from a selected study—not universally diagnostic “normal BP”; hypotension/hypertension decisions require clinical correlation and local protocol. The bedside rule “MAP ≈ gestational age” is not used as a centile substitute.</p></details>
       <EvidencePanel mode={mode} />

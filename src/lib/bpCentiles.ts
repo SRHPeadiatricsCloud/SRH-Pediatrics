@@ -4,12 +4,15 @@ import {
   AAP_HEIGHT_PERCENTILES,
   NEONATAL_GA_CENTILES,
   NEONATAL_STATUS_P5,
+  NEONATAL_PMA_BP_CENTILES,
+  type PmaBpValues,
   type AapSex,
 } from "./bpCentileData";
 
 export type { AapSex } from "./bpCentileData";
+export { NEONATAL_PMA_BP_CENTILES } from "./bpCentileData";
 
-export type BpMode = "preterm" | "neonate" | "pediatrics";
+export type BpMode = "preterm" | "neonate" | "pma" | "pediatrics";
 export type NeonatalDay = 4 | 7 | 14;
 export type BpComponent = "sbp" | "dbp";
 export type BpCategory = "normal" | "elevated" | "stage1" | "stage2" | "belowReference";
@@ -58,7 +61,95 @@ export type NeonatalBpResult = {
   sourceNote: string;
 };
 
-export type BpResult = PediatricBpResult | NeonatalBpResult;
+export type BpResult = PediatricBpResult | NeonatalBpResult | PmaBpResult;
+
+export type PmaBpResult = {
+  mode: "pma";
+  pmaWeeks: number;
+  sbp: number;
+  dbp: number;
+  map?: number;
+  reference: PmaBpValues;
+  thresholds: {
+    sbp: BpThresholds;
+    dbp: BpThresholds;
+    map?: BpThresholds;
+  };
+  classification: {
+    sbp: BpClassification;
+    dbp: BpClassification;
+    map?: BpClassification;
+    overall: BpClassification;
+  };
+  sourceNote: string;
+};
+
+export function nearestPmaWeeks(pma: number): number {
+  const available = [26, 28, 30, 32, 34, 36, 38, 40, 42, 44];
+  let best = 26;
+  let bestDiff = Math.abs(pma - best);
+  for (const w of available) {
+    const diff = Math.abs(pma - w);
+    if (diff < bestDiff) {
+      best = w;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
+export function classifyPmaValue(value: number, p50: number, p95: number, p99: number, label: string): BpClassification {
+  if (value >= p99) {
+    return { category: "stage2", label: "≥99th percentile", severity: "crit", note: `${label} is at or above the 99th centile (≥${p99} mmHg). Severe elevation.` };
+  }
+  if (value >= p95) {
+    return { category: "stage1", label: "95th–99th percentile", severity: "warn", note: `${label} is between 95th and 99th centile (${p95}–${p99} mmHg). Hypertension threshold.` };
+  }
+  if (value < p50 * 0.75) {
+    return { category: "belowReference", label: "Below reference", severity: "info", note: `${label} is substantially below the 50th centile (${p50} mmHg). Review perfusion.` };
+  }
+  return { category: "normal", label: "Normal (within reference)", severity: "good", note: `${label} is below the 95th centile.` };
+}
+
+export function calculatePmaBp(input: { pmaWeeks: number; sbp: number; dbp: number; map?: number }): PmaBpResult {
+  const pma = nearestPmaWeeks(input.pmaWeeks);
+  const ref = NEONATAL_PMA_BP_CENTILES[pma];
+  if (!ref) throw new Error(`No reference data for PMA ${pma} weeks`);
+
+  const sbpClass = classifyPmaValue(input.sbp, ref.p50.sbp, ref.p95.sbp, ref.p99.sbp, "SBP");
+  const dbpClass = classifyPmaValue(input.dbp, ref.p50.dbp, ref.p95.dbp, ref.p99.dbp, "DBP");
+  let mapClass: BpClassification | undefined;
+  if (input.map !== undefined) {
+    mapClass = classifyPmaValue(input.map, ref.p50.map, ref.p95.map, ref.p99.map, "MAP");
+  }
+
+  let overall = highestClassification(sbpClass, dbpClass);
+  if (mapClass) overall = highestClassification(overall, mapClass);
+
+  const thresholds = {
+    sbp: { p5: null, p50: ref.p50.sbp, p90: ref.p95.sbp, p95: ref.p95.sbp, p95Plus12: ref.p99.sbp },
+    dbp: { p5: null, p50: ref.p50.dbp, p90: ref.p95.dbp, p95: ref.p95.dbp, p95Plus12: ref.p99.dbp },
+    map: { p5: null, p50: ref.p50.map, p90: ref.p95.map, p95: ref.p95.map, p95Plus12: ref.p99.map },
+  };
+
+  return {
+    mode: "pma",
+    pmaWeeks: pma,
+    sbp: input.sbp,
+    dbp: input.dbp,
+    map: input.map,
+    reference: ref,
+    thresholds,
+    classification: {
+      sbp: sbpClass,
+      dbp: dbpClass,
+      map: mapClass,
+      overall,
+    },
+    sourceNote: `NICU Blood Pressure Reference by Postconceptional Age (${pma} weeks, 50th, 95th & 99th percentiles).`,
+  };
+}
+
 
 const AAP_AGE_MIN = 1;
 // AAP 2017 Tables 4-5 publish rows for 1-17 years. Eighteen-year-olds are

@@ -19,6 +19,22 @@ Rules:
 
 ---
 
+## 3.10.0
+
+Neonatal Blood Pressure Centiles Reference Chart & Unit Feeding Protocol Attachment.
+
+### Added
+
+- **NICU Neonatal BP Centiles by Postconceptional Age (PMA/PCA 26–44 Weeks)**:
+  - Transcribed reference chart into `src/lib/bpCentileData.ts` (`NEONATAL_PMA_BP_CENTILES`).
+  - Covers SBP, DBP, and MAP at 50th, 95th, and 99th percentiles for 26, 28, 30, 32, 34, 36, 38, 40, 42, and 44 weeks PMA.
+  - Added "NICU PCA / PMA (26–44 wk postconceptional)" mode to Blood Pressure Centile Calculator (`src/components/blood-pressure-centile-calculator.tsx`) with full centile classification and direct table lookup.
+  - Comprehensive unit test suite in `scripts/test-pma-bp-centiles.ts` (23 checks passing).
+- **Unit Feeding Protocol Attachment under Feeds & Fluids**:
+  - Embedded reference to NICU Level IIIB Feeding Protocol under the Protocol Figures and Sources disclosures on the Feeds & Fluids tab.
+
+---
+
 ## 3.9.0
 
 Level IIIB NICU Day-to-Day Operations Suite.
