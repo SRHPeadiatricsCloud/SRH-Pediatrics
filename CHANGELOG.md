@@ -19,6 +19,18 @@ Rules:
 
 ---
 
+## 3.10.1
+
+Direct visibility for 99th centile in BP Centiles Calculator.
+
+### Changed
+
+- Made **"NICU PCA / PMA (26–44 wk postconceptional)"** the default active tab on the Blood Pressure Centile Calculator (`/calculators` → Blood Pressure).
+- Added immediate full reference table display showing 50th, 95th, and **99th centile** columns for SBP, DBP, and MAP across all postconceptional ages (26–44 weeks).
+- Highlighting for 99th centile severe hypertension threshold in comparison results.
+
+---
+
 ## 3.10.0
 
 Neonatal Blood Pressure Centiles Reference Chart & Unit Feeding Protocol Attachment.

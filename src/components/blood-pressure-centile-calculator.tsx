@@ -146,7 +146,7 @@ function EvidencePanel({ mode }: { mode: BpMode }) {
 }
 
 export function BloodPressureCentileCalculator() {
-  const [mode, setMode] = useState<BpMode>("pediatrics");
+  const [mode, setMode] = useState<BpMode>("pma");
   const [sex, setSex] = useState<AapSex>("male");
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
@@ -260,6 +260,42 @@ export function BloodPressureCentileCalculator() {
       </div>
 
       {result && thresholdResult ? <section className="bp-results" aria-live="polite"><div className="bp-results-heading"><div><span>3 · Thresholds and interpretation</span><h4>{resultHeading}</h4></div><span className={`bp-overall-badge ${CLASS_STYLE[result.classification.overall.category]}`}>Highest category: {result.classification.overall.label}</span></div><div className="bp-observed-grid"><ClassificationCard label="Systolic" classification={result.classification.sbp} observed={Number(sbp)} /><ClassificationCard label="Diastolic" classification={result.classification.dbp} observed={Number(dbp)} /></div>{result.mode === "pma" ? <PmaReferenceTable pma={result.pmaWeeks} /> : <ThresholdTable thresholds={thresholdResult} neonatal={neonatal} />}<div className="bp-result-notes"><p><b>Reference timing:</b> {resultTiming}</p><p><b>Interpretation:</b> {result.sourceNote}</p></div></section> : <div className="bp-empty-result"><Info size={17} /><span>Enter the patient details and both BP values.</span></div>}
+      {mode === "pma" && !result && (
+        <section className="bp-results mt-4">
+          <div className="bp-results-heading">
+            <div>
+              <span>Reference Table</span>
+              <h4>NICU Blood Pressure Chart (PCA 26–44 Weeks)</h4>
+            </div>
+          </div>
+          <div className="bp-table-wrap">
+            <table className="bp-threshold-table">
+              <caption>Full NICU Reference: 50th, 95th &amp; 99th Centiles</caption>
+              <thead>
+                <tr>
+                  <th>PCA Age</th>
+                  <th>50th (SBP/DBP/MAP)</th>
+                  <th>95th (SBP/DBP/MAP)</th>
+                  <th className="text-rose-400 font-bold">99th (SBP/DBP/MAP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[44, 42, 40, 38, 36, 34, 32, 30, 28, 26].map((w) => {
+                  const r = NEONATAL_PMA_BP_CENTILES[w];
+                  return (
+                    <tr key={w} className={gestation && Number(gestation) === w ? "bg-cyan-500/15 font-bold" : ""}>
+                      <th scope="row">{w} Weeks</th>
+                      <td>{r.p50.sbp} / {r.p50.dbp} (MAP {r.p50.map})</td>
+                      <td>{r.p95.sbp} / {r.p95.dbp} (MAP {r.p95.map})</td>
+                      <td className="text-rose-300 font-semibold">{r.p99.sbp} / {r.p99.dbp} (MAP {r.p99.map})</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <details className="bp-limitations quiet"><summary><ShieldAlert size={16} /> Measurement and safety</summary><p>Use an appropriate cuff, repeat an unexpectedly high or low value, and correlate with perfusion, symptoms, illness and treatment. Neonatal values are population references from a selected study—not universally diagnostic “normal BP”; hypotension/hypertension decisions require clinical correlation and local protocol. The bedside rule “MAP ≈ gestational age” is not used as a centile substitute.</p></details>
       <EvidencePanel mode={mode} />
