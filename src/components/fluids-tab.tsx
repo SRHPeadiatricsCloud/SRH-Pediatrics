@@ -1143,10 +1143,10 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       </Section>
 
       <details className="quiet px-1">
-        <summary>Nutritional Composition Breakdown (SRH Laboratory Reference)</summary>
+        <summary>Formulation reference</summary>
         <div className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-slate-900/40 p-2">
           <div className="mb-2 text-[11px] font-bold text-slate-200">
-            Sri Ramakrishna Hospital Department of Laboratory: Nutritional Composition Comparison (per 100 ml)
+            Formulation reference: Nutritional composition comparison (per 100 ml)
           </div>
           <table className="w-full text-left text-[10px] text-slate-300">
             <thead>
@@ -1179,7 +1179,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             </tbody>
           </table>
           <p className="mt-2 text-[9px] text-slate-500">
-            Values transcribed from SRH Multi-Speciality Department of Laboratory reference. Calorie and protein densities automatically feed into the daily nutritional calculations above.
+            Values transcribed from formulation reference. Calorie and protein densities automatically feed into the daily nutritional calculations above.
           </p>
         </div>
       </details>
@@ -1187,7 +1187,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       <details className="quiet px-1 mt-2">
         <summary>Sources &amp; Protocols</summary>
         <p className="text-[10px] leading-relaxed text-slate-500">
-          Sri Ramakrishna Hospital Laboratory Nutrition Catalog · NICU Unit Feeding Protocol · Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
+          Formulation reference · NICU Unit Feeding Protocol · Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
           protocols · WHO KMC guidance, in <code>src/lib/feed-guide.ts</code>
           {usingProtocol ? ", with this unit's protocol applied" : ""}. Decision support only — every figure is editable.
         </p>

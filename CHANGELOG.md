@@ -19,6 +19,17 @@ Rules:
 
 ---
 
+## 3.12.1
+
+Renamed nutrition composition disclosure to Formulation reference.
+
+### Changed
+
+- Renamed **"Nutritional Composition Breakdown (SRH Laboratory Reference)"** to **"Formulation reference"** across the Feeds & Fluids tab (`src/components/fluids-tab.tsx`).
+- Updated table title to "Formulation reference: Nutritional composition comparison (per 100 ml)".
+
+---
+
 ## 3.12.0
 
 Incorporated Sri Ramakrishna Hospital Laboratory Nutritional Composition Reference.

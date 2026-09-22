@@ -1,6 +1,6 @@
 
 /**
- * Sri Ramakrishna Hospital (Multi-Speciality) Department of Laboratory
+ * Formulation reference:
  * Nutritional Composition Reference Table (per 100 ml reconstituted).
  */
 export type FormulaComposition = {
@@ -293,7 +293,7 @@ export function weightChangePct(birth: number, current: number): number {
 /** Energy density (kcal per ml) of the milks used in the unit. */
 export const KCAL_PER_ML: Record<string, number> = {
   "NPO / Nil per oral": 0,
-  "Trophic feeds": 0.69, // Sri Ramakrishna Hospital Laboratory composition: mature preterm milk 69 kcal/100ml = 0.69 kcal/ml
+  "Trophic feeds": 0.69, // Formulation reference: mature preterm milk 69 kcal/100ml = 0.69 kcal/ml
   "Expressed breast milk (EBM)": 0.69,
   "Direct breastfeeding": 0.69,
   "Donor human milk": 0.69,
@@ -405,7 +405,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "SRH Lab: 1 g sachet: 4.0 kcal, 0.3 g protein, 0.4 g carb, 0.2 g fat, Ca 15.93 mg, P 8.76 mg, Vit D 28 IU, Fe 0.36 mg, Na 7.34 mg",
+    note: "Formulation reference: 1 g sachet: 4.0 kcal, 0.3 g protein, 0.4 g carb, 0.2 g fat, Ca 15.93 mg, P 8.76 mg, Vit D 28 IU, Fe 0.36 mg, Na 7.34 mg",
   },
   {
     id: "lhmf",
@@ -416,7 +416,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "SRH Lab: 1 g sachet: 3.37 kcal, 0.27 g protein, 0.04 g fat · bovine-derived",
+    note: "Formulation reference: 1 g sachet: 3.37 kcal, 0.27 g protein, 0.04 g fat · bovine-derived",
   },
   {
     id: "mmf",
@@ -427,7 +427,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "SRH Lab: 1 g sachet: 3.89 kcal, 0.27 g protein, 0.62 g carb, 0.04 g fat, Ca 5.99 mg, P 1.36 mg, Vit D <4 IU, Fe 0.09 mg, Na 2.22 mg",
+    note: "Formulation reference: 1 g sachet: 3.89 kcal, 0.27 g protein, 0.62 g carb, 0.04 g fat, Ca 5.99 mg, P 1.36 mg, Vit D <4 IU, Fe 0.09 mg, Na 2.22 mg",
   },
   {
     id: "smart-fort",
@@ -438,7 +438,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "SRH Lab: 1 g sachet: 3.4 kcal, 0.3 g protein, 0.5 g carb, 0.04 g fat, Ca 15 mg, P 8 mg, Vit D 160 IU, Fe 0.4 mg, Na 4.5 mg",
+    note: "Formulation reference: 1 g sachet: 3.4 kcal, 0.3 g protein, 0.5 g carb, 0.04 g fat, Ca 15 mg, P 8 mg, Vit D 160 IU, Fe 0.4 mg, Na 4.5 mg",
   },
   {
     id: "neosure",
@@ -449,7 +449,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 100,
     steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
     stepLabel: gramLabel,
-    note: "SRH Lab: Per 1 g: 4.88 kcal, 0.16 g protein, 0.55 g carb, 0.23 g fat, Ca 6.7 mg, P 3.5 mg, Vit D 6 IU, Fe 0.09 mg, Na 3.41 mg",
+    note: "Formulation reference: Per 1 g: 4.88 kcal, 0.16 g protein, 0.55 g carb, 0.23 g fat, Ca 6.7 mg, P 3.5 mg, Vit D 6 IU, Fe 0.09 mg, Na 3.41 mg",
   },
   {
     id: "neocate",
@@ -460,7 +460,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 100,
     steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
     stepLabel: gramLabel,
-    note: "SRH Lab: Per 1 g: 4.93 kcal, 0.13 g protein, 0.52 g carb, 0.25 g fat, Ca 5.7 mg, P 3.7 mg, Vit D 4.7 IU, Fe 0.07 mg, Na 2.17 mg",
+    note: "Formulation reference: Per 1 g: 4.93 kcal, 0.13 g protein, 0.52 g carb, 0.25 g fat, Ca 5.7 mg, P 3.7 mg, Vit D 4.7 IU, Fe 0.07 mg, Na 2.17 mg",
   },
   {
     id: "prenan-fm85",
