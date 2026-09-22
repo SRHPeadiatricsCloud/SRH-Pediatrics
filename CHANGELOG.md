@@ -19,6 +19,40 @@ Rules:
 
 ---
 
+## 3.8.0
+
+New behaviour on the feeds & fluids tab, so the minor segment moves. Three of
+the disclosures were still carrying their working out; that is gone.
+
+### Removed
+
+- **"How these numbers are worked out" is deleted** — the GIR/energy/protein
+  readout cards, the two energy and protein itemisation panels and the formulas
+  paragraph. 136 lines.
+- With it went three blocks of dead flag code (36 lines). Nothing clinical was
+  lost: the same GIR thresholds are already emitted by `calcNutrition` into the
+  amber warnings block, and the energy and protein gaps are stated by their
+  target rows.
+
+### Changed
+
+- **The two calculated-value overrides survive, relocated.** The GIR box in the
+  IV group is now the GIR field itself — type over it and it is marked
+  "— manual". The energy override sits in one collapsed line under the targets.
+- **Feed plan: two readout boxes became one line.** Every figure is still there
+  (today's enteral, per-feed × feeds, next 24 h, the step-up, total against
+  TFI) — just on a single row instead of two cards.
+- **Fortification's eight-line "counted in the totals" paragraph is one line**:
+  what it adds per ml, doses per day, the share of enteral volume, effective
+  density.
+- **Protocol figures and fortification lost their explainer sentences**; the
+  scope chips and the summary line already say it.
+
+Rendered prose across the app is now 4,502 words (from 5,932 before 3.7.0), with
+27 runs of 12 words or more holding 608 words (from 94 runs and 2,155 words).
+
+---
+
 ## 3.7.0
 
 New release of the presentation layer, so the minor segment moves. The app

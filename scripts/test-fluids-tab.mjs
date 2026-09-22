@@ -201,8 +201,11 @@ async function render(fluids, over = {}) {
   ok(!/Apply today's plan/.test(t) && !/Copy the values only/.test(t), "the old apply buttons are gone");
   ok(!/guideline 150 → use/.test(t), "and there is no per-field adopt link cluttering the grid");
   ok(/Feeds/.test(t) && /IV fluids/.test(t) && /Parenteral nutrition/.test(t), "the inputs are grouped the way an order is written");
-  ok(/Feed details & tolerance/.test(t) && /Fortification/.test(t) && /Protocol figures/.test(t) && /How these numbers are worked out/.test(t),
+  ok(/Feed details & tolerance/.test(t) && /Fortification/.test(t) && /Protocol figures/.test(t),
      "the long tail sits behind disclosures");
+  ok(!/How these numbers are worked out/.test(t), "the worked-out panel is gone");
+  ok(!/Formulas: GIR/.test(t), "and its formula paragraph with it");
+  ok(/Override the calculated energy/.test(t), "the energy override survives, collapsed");
   const dailyButtons = all(el, "button").filter((b) => !b.closest("details"));
   ok(dailyButtons.length <= 20, `the daily surface is quiet (${dailyButtons.length} buttons outside the disclosures)`);
   ok(/18 ml × 8 feeds/.test(t), `the day is split into feeds (${(t.match(/\d+ ml × \d+ feeds/) ?? ["none"])[0]})`);
@@ -300,6 +303,17 @@ async function render(fluids, over = {}) {
   ok(f?.feedVol === 14, `the per-feed volume is what was typed (got ${f?.feedVol})`);
   ok(f?.enteralMlKgDay === 93.33, `and it converts back to ml/kg/day (14 x 8 / 1.2, got ${f?.enteralMlKgDay})`);
   ok(f?.gir === 5.64, `GIR is derived from what was typed (12.5 x 65 x 10 / 1440, got ${f?.gir})`);
+
+  // The GIR field in the IV group still accepts a manual figure, and says so.
+  const ovr = await render({ feedFreq: "3 hourly", enteralMlKgDay: 95, ivMlKgDay: 65, dextrosePct: 12.5 }, { currentWeight: 1200 });
+  const girField = fieldInput(ovr.el, "GIR mg/kg/min");
+  typeInto(girField, "9.5", "manual GIR");
+  ok(/GIR mg\/kg\/min — manual/.test(text(ovr.el)), "a typed GIR is marked manual");
+  click(byExact(ovr.el, "button", "Save feeds & fluids"), "save the override");
+  await flush();
+  const o = ovr.saved[0]?.clinical?.fluids;
+  ok(o?.gir === 9.5, `the manual GIR is what is stored (got ${o?.gir})`);
+  ok(o?.girManual === true, `and it is flagged manual so the chart is not silently re-derived (got ${o?.girManual})`);
 
   // Editing one field leaves the rest of the chart alone.
   const fresh = await render({ feedFreq: "3 hourly", enteralMlKgDay: 95, ivMlKgDay: 65 }, { currentWeight: 1200 });
