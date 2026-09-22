@@ -23,6 +23,7 @@ import {
   FORTIFIER_CATALOG,
   FORTIFIER_KCAL_PER_UNIT,
   FORTIFIER_PROTEIN_G_PER_UNIT,
+  FORMULA_COMPOSITION_TABLE,
   feedsPerDay,
   fortifierById,
   resolveFeedPlan,
@@ -1142,9 +1143,51 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
       </Section>
 
       <details className="quiet px-1">
+        <summary>Nutritional Composition Breakdown (SRH Laboratory Reference)</summary>
+        <div className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-slate-900/40 p-2">
+          <div className="mb-2 text-[11px] font-bold text-slate-200">
+            Sri Ramakrishna Hospital Department of Laboratory: Nutritional Composition Comparison (per 100 ml)
+          </div>
+          <table className="w-full text-left text-[10px] text-slate-300">
+            <thead>
+              <tr className="border-b border-white/10 text-[9px] uppercase tracking-wider text-slate-400">
+                <th className="py-1">Formula / Milk</th>
+                <th>Energy</th>
+                <th>Carb</th>
+                <th>Protein</th>
+                <th>Fat</th>
+                <th>Ca / P</th>
+                <th>Vit D</th>
+                <th>Iron</th>
+                <th>Na</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 font-mono">
+              {FORMULA_COMPOSITION_TABLE.map((row) => (
+                <tr key={row.name} className="hover:bg-white/5">
+                  <td className="py-1 font-sans font-semibold text-slate-200">{row.name}</td>
+                  <td>{row.kcalPer100ml} kcal</td>
+                  <td>{row.carbG} g</td>
+                  <td className="text-emerald-300">{row.proteinG} g</td>
+                  <td>{row.fatG} g</td>
+                  <td>{row.calciumMg} / {row.phosphorusMg}</td>
+                  <td>{row.vitDIu} IU</td>
+                  <td>{row.ironMg} mg</td>
+                  <td>{row.sodiumMg} mg</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[9px] text-slate-500">
+            Values transcribed from SRH Multi-Speciality Department of Laboratory reference. Calorie and protein densities automatically feed into the daily nutritional calculations above.
+          </p>
+        </div>
+      </details>
+
+      <details className="quiet px-1 mt-2">
         <summary>Sources &amp; Protocols</summary>
         <p className="text-[10px] leading-relaxed text-slate-500">
-          NICU Unit Feeding Protocol · Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
+          Sri Ramakrishna Hospital Laboratory Nutrition Catalog · NICU Unit Feeding Protocol · Patel et al. <i>Nutrients</i> 2015 · ESPGHAN / AAP enteral and parenteral targets · UC Davis and CHOP NICU
           protocols · WHO KMC guidance, in <code>src/lib/feed-guide.ts</code>
           {usingProtocol ? ", with this unit's protocol applied" : ""}. Decision support only — every figure is editable.
         </p>

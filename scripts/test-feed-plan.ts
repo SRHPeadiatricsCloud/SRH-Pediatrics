@@ -31,7 +31,9 @@ const an = calcNutrition(
 );
 assert.equal(an.ivMl, 20);
 assert.equal(an.ivKcal, 6.8, "IV dextrose energy must be counted");
-assert.equal(an.totalKcal, 110.8);
+// Preterm formula updated to exact lab value 0.79 kcal/ml (was 0.8):
+// Enteral 130 x 0.79 = 102.7 + IV 6.8 = 109.5 kcal/kg/day
+assert.equal(an.totalKcal, 109.5);
 
 /* --- Case B: static feeds with IV fluids running alongside ---------------- */
 // TFI is Total Fluid Intake: Enteral + IV = TFI.
@@ -51,7 +53,8 @@ const bn = calcNutrition(
   fluids({ feedPlan: "static", tfiMlKgDay: 150, ivMlKgDay: 30, feedType: "Preterm formula", dextrosePct: 10, feedFreq: "3 hourly" }),
 );
 assert.equal(bn.ivKcal, 10.2, "30 ml/kg/d of 10% dextrose = 3 g/kg/d x 3.4");
-assert.equal(bn.totalKcal, 106.2);
+// 120 x 0.79 = 94.8 + 10.2 = 105.0
+assert.equal(bn.totalKcal, 105);
 
 /* --- Case C: increasing, increase is tomorrow's feed target -------------- */
 // TFI 150, IV 25 => enteral today = 125, total = 150 (TFI target), tomorrow = 145 (+20)
@@ -76,7 +79,8 @@ const cn = calcNutrition(
   fluids({ feedPlan: "increasing", tfiMlKgDay: 150, feedIncrementMlKgDay: 20, increaseAppliesTo: "tomorrow-target", ivMlKgDay: 25, feedType: "Preterm formula", dextrosePct: 10, feedFreq: "3 hourly" }),
 );
 assert.equal(cn.ivKcal, 8.5);
-assert.equal(cn.totalKcal, 108.5);
+// 125 x 0.79 = 98.75 + 8.5 = 107.25 -> 107.3
+assert.equal(cn.totalKcal, 107.3);
 
 /* --- Case D: static, no IV (plain divided feeds) -------------------------- */
 const d = resolveFeedPlan({ feedPlan: "static", tfiMlKgDay: 160, feedFreq: "2 hourly" }, WT);
@@ -86,7 +90,8 @@ assert.equal(d.totalFluidsMlKgDay, 160);
 assert.equal(d.reconciled, true);
 assert.equal(d.feedsPerDay, 12);
 assert.equal(d.perFeedMl, 20);
-assert.equal(calcNutrition(fluids({ feedPlan: "static", tfiMlKgDay: 160, feedType: "Preterm formula", feedFreq: "2 hourly" })).totalKcal, 128);
+// 160 x 0.79 = 126.4
+assert.equal(calcNutrition(fluids({ feedPlan: "static", tfiMlKgDay: 160, feedType: "Preterm formula", feedFreq: "2 hourly" })).totalKcal, 126.4);
 
 /* --- Case E: guard - IV above the TFI remainder is reported, not hidden --- */
 const e = resolveFeedPlan(
@@ -137,7 +142,8 @@ assert.equal(noPlan.ivMlKgDay, 45);
 const legacy = calcNutrition(fluids({ enteralMlKgDay: 100, feedType: "Preterm formula" }));
 assert.equal(legacy.feedPlan.active, false);
 assert.equal(legacy.enteralMl, 100);
-assert.equal(legacy.totalKcal, 80);
+// 100 x 0.79 = 79
+assert.equal(legacy.totalKcal, 79);
 
 /* --- A manual GIR still wins over derivation ------------------------------ */
 const manual = calcNutrition(fluids({ enteralMlKgDay: 100, feedType: "Preterm formula", ivMlKgDay: 50, dextrosePct: 10, gir: 6, girManual: true }));

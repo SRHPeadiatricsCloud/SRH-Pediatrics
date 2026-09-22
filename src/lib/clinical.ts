@@ -1,3 +1,100 @@
+
+/**
+ * Sri Ramakrishna Hospital (Multi-Speciality) Department of Laboratory
+ * Nutritional Composition Reference Table (per 100 ml reconstituted).
+ */
+export type FormulaComposition = {
+  name: string;
+  kcalPer100ml: number;
+  carbG: number;
+  proteinG: number;
+  fatG: number;
+  calciumMg: number;
+  phosphorusMg: number;
+  vitDIu: number;
+  ironMg: number;
+  sodiumMg: number;
+  osmolality?: string;
+  osmolarity?: string;
+};
+
+export const FORMULA_COMPOSITION_TABLE: readonly FormulaComposition[] = [
+  {
+    name: "Mature Preterm Milk (EBM)",
+    kcalPer100ml: 69,
+    carbG: 6.7,
+    proteinG: 1.5,
+    fatG: 3.6,
+    calciumMg: 29,
+    phosphorusMg: 9.3,
+    vitDIu: 1.2,
+    ironMg: 0.09,
+    sodiumMg: 28,
+  },
+  {
+    name: "Neocate",
+    kcalPer100ml: 67,
+    carbG: 7.1,
+    proteinG: 1.8,
+    fatG: 3.5,
+    calciumMg: 77.1,
+    phosphorusMg: 50.2,
+    vitDIu: 64,
+    ironMg: 14,
+    sodiumMg: 29.3,
+    osmolarity: "310 mOsm/L",
+    osmolality: "340 mOsm/kg H2O",
+  },
+  {
+    name: "Enfamil",
+    kcalPer100ml: 66,
+    carbG: 7.8,
+    proteinG: 1.52,
+    fatG: 3.3,
+    calciumMg: 41,
+    phosphorusMg: 28,
+    vitDIu: 34.4,
+    ironMg: 0.51,
+    sodiumMg: 14.1,
+  },
+  {
+    name: "Aptamil Gold",
+    kcalPer100ml: 66.3,
+    carbG: 8.05,
+    proteinG: 1.49,
+    fatG: 3.28,
+    calciumMg: 67.5,
+    phosphorusMg: 40.5,
+    vitDIu: 43.2,
+    ironMg: 0.6,
+    sodiumMg: 22.9,
+  },
+  {
+    name: "Similac PLUS",
+    kcalPer100ml: 65,
+    carbG: 7.58,
+    proteinG: 1.94,
+    fatG: 2.92,
+    calciumMg: 51,
+    phosphorusMg: 31,
+    vitDIu: 36,
+    ironMg: 0.44,
+    sodiumMg: 19,
+  },
+  {
+    name: "NEOSURE",
+    kcalPer100ml: 79,
+    carbG: 8.81,
+    proteinG: 2.56,
+    fatG: 3.67,
+    calciumMg: 107,
+    phosphorusMg: 56,
+    vitDIu: 97,
+    ironMg: 1.57,
+    sodiumMg: 55,
+  },
+];
+
 import { targetsFor, type ProtocolOverrides } from "./feed-guide";
 export type GrowthEntry = {
   at: string;
@@ -196,29 +293,39 @@ export function weightChangePct(birth: number, current: number): number {
 /** Energy density (kcal per ml) of the milks used in the unit. */
 export const KCAL_PER_ML: Record<string, number> = {
   "NPO / Nil per oral": 0,
-  "Trophic feeds": 0.67,
-  "Expressed breast milk (EBM)": 0.67,
-  "Direct breastfeeding": 0.67,
-  "Donor human milk": 0.67,
+  "Trophic feeds": 0.69, // Sri Ramakrishna Hospital Laboratory composition: mature preterm milk 69 kcal/100ml = 0.69 kcal/ml
+  "Expressed breast milk (EBM)": 0.69,
+  "Direct breastfeeding": 0.69,
+  "Donor human milk": 0.69,
   "EBM + HMF": 0.81,
-  "Preterm formula": 0.8,
-  "Term formula": 0.67,
-  "Lactose free / hydrolysed formula": 0.68,
-  "Post-discharge formula": 0.73,
+  "Similac Plus": 0.65, // 65 kcal / 100ml
+  "Enfamil A+": 0.66,   // 66 kcal / 100ml
+  "Aptamil Gold": 0.663, // 66.3 kcal / 100ml
+  "Neocate (amino-acid)": 0.67, // 67 kcal / 100ml
+  "Similac NeoSure": 0.79, // 79 kcal / 100ml
+  "Preterm formula": 0.79,
+  "Term formula": 0.66,
+  "Lactose free / hydrolysed formula": 0.67,
+  "Post-discharge formula": 0.79,
 };
 
 /** Protein (g per ml). */
 export const PROTEIN_G_PER_ML: Record<string, number> = {
   "NPO / Nil per oral": 0,
-  "Trophic feeds": 0.011,
-  "Expressed breast milk (EBM)": 0.011,
-  "Direct breastfeeding": 0.011,
-  "Donor human milk": 0.011,
+  "Trophic feeds": 0.015, // Sri Ramakrishna Hospital Lab: mature preterm milk 1.5 g/100ml = 0.015 g/ml
+  "Expressed breast milk (EBM)": 0.015,
+  "Direct breastfeeding": 0.015,
+  "Donor human milk": 0.015,
   "EBM + HMF": 0.025,
-  "Preterm formula": 0.024,
-  "Term formula": 0.014,
-  "Lactose free / hydrolysed formula": 0.019,
-  "Post-discharge formula": 0.019,
+  "Similac Plus": 0.0194, // 1.94 g / 100ml
+  "Enfamil A+": 0.0152,   // 1.52 g / 100ml
+  "Aptamil Gold": 0.0149, // 1.49 g / 100ml
+  "Neocate (amino-acid)": 0.018, // 1.8 g / 100ml
+  "Similac NeoSure": 0.0256, // 2.56 g / 100ml
+  "Preterm formula": 0.0256,
+  "Term formula": 0.0152,
+  "Lactose free / hydrolysed formula": 0.018,
+  "Post-discharge formula": 0.0256,
 };
 
 /**
@@ -291,36 +398,69 @@ const gramLabel = (n: number) => `${n} g`;
 export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
   {
     id: "prenan-hmf",
-    name: "PreNAN HMF (Nestlé) — 1 g sachet",
+    name: "HMF PreNAN (Nestlé) — 1 g sachet",
     unit: "sachet",
     kcalPerUnit: 4,
     proteinPerUnit: 0.3,
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "1 g sachet in 25 ml milk · 4 kcal, 0.3 g protein, Ca 15.9 mg, P 8.8 mg, Na 7.3 mg per sachet",
+    note: "SRH Lab: 1 g sachet: 4.0 kcal, 0.3 g protein, 0.4 g carb, 0.2 g fat, Ca 15.93 mg, P 8.76 mg, Vit D 28 IU, Fe 0.36 mg, Na 7.34 mg",
   },
   {
     id: "lhmf",
-    name: "Lactodex HMF (Raptakos Brett) — 1 g sachet",
+    name: "Lactodex HMF / LHMF (Raptakos Brett) — 1 g sachet",
     unit: "sachet",
     kcalPerUnit: 3.37,
     proteinPerUnit: 0.27,
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "1 g sachet in 25 ml milk · 3.37 kcal, 0.27 g protein, Ca 15.8 mg, P 7.9 mg, Na 1.9 mg, Fe 0.03 mg per sachet · bovine-derived",
+    note: "SRH Lab: 1 g sachet: 3.37 kcal, 0.27 g protein, 0.04 g fat · bovine-derived",
   },
   {
     id: "mmf",
-    name: "NeoLact MMF Plus (Mother's Milk Fortifier) — 1 g sachet",
+    name: "MMF PLUS / NeoLact MMF (Mother's Milk Fortifier) — 1 g sachet",
     unit: "sachet",
     kcalPerUnit: 3.89,
     proteinPerUnit: 0.27,
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "1 g sachet in 25 ml milk · 3.89 kcal, 0.27 g protein, Ca 6 mg, P 1.4 mg, Na 2.2 mg per sachet · human-milk derived, maltodextrin-free",
+    note: "SRH Lab: 1 g sachet: 3.89 kcal, 0.27 g protein, 0.62 g carb, 0.04 g fat, Ca 5.99 mg, P 1.36 mg, Vit D <4 IU, Fe 0.09 mg, Na 2.22 mg",
+  },
+  {
+    id: "smart-fort",
+    name: "Smart Fort HMF — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.4,
+    proteinPerUnit: 0.3,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "SRH Lab: 1 g sachet: 3.4 kcal, 0.3 g protein, 0.5 g carb, 0.04 g fat, Ca 15 mg, P 8 mg, Vit D 160 IU, Fe 0.4 mg, Na 4.5 mg",
+  },
+  {
+    id: "neosure",
+    name: "Similac NeoSure (powder fortifier / formula)",
+    unit: "g",
+    kcalPerUnit: 4.88,
+    proteinPerUnit: 0.16,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "SRH Lab: Per 1 g: 4.88 kcal, 0.16 g protein, 0.55 g carb, 0.23 g fat, Ca 6.7 mg, P 3.5 mg, Vit D 6 IU, Fe 0.09 mg, Na 3.41 mg",
+  },
+  {
+    id: "neocate",
+    name: "Neocate (powder fortifier / formula)",
+    unit: "g",
+    kcalPerUnit: 4.93,
+    proteinPerUnit: 0.13,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "SRH Lab: Per 1 g: 4.93 kcal, 0.13 g protein, 0.52 g carb, 0.25 g fat, Ca 5.7 mg, P 3.7 mg, Vit D 4.7 IU, Fe 0.07 mg, Na 2.17 mg",
   },
   {
     id: "prenan-fm85",
@@ -331,29 +471,7 @@ export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
     mixedWithMl: 25,
     steps: [0.25, 0.5, 1],
     stepLabel: sachetLabel,
-    note: "per 1 g of powder · 435 kcal and 35.5 g protein per 100 g · preterm follow-up formula, not a HMF sachet",
-  },
-  {
-    id: "neocate",
-    name: "Neocate Infant (amino-acid based)",
-    unit: "g",
-    kcalPerUnit: 4.87,
-    proteinPerUnit: 0.136,
-    mixedWithMl: 100,
-    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
-    stepLabel: gramLabel,
-    note: "4.87 kcal and 0.136 g protein equivalent per gram of powder",
-  },
-  {
-    id: "neosure",
-    name: "Similac NeoSure (post-discharge preterm)",
-    unit: "g",
-    kcalPerUnit: 5.13,
-    proteinPerUnit: 0.15,
-    mixedWithMl: 100,
-    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
-    stepLabel: gramLabel,
-    note: "513 kcal and 15 g protein per 100 g powder · 74 kcal and 2.1 g protein per 100 ml at standard dilution",
+    note: "per 1 g of powder · 435 kcal and 35.5 g protein per 100 g",
   },
 ];
 

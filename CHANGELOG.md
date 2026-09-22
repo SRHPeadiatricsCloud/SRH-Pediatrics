@@ -19,6 +19,28 @@ Rules:
 
 ---
 
+## 3.12.0
+
+Incorporated Sri Ramakrishna Hospital Laboratory Nutritional Composition Reference.
+
+### Added
+
+- **Formula & Milk Composition Catalog (`src/lib/clinical.ts`)**:
+  - Transcribed exact nutritional values from the Sri Ramakrishna Hospital Department of Laboratory reference sheet:
+    - **Mature Preterm Milk (EBM)**: 69 kcal/100ml (0.69 kcal/ml), 1.5 g/100ml protein, 6.7 g carb, 3.6 g fat, 29 mg Ca, 9.3 mg P, 28 mg Na.
+    - **Neocate**: 67 kcal/100ml, 1.8 g protein, 7.1 g carb, 3.5 g fat, 77.1 mg Ca, 50.2 mg P, 29.3 mg Na, Osmolarity 310 mOsm/L, Osmolality 340 mOsm/kg H2O.
+    - **Enfamil**: 66 kcal/100ml, 1.52 g protein, 7.8 g carb, 3.3 g fat, 41 mg Ca, 28 mg P, 14.1 mg Na.
+    - **Aptamil Gold**: 66.3 kcal/100ml, 1.49 g protein, 8.05 g carb, 3.28 g fat, 67.5 mg Ca, 40.5 mg P, 22.9 mg Na.
+    - **Similac PLUS**: 65 kcal/100ml, 1.94 g protein, 7.58 g carb, 2.92 g fat, 51 mg Ca, 31 mg P, 19 mg Na.
+    - **Similac NeoSure**: 79 kcal/100ml (0.79 kcal/ml), 2.56 g protein, 8.81 g carb, 3.67 g fat, 107 mg Ca, 56 mg P, 55 mg Na.
+  - Added **Smart Fort HMF** sachet (3.4 kcal, 0.3 g protein, 0.5 g carb, 15 mg Ca, 8 mg P, 160 IU Vit D) to fortifier catalogue.
+  - Updated **HMF PreNAN**, **MMF PLUS**, **LHMF / Lactodex**, and **Neosure / Neocate** powder fortifiers to hospital laboratory specifications.
+- **Nutritional Composition Breakdown Table**:
+  - Embedded the full laboratory comparison table under the Feeds & Fluids disclosures.
+- Expanded the **Feed Type** selector in the chart with specific branded formulas (Similac Plus, Enfamil A+, Aptamil Gold, Neocate, Similac NeoSure).
+
+---
+
 ## 3.11.0
 
 Simplified Feed Advancement Suite & Ward Rounds Check Rebrand.

@@ -237,9 +237,10 @@ const kcalDrift = calcNutrition(
   fluids({ feedType: "Expressed breast milk (EBM)", enteralMlKgDay: 150, kcal: 200, kcalManual: true }),
   1500,
 );
-ok(has(kcalDrift, /manual energy of 200 .*calculate 100\.5/), "a stale manual energy is flagged against the inputs");
+// EBM is now 0.69 kcal/ml from SRH Lab (150 x 0.69 = 103.5):
+ok(has(kcalDrift, /manual energy of 200 .*calculate 103\.5/), "a stale manual energy is flagged against the inputs");
 const kcalClose = calcNutrition(
-  fluids({ feedType: "Expressed breast milk (EBM)", enteralMlKgDay: 150, kcal: 102, kcalManual: true }),
+  fluids({ feedType: "Expressed breast milk (EBM)", enteralMlKgDay: 150, kcal: 105, kcalManual: true }),
   1500,
 );
 ok(!has(kcalClose, /manual energy/), "a manual energy within 5 kcal/kg/day is not noise");
@@ -288,11 +289,9 @@ const unfortified = calcNutrition(
   1080,
   { dol: 10 },
 );
-ok(unfortified.totalKcal === 107.2, `160 ml/kg/day of EBM is 107.2 kcal/kg/day (got ${unfortified.totalKcal})`);
-ok(
-  has(unfortified, /is below the 110–135 target/),
-  "so full unfortified feeds are still flagged as short on energy",
-);
+// SRH Lab: 160 x 0.69 = 110.4
+ok(unfortified.totalKcal === 110.4, `160 ml/kg/day of EBM is 110.4 kcal/kg/day (got ${unfortified.totalKcal})`);
+ok(unfortified.totalKcal >= 110, "reaches the 110 minimum target");
 // The same volume, fortified, reaches the target and is left alone.
 const fortified = calcNutrition(
   fluids({ feedType: "EBM + HMF", enteralMlKgDay: 160, ivMlKgDay: 0 }),
@@ -314,9 +313,10 @@ const reference = calcNutrition(
   }),
   1500,
 );
-assert.equal(reference.totalKcal, 147.5, "the reference case still lands on 147.5 kcal/kg/day");
-assert.equal(reference.totalProtein, 4.65, "and 4.65 g/kg/day protein");
-assert.equal(reference.enteralKcal, 100.5);
+// SRH Lab: EBM 150 x 0.69 = 103.5 + IV 47 = 150.5
+assert.equal(reference.totalKcal, 150.5, "the reference case lands on 150.5 kcal/kg/day");
+assert.equal(reference.totalProtein, 5.25, "and 5.25 g/kg/day protein (EBM 2.25 + AA 3.0)");
+assert.equal(reference.enteralKcal, 103.5);
 assert.equal(reference.ivKcal, 47);
 assert.equal(reference.gir, 3.47);
 for (const n of [custom, twice, once, overEnteral, overIv, continuousFixed, perFeed, staleTotal]) {

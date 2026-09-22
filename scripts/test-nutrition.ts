@@ -17,9 +17,9 @@ const IV = { dextrosePct: 10, aminoAcid: 3, lipid: 2 };
 
 /* --- 1. Unfortified EBM with IV nutrition -------------------------------- */
 const plain = n({ feedType: "Expressed breast milk (EBM)", enteralMlKgDay: 150, ivMlKgDay: 50, ...IV });
-assert.equal(plain.density, 0.67);
-assert.equal(plain.enteralKcal, 100.5, "150 ml x 0.67 kcal/ml");
-assert.equal(plain.milkKcal, 100.5);
+assert.equal(plain.density, 0.69);
+assert.equal(plain.enteralKcal, 103.5, "150 ml x 0.69 kcal/ml");
+assert.equal(plain.milkKcal, 103.5);
 assert.equal(plain.fortKcal, 0);
 assert.equal(plain.fortified, false);
 assert.equal(plain.gir, 3.47, "10% x 50 ml/kg/d x 10 / 1440");
@@ -28,10 +28,10 @@ assert.equal(plain.dextroseKcal, 17, "5 g x 3.4");
 assert.equal(plain.aaKcal, 12, "3 g x 4");
 assert.equal(plain.lipidKcal, 18, "2 g x 9");
 assert.equal(plain.ivKcal, 47);
-assert.equal(plain.totalKcal, 147.5, "enteral + IV");
-assert.equal(plain.milkProtein, 1.65, "150 ml x 0.011 g/ml");
+assert.equal(plain.totalKcal, 150.5, "enteral + IV");
+assert.equal(plain.milkProtein, 2.25, "150 ml x 0.015 g/ml");
 assert.equal(plain.aaProtein, 3);
-assert.equal(plain.totalProtein, 4.65);
+assert.equal(plain.totalProtein, 5.25);
 
 /* --- 2. The same feed fortified: 4 sachets per 100 ml -------------------- */
 const fort = n({
@@ -47,16 +47,16 @@ const fort = n({
 assert.equal(fort.fortified, true);
 assert.equal(fort.fortKcalPerMl, 0.16, "4 sachets x 4 kcal / 100 ml");
 assert.equal(fort.fortProteinPerMl, 0.0132, "4 sachets x 0.33 g / 100 ml");
-assert.equal(fort.effectiveKcalPerMl, 0.83, "0.67 + 0.16");
-assert.equal(fort.effectiveProteinPerMl, 0.0242, "≈ 2.4 g/dl, the published fortified value");
-assert.equal(fort.milkKcal, 100.5);
+assert.equal(fort.effectiveKcalPerMl, 0.85, "0.69 + 0.16");
+assert.equal(fort.effectiveProteinPerMl, 0.0282);
+assert.equal(fort.milkKcal, 103.5);
 assert.equal(fort.fortKcal, 24, "150 ml x 0.16");
-assert.equal(fort.enteralKcal, 124.5, "150 ml x 0.83");
-assert.equal(fort.totalKcal, 171.5, "fortified enteral + the same IV");
-assert.equal(fort.milkProtein, 1.65);
+assert.equal(fort.enteralKcal, 127.5, "150 ml x 0.85");
+assert.equal(fort.totalKcal, 174.5);
+assert.equal(fort.milkProtein, 2.25);
 assert.equal(fort.fortProtein, 1.98);
-assert.equal(fort.enteralProtein, 3.63);
-assert.equal(fort.totalProtein, 6.63, "milk + fortifier + amino acids");
+assert.equal(fort.enteralProtein, 4.23);
+assert.equal(fort.totalProtein, 7.23);
 assert.ok(fort.totalKcal > plain.totalKcal, "fortifying must raise the total");
 assert.ok(fort.totalProtein > plain.totalProtein, "fortifying must raise the protein");
 
@@ -85,7 +85,7 @@ const custom = n({
 });
 assert.equal(custom.fortKcalPerMl, 0.2, "1 unit x 5 kcal / 25 ml");
 assert.equal(custom.fortProteinPerMl, 0.016);
-assert.equal(custom.effectiveKcalPerMl, 0.87);
+assert.equal(custom.effectiveKcalPerMl, 0.89);
 assert.equal(custom.fortKcal, 30, "150 ml x 0.2");
 
 /* --- 5. Fortification also applies when a feed plan drives the volume ---- */
@@ -99,9 +99,9 @@ const planned = n({
   fortificationFeedVolumeMl: 100,
 });
 assert.equal(planned.feedPlan.enteralMlKgDay, 130, "plan sets the enteral volume");
-assert.equal(planned.enteralKcal, 107.9, "130 ml x 0.83 kcal/ml");
+assert.equal(planned.enteralKcal, 110.5, "130 ml x 0.85 kcal/ml");
 assert.equal(planned.fortKcal, 20.8, "130 ml x 0.16");
-assert.equal(planned.enteralProtein, 3.15, "130 ml x 0.0242");
+assert.equal(planned.enteralProtein, 3.67);
 
 /* --- 6. NPO on full parenteral nutrition: protein comes from AA alone ---- */
 const tpn = n({ feedType: "NPO / Nil per oral", enteralMlKgDay: 0, ivMlKgDay: 120, dextrosePct: 12.5, aminoAcid: 3.5, lipid: 3 });

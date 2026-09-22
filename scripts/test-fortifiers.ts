@@ -57,15 +57,17 @@ assert.notEqual(lactodex.kcalPerUnit, mmf.kcalPerUnit, "the two sachets are not 
 
 const neocate = fortifierById("neocate")!;
 assert.equal(neocate.unit, "g", "Neocate is weighed in grams");
-assert.equal(neocate.kcalPerUnit, 4.87, "Neocate: 1 g provides 4.87 kcal");
-assert.equal(round(neocate.proteinPerUnit, 3), 0.136, "13.5 g protein per 483 kcal");
+// SRH Laboratory composition: 4.93 kcal and 0.13 g protein per gram
+assert.equal(neocate.kcalPerUnit, 4.93, "Neocate: 1 g provides 4.93 kcal");
+assert.equal(round(neocate.proteinPerUnit, 3), 0.13, "0.13 g protein per gram");
 assert.equal(Math.min(...neocate.steps), 0.5, "from 0.5 g");
 assert.equal(Math.max(...neocate.steps), 1.5, "to 1.5 g");
 
 const neosure = fortifierById("neosure")!;
-assert.equal(neosure.kcalPerUnit, 5.13, "NeoSure: 513 kcal per 100 g");
-assert.equal(neosure.proteinPerUnit, 0.15, "NeoSure: 15 g protein per 100 g");
-assert.equal(FORTIFIER_CATALOG.length, 6);
+// SRH Laboratory composition: 4.88 kcal and 0.16 g protein per gram
+assert.equal(neosure.kcalPerUnit, 4.88, "NeoSure: 4.88 kcal per 1 g");
+assert.equal(neosure.proteinPerUnit, 0.16, "NeoSure: 0.16 g protein per 1 g");
+assert.equal(FORTIFIER_CATALOG.length, 7); // now includes Smart Fort HMF
 assert.equal(fortifierById("does-not-exist"), undefined);
 
 /* --- 2. The user's example: 0.5 g given 2 times -------------------------- */
@@ -84,16 +86,16 @@ const dose = calcNutrition(
 );
 assert.equal(dose.fortDosesPerDay, 2);
 assert.equal(dose.fortFeedsPerDay, 8, "3 hourly = 8 feeds/day");
-assert.equal(round(dose.fortKcalPerMlInFeed, 5), 0.02435, "0.5 g x 4.87 kcal/g in 100 ml");
+assert.equal(round(dose.fortKcalPerMlInFeed, 5), 0.02465, "0.5 g x 4.93 kcal/g in 100 ml");
 // Fortified volume = 100 ml x 2 doses = 200 ml/day = 133.3 ml/kg/day of 160.
 assert.equal(round(dose.fortFraction, 3), 0.833, "only the fortified share is uplifted");
 // fortKcal is contracted to 1 dp, so compare at that precision.
-assert.equal(round(dose.fortKcal, 1), 3.2, "0.5 g x 2 doses x 4.87 = 4.87 kcal/day / 1.5 kg");
+assert.equal(round(dose.fortKcal, 1), 3.3, "0.5 g x 2 doses x 4.93 = 4.93 kcal/day / 1.5 kg");
 // Independent absolute check, not via the per-ml path.
-const absoluteKcalPerKg = (0.5 * 2 * 4.87) / 1.5;
-assert.equal(round(absoluteKcalPerKg, 4), 3.2467, "the absolute figure the per-ml path must land on");
+const absoluteKcalPerKg = (0.5 * 2 * 4.93) / 1.5;
+assert.equal(round(absoluteKcalPerKg, 4), 3.2867, "the absolute figure the per-ml path must land on");
 assert.equal(round(dose.fortKcal, 1), round(absoluteKcalPerKg, 1), "matches the absolute dose");
-assert.equal(round(dose.fortProtein, 2), round((0.5 * 2 * 0.136) / 1.5, 2));
+assert.equal(round(dose.fortProtein, 2), round((0.5 * 2 * 0.13) / 1.5, 2));
 
 /* --- 3. Without doses/day, every feed is fortified (legacy behaviour) ----- */
 const everyFeed = calcNutrition(
