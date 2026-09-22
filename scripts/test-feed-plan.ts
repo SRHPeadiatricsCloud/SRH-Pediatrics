@@ -34,25 +34,27 @@ assert.equal(an.ivKcal, 6.8, "IV dextrose energy must be counted");
 assert.equal(an.totalKcal, 110.8);
 
 /* --- Case B: static feeds with IV fluids running alongside ---------------- */
+// TFI is Total Fluid Intake: Enteral + IV = TFI.
+// When TFI is 150 and IV is 30, enteral = 120 so total fluids = 150.
 const b = resolveFeedPlan(
   { feedPlan: "static", tfiMlKgDay: 150, ivMlKgDay: 30, feedFreq: "3 hourly" },
   WT,
 );
-assert.equal(b.enteralMlKgDay, 150);
-assert.equal(b.ivMlKgDay, 30, "a prescribed IV must never be zeroed by a static plan");
-assert.equal(b.ivSuggestedMlKgDay, 0);
-assert.equal(b.totalFluidsMlKgDay, 180);
-assert.equal(b.reconciled, false);
-assert.equal(b.perFeedMl, 28.13);
-assert.equal(b.notes.length, 1);
-assert.match(b.notes[0], /Total fluids 180 ml\/kg\/day exceed the TFI target 150 by 30/);
+assert.equal(b.enteralMlKgDay, 120, "enteral + IV must equal TFI");
+assert.equal(b.ivMlKgDay, 30, "a prescribed IV is kept");
+assert.equal(b.ivSuggestedMlKgDay, 30);
+assert.equal(b.totalFluidsMlKgDay, 150, "total fluids perfectly equals TFI target");
+assert.equal(b.reconciled, true);
+assert.equal(b.perFeedMl, 22.5); // 120 * 1.5 / 8 = 22.5
+assert.equal(b.notes.length, 0);
 const bn = calcNutrition(
   fluids({ feedPlan: "static", tfiMlKgDay: 150, ivMlKgDay: 30, feedType: "Preterm formula", dextrosePct: 10, feedFreq: "3 hourly" }),
 );
 assert.equal(bn.ivKcal, 10.2, "30 ml/kg/d of 10% dextrose = 3 g/kg/d x 3.4");
-assert.equal(bn.totalKcal, 130.2, "was 120 before the IV energy fix");
+assert.equal(bn.totalKcal, 106.2);
 
 /* --- Case C: increasing, increase is tomorrow's feed target -------------- */
+// TFI 150, IV 25 => enteral today = 125, total = 150 (TFI target), tomorrow = 145 (+20)
 const c = resolveFeedPlan(
   {
     feedPlan: "increasing",
@@ -64,16 +66,17 @@ const c = resolveFeedPlan(
   },
   WT,
 );
-assert.equal(c.enteralMlKgDay, 150, "today runs at the full TFI");
-assert.equal(c.tomorrowEnteralMlKgDay, 170, "steps up by the increase");
+assert.equal(c.enteralMlKgDay, 125, "enteral today is 150 - 25 IV");
+assert.equal(c.tomorrowEnteralMlKgDay, 145, "tomorrow is enteral + 20 increment");
 assert.equal(c.ivMlKgDay, 25);
-assert.equal(c.ivSuggestedMlKgDay, 0);
-assert.equal(c.totalFluidsMlKgDay, 175);
+assert.equal(c.ivSuggestedMlKgDay, 25);
+assert.equal(c.totalFluidsMlKgDay, 150, "total fluids matches TFI target 150");
+assert.equal(c.reconciled, true);
 const cn = calcNutrition(
   fluids({ feedPlan: "increasing", tfiMlKgDay: 150, feedIncrementMlKgDay: 20, increaseAppliesTo: "tomorrow-target", ivMlKgDay: 25, feedType: "Preterm formula", dextrosePct: 10, feedFreq: "3 hourly" }),
 );
 assert.equal(cn.ivKcal, 8.5);
-assert.equal(cn.totalKcal, 128.5);
+assert.equal(cn.totalKcal, 108.5);
 
 /* --- Case D: static, no IV (plain divided feeds) -------------------------- */
 const d = resolveFeedPlan({ feedPlan: "static", tfiMlKgDay: 160, feedFreq: "2 hourly" }, WT);
@@ -90,12 +93,13 @@ const e = resolveFeedPlan(
   { feedPlan: "increasing", tfiMlKgDay: 150, feedIncrementMlKgDay: 20, ivMlKgDay: 40, feedFreq: "3 hourly" },
   WT,
 );
-assert.equal(e.enteralMlKgDay, 130);
+assert.equal(e.enteralMlKgDay, 110, "enteral is 150 - 40 IV = 110");
 assert.equal(e.ivMlKgDay, 40, "still 40 - the plan reports, it does not override");
-assert.equal(e.ivSuggestedMlKgDay, 20);
-assert.equal(e.totalFluidsMlKgDay, 170);
-assert.equal(e.reconciled, false);
-assert.match(e.notes[0], /exceed the TFI target 150 by 20/);
+assert.equal(e.ivSuggestedMlKgDay, 40);
+assert.equal(e.totalFluidsMlKgDay, 150);
+assert.equal(e.reconciled, true);
+// with enteral correctly reduced by IV, fluids perfectly equal TFI
+assert.equal(e.notes.length, 0);
 
 /* --- The IV field is a pass-through: whatever is typed is what is used ---- */
 for (const iv of [0, 5, 20, 30, 120, 250]) {

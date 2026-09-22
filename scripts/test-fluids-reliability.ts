@@ -180,7 +180,9 @@ ok(noWeight.fortFraction === 1, "without a weight the fortifier is credited to t
 ok(has(noWeight, /upper bound until the weight is entered/), "and that is labelled an upper bound");
 
 /* --- 7. The feed plan's findings reach every consumer ---------------------- */
-const overTfi = calcNutrition(
+// When IV is entered with TFI, enteral is 120 and IV is 30, perfectly totaling 150 (TFI target),
+// preventing overcalculation and double-counting of IV and enteral feeds.
+const reconciledTfi = calcNutrition(
   fluids({
     feedType: "Expressed breast milk (EBM)",
     feedPlan: "static",
@@ -191,8 +193,8 @@ const overTfi = calcNutrition(
   1500,
 );
 ok(
-  has(overTfi, /exceed the TFI target 150 by 30/),
-  "enteral + IV above the TFI target is a warning, not just a feed-tab note",
+  reconciledTfi.totalFluids === 150,
+  "enteral + IV matches the TFI target without overcalculation",
 );
 const hugeTfi = calcNutrition(
   fluids({ feedType: "Expressed breast milk (EBM)", feedPlan: "static", tfiMlKgDay: 300, feedFreq: "3 hourly" }),

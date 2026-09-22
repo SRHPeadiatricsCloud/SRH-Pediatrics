@@ -19,6 +19,19 @@ Rules:
 
 ---
 
+## 3.10.2
+
+Rectified TFI calculation to prevent overcalculating enteral feeds and IV fluids.
+
+### Fixed
+
+- **TFI Total Fluid Intake Reconciliation (`src/lib/clinical.ts`)**:
+  - Previously, in certain plan modes, enteral feeds were calculated directly from the TFI target and then added to the prescribed IV fluids (`enteral + IV`), causing the total fluid volume to exceed the TFI target and double-count fluids.
+  - Rectified `resolveFeedPlan`: Enteral volume is now computed as `Math.max(0, TFI - IV)`, guaranteeing that `Enteral Feeds + IV Fluids = TFI Target` exactly.
+  - Both static and increasing feed plans now fully respect the prescribed TFI ceiling without inflating fluid or calorie totals.
+
+---
+
 ## 3.10.1
 
 Direct visibility for 99th centile in BP Centiles Calculator.

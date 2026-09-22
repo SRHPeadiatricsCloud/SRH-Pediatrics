@@ -525,7 +525,9 @@ export function resolveFeedPlan(
   const tfi = clampMl(f.tfiMlKgDay);
 
   // --- today's enteral volume, plus the step-up target for the next 24 h ---
-  let enteral = tfi;
+  // TFI is Total Fluid Intake: Enteral Feeds + IV Fluids = TFI.
+  // Feeds and IV fluids must NEVER double-count or overcalculate beyond TFI.
+  let enteral = Math.max(0, tfi - enteredIv);
   let tomorrow = tfi;
   let increment: number | undefined;
   if (mode === "increasing") {
@@ -534,14 +536,18 @@ export function resolveFeedPlan(
     if (rawInc > 250) notes.push(`Increase ${rawInc} ml/kg/day exceeds the 250 cap — clamped`);
     if (increaseAppliesTo === "iv-today") {
       if (increment > tfi) notes.push(`Increase ${increment} exceeds TFI ${tfi} — enteral floored at 0`);
-      enteral = Math.max(0, tfi - increment);
+      // IV today covers the remaining gap up to TFI:
+      enteral = Math.max(0, tfi - Math.max(increment, enteredIv));
       tomorrow = tfi;
     } else {
-      enteral = tfi;
-      const next = tfi + increment;
+      const next = enteral + increment;
       tomorrow = clampMl(next);
       if (next > 250) notes.push(`Next 24 h target ${Math.round(next)} ml/kg/day exceeds the 250 cap — clamped`);
     }
+  } else {
+    // In static mode, enteral is the remaining fluid intake after IV fluids:
+    enteral = Math.max(0, tfi - enteredIv);
+    tomorrow = enteral;
   }
 
   // --- today's IV volume: whatever was typed, never derived or overridden ---
