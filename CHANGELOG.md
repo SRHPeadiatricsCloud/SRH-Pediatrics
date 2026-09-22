@@ -19,6 +19,26 @@ Rules:
 
 ---
 
+## 3.9.0
+
+Level IIIB NICU Day-to-Day Operations Suite.
+
+### Added
+
+- **Daily Ward Round Checklist Engine (`src/lib/daily-round.ts`)**: Evaluates real chart data across 7 essential daily round domains:
+  1. Weight (checks if measured today or days elapsed)
+  2. Observations (recency of vital signs, flags stale records)
+  3. Feeds (enforces feed frequency interval + 10-min grace period)
+  4. Actions (flags overdue scheduled tasks and pending today items)
+  5. Lines (tracks vascular lines in situ and flags missing insertion dates)
+  6. Medicines (tracks running medications and flags missing start dates)
+  7. Problem List (verifies active clinical diagnoses)
+- **Baby Overview Ward Round Checklist (`src/components/daily-round-checklist.tsx`)**: Prominent, elegant interactive status bar on each baby's Overview page showing progress and clickable quick-jump shortcuts directly to relevant tabs.
+- **Unit Board Daily Round Status**: Main unit overview board displays unit-wide overdue items count and per-baby ward round status chips.
+- Comprehensive test suite in `scripts/test-daily-round.ts` covering edge cases, timing boundaries, and unit rollups.
+
+---
+
 ## 3.8.0
 
 New behaviour on the feeds & fluids tab, so the minor segment moves. Three of

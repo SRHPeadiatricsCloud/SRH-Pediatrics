@@ -50,6 +50,10 @@ export type Detail = {
     done: boolean;
     doneAt: string | null;
     doneBy: string;
+    /** Columns the detail route already returns; the type was narrower. */
+    scheduledAt?: string | null;
+    note?: string;
+    owner?: string;
   }[];
   handovers: {
     id: number;

@@ -54,6 +54,7 @@ import {
 import { EventLogTab } from "@/components/event-log";
 import { FluidsTab } from "@/components/fluids-tab";
 import { ConsolidatedImpression } from "@/components/interpret-ui";
+import { DailyRoundChecklist } from "@/components/daily-round-checklist";
 import type { Clinical } from "@/lib/clinical";
 import {
   calcNutrition,
@@ -356,7 +357,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
           />
         )}
 
-        {tab === "Overview" && <Overview d={data} patch={patch} user={name} />}
+        {tab === "Overview" && <Overview d={data} patch={patch} user={name} onNavigateTab={(targetTab) => setTab(targetTab as (typeof TABS)[number])} />}
         {tab === "Vitals & growth" && (
           <>
             <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />
@@ -388,10 +389,12 @@ function Overview({
   d,
   patch,
   user,
+  onNavigateTab,
 }: {
   d: Detail;
   patch: (body: Record<string, unknown>) => Promise<void>;
   user: string;
+  onNavigateTab?: (tab: string) => void;
 }) {
   const c = d.baby.clinical ?? {};
   const v = d.vitals[0] ?? {};
@@ -458,6 +461,9 @@ function Overview({
           user={user}
           onSave={patch}
         />
+      </div>
+      <div className="lg:col-span-3">
+        <DailyRoundChecklist detail={d} onNavigateTab={onNavigateTab} />
       </div>
       <div className="lg:col-span-3">
         <ConsolidatedImpression
