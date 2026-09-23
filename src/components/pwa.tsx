@@ -15,8 +15,60 @@ export function PwaEngine() {
   const [standalone, setStandalone] = useState(false);
 
   useEffect(() => {
+    const cleanupFns: Array<() => void> = [];
+
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      // Had a worker already? Only then is a swap worth reloading for.
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      const RELOADED = "srh-sw-reloaded";
+
+      const onControllerChange = () => {
+        if (!hadController) return; // first ever install — nothing to flush
+        if (sessionStorage.getItem(RELOADED)) return; // reload at most once per session
+        sessionStorage.setItem(RELOADED, "1");
+        window.location.reload();
+      };
+
+      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+      // updateViaCache:"none" => the browser never serves /sw.js from its HTTP
+      // cache, so a new deploy's worker is detected on the next visit.
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((reg) => {
+          // Activate a waiting worker immediately instead of waiting for every
+          // tab to be closed.
+          if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          reg.addEventListener("updatefound", () => {
+            const worker = reg.installing;
+            if (!worker) return;
+            worker.addEventListener("statechange", () => {
+              if (worker.state === "installed" && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: "SKIP_WAITING" });
+              }
+            });
+          });
+
+          // Re-check for a new worker on tab focus and periodically; cheap, and
+          // it means staff do not have to hard-refresh to get a new build.
+          const check = () => reg.update().catch(() => undefined);
+          const onVisible = () => {
+            if (document.visibilityState === "visible") check();
+          };
+          document.addEventListener("visibilitychange", onVisible);
+          const timer = window.setInterval(check, 30 * 60 * 1000);
+          check();
+
+          cleanupFns.push(() => {
+            document.removeEventListener("visibilitychange", onVisible);
+            window.clearInterval(timer);
+          });
+        })
+        .catch(() => undefined);
+
+      cleanupFns.push(() =>
+        navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange),
+      );
     }
     setStandalone(
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -45,6 +97,7 @@ export function PwaEngine() {
       window.removeEventListener("appinstalled", onInstalled);
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
+      cleanupFns.forEach((fn) => fn());
     };
   }, []);
 

@@ -1,20 +1,23 @@
 /* Sri Ramakrishna Hospital — NICU Cloud Handover
-   Standalone PWA service worker: app-shell caching + offline fallback.
-   Live clinical data is always fetched network-first so the board never goes stale. */
+   Standalone PWA service worker: offline fallback only.
 
-const VERSION = "srh-nicu-v3.0.000";
+   Freshness rules (why production used to show an old UI):
+   - Documents and React Router (RSC) payloads are NEVER served from cache while
+     online. A cached flight payload renders the previous deploy's React tree,
+     so the browser happily showed old UI long after a new build went live.
+   - Only immutable, content-hashed build assets (/_next/static/*) are served
+     cache-first; those change filename on every deploy.
+   - Cache names carry VERSION, so a new worker wipes every old cache on
+     activate — including the ones left behind by the previous (buggy) worker. */
+
+const VERSION = "srh-nicu-v3.1.0";
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
+const DOCS = `${VERSION}-docs`;
 
-const PRECACHE = [
-  "/",
-  "/admit",
-  "/handover",
-  "/reference",
-  "/icons/icon-512.png?v=3.0.000",
-  "/images/hospital-logo.png?v=3.0.000",
-  "/manifest.webmanifest",
-];
+// Only immutable assets belong here. Never precache HTML documents: a precached
+// document is served even after a new deploy.
+const PRECACHE = ["/icons/icon-512.png?v=3.1.0", "/images/hospital-logo.png?v=3.1.0"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -27,11 +30,26 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k !== SHELL && k !== RUNTIME && k !== DOCS).map((k) => caches.delete(k)),
+      );
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const client of clients) {
+        client.postMessage({ type: "SW_ACTIVATED", version: VERSION });
+      }
+    })(),
   );
+});
+
+self.addEventListener("message", (event) => {
+  const data = event.data || {};
+  if (data.type === "SKIP_WAITING") self.skipWaiting();
+  if (data.type === "CLEAR_CACHES") {
+    event.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))));
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -40,14 +58,30 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === "/sw.js") return; // browser must always re-check the worker itself
 
-  // Clinical API: network-first, fall back to the last good response when offline.
+  // 1) React Router (RSC) payloads: network only. Never cache these — a stale
+  //    payload is exactly what pinned the old UI on screen across deploys.
+  const isRouterPayload =
+    url.searchParams.has("_rsc") ||
+    req.headers.get("RSC") === "1" ||
+    req.headers.get("Next-Router-Prefetch") === "1" ||
+    req.headers.get("Next-Router-State-Tree") !== null;
+
+  if (isRouterPayload) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  // 2) Clinical API: network-first, fall back to the last good response offline.
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(RUNTIME).then((c) => c.put(req, copy));
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(RUNTIME).then((c) => c.put(req, copy));
+          }
           return res;
         })
         .catch(() =>
@@ -63,13 +97,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Pages: network-first so edits appear immediately, cache as offline backup.
+  // 3) Documents: network-first so a deploy is visible on the next visit,
+  //    cached copy only as an offline fallback.
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(RUNTIME).then((c) => c.put(req, copy));
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(DOCS).then((c) => c.put(req, copy));
+          }
           return res;
         })
         .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),
@@ -77,16 +114,38 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache-first.
+  // 4) Build assets: content-hashed and immutable, safe to serve cache-first.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.match(req).then(
+        (hit) =>
+          hit ||
+          fetch(req).then((res) => {
+            if (res && res.ok) {
+              const copy = res.clone();
+              caches.open(RUNTIME).then((c) => c.put(req, copy));
+            }
+            return res;
+          }),
+      ),
+    );
+    return;
+  }
+
+  // 5) Everything else (icons, manifest, fonts): serve cached copy, refresh in
+  //    the background so nothing here can go stale for long either.
   event.respondWith(
-    caches.match(req).then(
-      (hit) =>
-        hit ||
-        fetch(req).then((res) => {
-          const copy = res.clone();
-          caches.open(RUNTIME).then((c) => c.put(req, copy));
+    caches.match(req).then((hit) => {
+      const network = fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(RUNTIME).then((c) => c.put(req, copy));
+          }
           return res;
-        }),
-    ),
+        })
+        .catch(() => hit);
+      return hit || network;
+    }),
   );
 });
