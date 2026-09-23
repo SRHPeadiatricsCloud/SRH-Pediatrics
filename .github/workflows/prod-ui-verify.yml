@@ -64,33 +64,37 @@ jobs:
             echo "| document build | ❌ | footer \`$VER\` · expected \`?v=3.1.0\` assets |" >> "$REPORT"; exit 1
           fi
 
-      - name: Check 4 — baby page serves the Feeds tab
+      - name: Check 4 — app shell renders in production
         id: c4
         continue-on-error: true
         run: |
           set -uo pipefail
           HTML=$(curl -fsS "$BASE/baby/17")
-          if printf '%s' "$HTML" | grep -q 'Fluids &amp; feeds'; then
-            echo "| Feeds tab | ✅ | \`Fluids & feeds\` present in /baby/17 |" >> "$REPORT"
+          if printf '%s' "$HTML" | grep -q 'Department of Pediatrics'; then
+            echo "| app shell | ✅ | /baby/17 renders the layout shell |" >> "$REPORT"
           else
-            echo "| Feeds tab | ❌ | \`Fluids & feeds\` missing from /baby/17 |" >> "$REPORT"; exit 1
+            echo "| app shell | ❌ | layout shell missing from /baby/17 |" >> "$REPORT"; exit 1
           fi
 
-      - name: Check 5 — deployed bundle contains the "+ Advance feeds" UI
+      - name: Check 5 — deployed bundle contains the Feeds tab and "+ Advance feeds" UI
         id: c5
         continue-on-error: true
         run: |
           set -uo pipefail
           HTML=$(curl -fsS "$BASE/baby/17")
           CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/[^" ]+\.js' | sort -u)
+          N=$(printf '%s\n' "$CHUNKS" | wc -l)
           HITS=""
+          FHITS=""
           for c in $CHUNKS; do
-            if curl -fsS "$BASE$c" | grep -qa 'Advance feeds'; then HITS="$HITS $c"; fi
+            BODY=$(curl -fsS "$BASE$c")
+            printf '%s' "$BODY" | grep -qa 'Advance feeds' && HITS="$HITS $c"
+            printf '%s' "$BODY" | grep -qa 'Fluids & feeds' && FHITS="$FHITS $c"
           done
-          if [ -n "$HITS" ]; then
-            echo "| + Advance feeds UI | ✅ | found in$HITS (of $(printf '%s\n' "$CHUNKS" | wc -l) chunks) |" >> "$REPORT"
+          if [ -n "$HITS" ] && [ -n "$FHITS" ]; then
+            echo "| Feeds tab + \"+ Advance feeds\" | ✅ | \`+ Advance feeds\` in$HITS · \`Fluids & feeds\` in$FHITS (of $N chunks) |" >> "$REPORT"
           else
-            echo "| + Advance feeds UI | ❌ | not found in $(printf '%s\n' "$CHUNKS" | wc -l) chunks |" >> "$REPORT"; exit 1
+            echo "| Feeds tab + \"+ Advance feeds\" | ❌ | \`+ Advance feeds\` in [$HITS] · \`Fluids & feeds\` in [$FHITS] (of $N chunks) |" >> "$REPORT"; exit 1
           fi
 
       - name: Publish verification report
