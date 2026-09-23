@@ -2,58 +2,121 @@ name: Production UI verify
 
 # Read-only smoke test for the live production deployment.
 # Confirms the build actually serving https://srh-pediatrics.vercel.app contains
-# the current UI (and the current service worker) rather than a stale bundle.
-# Deliberately does NOT touch clinical data — /api/seed is destructive, so it is
-# not called here (see prod-verify.yml).
+# the current UI (and the current service worker) rather than a stale bundle,
+# and publishes the result as a check run on the commit.
+#
+# Deliberately does NOT touch clinical data — /api/seed truncates every table,
+# so it is not called here (see prod-verify.yml).
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   verify-ui:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+    env:
+      BASE: https://srh-pediatrics.vercel.app
+      REPORT: /tmp/prod-ui-verify.md
     steps:
-      - name: GET /api/health
+      - name: Check 1 — /api/health
+        id: c1
+        continue-on-error: true
         run: |
-          BODY=$(curl -fsS https://srh-pediatrics.vercel.app/api/health)
-          echo "health: $BODY"
-          test "$BODY" = '{"ok":true}'
+          set -uo pipefail
+          BODY=$(curl -fsS "$BASE/api/health")
+          printf '| check | result | detail |\n|---|---|---|\n' > "$REPORT"
+          if [ "$BODY" = '{"ok":true}' ]; then
+            echo "| /api/health | ✅ | \`$BODY\` |" >> "$REPORT"
+          else
+            echo "| /api/health | ❌ | \`$BODY\` |" >> "$REPORT"; exit 1
+          fi
 
-      - name: Service worker is current and not browser-cached
+      - name: Check 2 — service worker is current and never browser-cached
+        id: c2
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          BASE=https://srh-pediatrics.vercel.app
-          echo "--- /sw.js response headers ---"
-          curl -sSI "$BASE/sw.js" | grep -iE '^(cache-control|content-type)' || true
-          curl -sSI "$BASE/sw.js" | grep -i '^cache-control' | grep -qi 'max-age=0'
+          set -uo pipefail
+          HDRS=$(curl -sSI "$BASE/sw.js" | grep -i '^cache-control' | tr -d '\r')
           SW=$(curl -fsS "$BASE/sw.js")
-          echo "--- served sw.js version ---"
-          printf '%s' "$SW" | grep -oE 'srh-nicu-v[0-9]+\.[0-9]+\.[0-9]+' | head -1
-          printf '%s' "$SW" | grep -q 'srh-nicu-v3.1.0'
-          printf '%s' "$SW" | grep -q 'isRouterPayload' # never-cache RSC guard
-          echo "sw.js OK"
+          SWV=$(printf '%s' "$SW" | grep -oE 'srh-nicu-v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if printf '%s' "$SW" | grep -q 'srh-nicu-v3.1.0' \
+             && printf '%s' "$SW" | grep -q 'isRouterPayload' \
+             && printf '%s' "$HDRS" | grep -qi 'max-age=0'; then
+            echo "| /sw.js | ✅ | \`$SWV\` · \`$HDRS\` · RSC guard present |" >> "$REPORT"
+          else
+            echo "| /sw.js | ❌ | \`$SWV\` · \`$HDRS\` |" >> "$REPORT"; exit 1
+          fi
 
-      - name: Baby page serves the Feeds tab
+      - name: Check 3 — served document is the 3.1.0 build
+        id: c3
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          BASE=https://srh-pediatrics.vercel.app
-          HTML=$(curl -fsS "$BASE/baby/17")
-          printf '%s' "$HTML" | grep -q 'Fluids &amp; feeds'
-          echo "document contains the Fluids & feeds tab"
+          set -uo pipefail
+          HTML=$(curl -fsS "$BASE/")
+          VER=$(printf '%s' "$HTML" | grep -oE 'V\.(<!-- -->)?[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if printf '%s' "$HTML" | grep -q 'icon-512.png?v=3.1.0'; then
+            echo "| document build | ✅ | footer \`$VER\` · assets \`?v=3.1.0\` |" >> "$REPORT"
+          else
+            echo "| document build | ❌ | footer \`$VER\` · expected \`?v=3.1.0\` assets |" >> "$REPORT"; exit 1
+          fi
 
-      - name: Deployed JS bundle contains the "+ Advance feeds" UI
+      - name: Check 4 — app shell renders in production
+        id: c4
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          BASE=https://srh-pediatrics.vercel.app
+          set -uo pipefail
           HTML=$(curl -fsS "$BASE/baby/17")
-          CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/chunks/[^" ]+\.js' | sort -u)
-          echo "chunks referenced by /baby/17: $(printf '%s\n' "$CHUNKS" | wc -l)"
-          HIT=""
+          if printf '%s' "$HTML" | grep -q 'Department of Pediatrics'; then
+            echo "| app shell | ✅ | /baby/17 renders the layout shell |" >> "$REPORT"
+          else
+            echo "| app shell | ❌ | layout shell missing from /baby/17 |" >> "$REPORT"; exit 1
+          fi
+
+      - name: Check 5 — deployed bundle contains the Feeds tab and "+ Advance feeds" UI
+        id: c5
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          HTML=$(curl -fsS "$BASE/baby/17")
+          CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/[^" ]+\.js' | sort -u)
+          N=$(printf '%s\n' "$CHUNKS" | wc -l)
+          HITS=""
+          FHITS=""
           for c in $CHUNKS; do
-            if curl -fsS "$BASE$c" | grep -qa 'Advance feeds'; then
-              echo "found '+ Advance feeds' in $c"
-              HIT=1
-            fi
+            BODY=$(curl -fsS "$BASE$c")
+            printf '%s' "$BODY" | grep -qa 'Advance feeds' && HITS="$HITS $c"
+            printf '%s' "$BODY" | grep -qa 'Fluids & feeds' && FHITS="$FHITS $c"
           done
-          test -n "$HIT"
-          echo "new Feeds UI is live in production"
+          if [ -n "$HITS" ] && [ -n "$FHITS" ]; then
+            echo "| Feeds tab + \"+ Advance feeds\" | ✅ | \`+ Advance feeds\` in$HITS · \`Fluids & feeds\` in$FHITS (of $N chunks) |" >> "$REPORT"
+          else
+            echo "| Feeds tab + \"+ Advance feeds\" | ❌ | \`+ Advance feeds\` in [$HITS] · \`Fluids & feeds\` in [$FHITS] (of $N chunks) |" >> "$REPORT"; exit 1
+          fi
+
+      - name: Publish verification report
+        if: always()
+        run: |
+          set -uo pipefail
+          CONCLUSION=success
+          for o in "${{ steps.c1.outcome }}" "${{ steps.c2.outcome }}" "${{ steps.c3.outcome }}" "${{ steps.c4.outcome }}" "${{ steps.c5.outcome }}"; do
+            [ "$o" = "failure" ] && CONCLUSION=failure
+            [ "$o" = "cancelled" ] && CONCLUSION=failure
+          done
+          sed -i '1i ## Production UI verify\n' "$REPORT" 2>/dev/null || true
+          jq -n --arg summary "$(cat "$REPORT")" --arg sha "$GITHUB_SHA" --arg conclusion "$CONCLUSION" \
+            '{name:"prod-ui-verify", head_sha:$sha, status:"completed", conclusion:$conclusion,
+              output:{title:"Production UI verify", summary:$summary}}' > /tmp/check.json
+          curl -sS -f -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/check-runs" \
+            -d @/tmp/check.json > /dev/null || echo "could not publish check run"
+          echo "conclusion=$CONCLUSION"
+
+      - name: Fail the job if any check failed
+        if: steps.c1.outcome == 'failure' || steps.c2.outcome == 'failure' || steps.c3.outcome == 'failure' || steps.c4.outcome == 'failure' || steps.c5.outcome == 'failure'
+        run: exit 1
