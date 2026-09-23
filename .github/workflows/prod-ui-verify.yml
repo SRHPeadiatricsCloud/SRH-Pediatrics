@@ -3,11 +3,12 @@ name: Production UI verify
 # Read-only smoke test for the live production deployment.
 # Confirms the build actually serving https://srh-pediatrics.vercel.app contains
 # the current UI (and the current service worker) rather than a stale bundle.
-# Deliberately does NOT touch clinical data — /api/seed is destructive, so it is
-# not called here (see prod-verify.yml).
+# Deliberately does NOT touch clinical data — /api/seed truncates every table,
+# so it is not called here (see prod-verify.yml).
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   verify-ui:
@@ -33,6 +34,16 @@ jobs:
           printf '%s' "$SW" | grep -q 'isRouterPayload' # never-cache RSC guard
           echo "sw.js OK"
 
+      - name: Served document is build 3.1.0
+        run: |
+          set -euo pipefail
+          BASE=https://srh-pediatrics.vercel.app
+          HTML=$(curl -fsS "$BASE/")
+          echo -n "app version marker: "
+          printf '%s' "$HTML" | grep -oE 'V\.(<!-- -->)?[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "(not found)"
+          printf '%s' "$HTML" | grep -q 'icon-512.png?v=3.1.0'
+          echo "document served by the 3.1.0 build"
+
       - name: Baby page serves the Feeds tab
         run: |
           set -euo pipefail
@@ -46,8 +57,9 @@ jobs:
           set -euo pipefail
           BASE=https://srh-pediatrics.vercel.app
           HTML=$(curl -fsS "$BASE/baby/17")
-          CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/chunks/[^" ]+\.js' | sort -u)
+          CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/[^" ]+\.js' | sort -u)
           echo "chunks referenced by /baby/17: $(printf '%s\n' "$CHUNKS" | wc -l)"
+          test -n "$CHUNKS"
           HIT=""
           for c in $CHUNKS; do
             if curl -fsS "$BASE$c" | grep -qa 'Advance feeds'; then
