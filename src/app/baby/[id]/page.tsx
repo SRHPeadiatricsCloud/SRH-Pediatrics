@@ -518,7 +518,7 @@ function Overview({
           <Row k="Surfactant" v={c.resp?.surfactant ?? "—"} />
           <Row k="ETT" v={c.resp?.ettSize ? `${c.resp.ettSize} mm at ${c.resp.ettDepth ?? "?"}` : "—"} />
           <Row k="Total fluids" v={`${c.fluids?.totalMlKgDay ?? "—"} ml/kg/day (GIR ${c.fluids?.gir ?? "—"})`} />
-          <Row k="Feeds" v={`${c.fluids?.feedType ?? "—"} · ${c.fluids?.feedVol ?? "—"} ml ${c.fluids?.feedFreq ?? ""} via ${c.fluids?.feedRoute ?? "—"}`} />
+          <Row k="Feeds" v={`${c.fluids?.feedType ?? "—"} · ${c.fluids?.feedVol ?? "—"} ml ${c.fluids?.feedFreq ?? ""} via ${c.fluids?.feedRoute ?? "—"}${(() => { const fn = calcNutrition(c); return fn.fortStatus === "active" ? ` · + ${fn.fortLabel} ${fn.fortSachetsPer100ml}/100 ml` : fn.fortStatus === "incomplete" ? " · fortifier incomplete" : ""; })()}`} />
           <Row k="TPN" v={c.fluids?.tpn ? `AA ${c.fluids.aminoAcid ?? "—"} g/kg · Lipid ${c.fluids.lipid ?? "—"} g/kg` : "No"} />
           <Row
             k="Energy (auto)"

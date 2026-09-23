@@ -371,8 +371,26 @@ export const FEED_TYPE = [
   "EBM + HMF",
   "Preterm formula",
   "Term formula",
-  "Lactose free / hydrolysed formula",
+  "Aptamil Gold (term formula)",
+  "Enfamil A+ (term formula)",
+  "Similac Advance Plus (term formula)",
   "Post-discharge formula",
+  "Similac NeoSure (post-discharge)",
+  "Neocate (amino-acid formula)",
+  "Lactose free / hydrolysed formula",
+];
+
+/** Feed-interval presets (Q-hours). Legacy "N hourly" labels still parse via parseFeedIntervalHours. */
+export const FEED_INTERVALS = [
+  "Q2H",
+  "Q3H",
+  "Q4H",
+  "Q6H",
+  "Q8H",
+  "Q12H",
+  "Q24H",
+  "Continuous",
+  "On demand",
 ];
 
 export const FEED_ROUTE = [
