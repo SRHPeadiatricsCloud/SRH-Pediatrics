@@ -19,6 +19,19 @@ Rules:
 
 ---
 
+## 3.12.2
+
+Auto-correction and real-time calculation of calories upon selecting fortification product.
+
+### Fixed & Enhanced
+
+- **Fortification Dropdown Real-Time Auto-Calculation (`src/components/fluids-tab.tsx`)**:
+  - Selecting any fortifier from the dropdown (e.g. *HMF PreNAN*, *Lactodex / LHMF*, *MMF PLUS*, *Smart Fort HMF*, *Similac NeoSure*, *Neocate*) now automatically pulls in its exact energy (kcal) and protein density from the formulation reference.
+  - Automatically resets any stale manual energy overrides (`kcalManual: false`, `kcal: undefined`), immediately recalculating and updating the total calories and target comparisons in real time.
+  - Sets the default dose to 1 full sachet / standard gram measure if not previously entered.
+
+---
+
 ## 3.12.1
 
 Renamed nutrition composition disclosure to Formulation reference.

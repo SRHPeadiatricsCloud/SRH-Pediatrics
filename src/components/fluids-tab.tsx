@@ -914,14 +914,19 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                 onChange={(event) => {
                   const id = event.target.value;
                   const product = fortifierById(id);
+                  // Auto-reset manual energy override so total calories automatically calculate from the new fortifier
+                  setManualDerived((current) => ({ ...current, kcal: false }));
                   setS((p) => ({
                     ...p,
                     fortifierProductId: id || undefined,
                     fortificationName: product ? product.name : p.fortificationName,
+                    fortificationAmount: p.fortificationAmount ?? (product ? product.steps[product.steps.length - 1] : 1),
                     fortificationAmountUnit: product ? product.unit : p.fortificationAmountUnit,
                     fortificationFeedVolumeMl: product ? product.mixedWithMl : p.fortificationFeedVolumeMl,
-                    fortifierKcalPerUnit: product ? undefined : p.fortifierKcalPerUnit,
-                    fortifierProteinPerUnit: product ? undefined : p.fortifierProteinPerUnit,
+                    fortifierKcalPerUnit: product ? product.kcalPerUnit : undefined,
+                    fortifierProteinPerUnit: product ? product.proteinPerUnit : undefined,
+                    kcal: undefined, // Clear any stored manual calorie value so calculated energy takes over immediately
+                    kcalManual: false,
                   }));
                 }}
               >
