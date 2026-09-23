@@ -43,7 +43,6 @@ import {
   CareTab,
   CourseTab,
   DrugsTab,
-  FluidsTab,
   GrowthTab,
   HandoverTab,
   LabsTab,
@@ -53,7 +52,9 @@ import {
   VitalsTab,
 } from "@/components/baby-tabs";
 import { EventLogTab } from "@/components/event-log";
+import { FluidsTab } from "@/components/fluids-tab";
 import { ConsolidatedImpression } from "@/components/interpret-ui";
+import { DailyRoundChecklist } from "@/components/daily-round-checklist";
 import type { Clinical } from "@/lib/clinical";
 import {
   calcNutrition,
@@ -137,10 +138,11 @@ type Detail = {
 
 const TABS = [
   "Overview",
-  "Vitals",
+  // Vitals and growth live together: weight is recorded during the observation
+  // round, so splitting them across two tabs meant entering it twice.
+  "Vitals & growth",
   "Respiratory",
   "Fluids & feeds",
-  "Growth & weight",
   "Daily progress",
   "Problems",
   "Drugs & lines",
@@ -355,13 +357,17 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
           />
         )}
 
-        {tab === "Overview" && <Overview d={data} patch={patch} user={name} />}
-        {tab === "Vitals" && <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />}
+        {tab === "Overview" && <Overview d={data} patch={patch} user={name} onNavigateTab={(targetTab) => setTab(targetTab as (typeof TABS)[number])} />}
+        {tab === "Vitals & growth" && (
+          <>
+            <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />
+            <div className="mt-6">
+              <GrowthTab d={data} patch={patch} user={name} reload={reload} />
+            </div>
+          </>
+        )}
         {tab === "Respiratory" && <RespTab d={data} patch={patch} user={name} />}
         {tab === "Fluids & feeds" && <FluidsTab d={data} patch={patch} />}
-        {tab === "Growth & weight" && (
-          <GrowthTab d={data} patch={patch} user={name} reload={reload} />
-        )}
         {tab === "Daily progress" && <DailyProgressTab baby={b} patch={patch} user={name} />}
         {tab === "Problems" && <ProblemsTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Drugs & lines" && <DrugsTab d={data} patch={patch} />}
@@ -383,15 +389,19 @@ function Overview({
   d,
   patch,
   user,
+  onNavigateTab,
 }: {
   d: Detail;
   patch: (body: Record<string, unknown>) => Promise<void>;
   user: string;
+  onNavigateTab?: (tab: string) => void;
 }) {
   const c = d.baby.clinical ?? {};
   const v = d.vitals[0] ?? {};
   const { unit } = useTempUnit();
   const b = d.baby;
+  // Once, and sized to this baby's age so the summary and the feeds tab agree.
+  const overviewNutrition = calcNutrition(c, b.currentWeight, { dol: dayOfLife(b.dob) });
   const babyLite = {
     unit: b.unit,
     dob: b.dob,
@@ -451,6 +461,9 @@ function Overview({
           user={user}
           onSave={patch}
         />
+      </div>
+      <div className="lg:col-span-3">
+        <DailyRoundChecklist detail={d} onNavigateTab={onNavigateTab} />
       </div>
       <div className="lg:col-span-3">
         <ConsolidatedImpression
@@ -518,11 +531,11 @@ function Overview({
           <Row k="Surfactant" v={c.resp?.surfactant ?? "—"} />
           <Row k="ETT" v={c.resp?.ettSize ? `${c.resp.ettSize} mm at ${c.resp.ettDepth ?? "?"}` : "—"} />
           <Row k="Total fluids" v={`${c.fluids?.totalMlKgDay ?? "—"} ml/kg/day (GIR ${c.fluids?.gir ?? "—"})`} />
-          <Row k="Feeds" v={`${c.fluids?.feedType ?? "—"} · ${c.fluids?.feedVol ?? "—"} ml ${c.fluids?.feedFreq ?? ""} via ${c.fluids?.feedRoute ?? "—"}${(() => { const fn = calcNutrition(c); return fn.fortStatus === "active" ? ` · + ${fn.fortLabel} ${fn.fortSachetsPer100ml}/100 ml` : fn.fortStatus === "incomplete" ? " · fortifier incomplete" : ""; })()}`} />
+          <Row k="Feeds" v={`${c.fluids?.feedType ?? "—"} · ${c.fluids?.feedVol ?? "—"} ml ${c.fluids?.feedFreq ?? ""} via ${c.fluids?.feedRoute ?? "—"}${(() => { const fn = calcNutrition(c); return fn.fortified ? ` · + ${fn.fortProduct?.name ?? c.fluids?.fortificationName ?? "fortifier"} (+${fn.fortKcal} kcal/kg/d)` : ""; })()}`} />
           <Row k="TPN" v={c.fluids?.tpn ? `AA ${c.fluids.aminoAcid ?? "—"} g/kg · Lipid ${c.fluids.lipid ?? "—"} g/kg` : "No"} />
           <Row
             k="Energy (auto)"
-            v={`${calcNutrition(c).totalKcal} kcal/kg/day · protein ${calcNutrition(c).totalProtein} g/kg/day`}
+            v={`${overviewNutrition.totalKcal} kcal/kg/day · protein ${overviewNutrition.totalProtein} g/kg/day`}
           />
           <Row k="Lines" v={(c.lines ?? []).map((l) => `${l.name} D${l.day}`).join(", ") || "None"} />
           <Row k="Drugs" v={(c.drugs ?? []).map((x) => `${x.name}${x.ofDays ? ` D${x.day}/${x.ofDays}` : x.dose ? ` (${x.dose})` : ""}`).join(", ") || "None"} />

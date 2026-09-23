@@ -159,7 +159,7 @@ export function PainScoreCalculator({
         )}
       </div>
       <p className="mt-1 text-[10px] text-slate-500">
-        The exact score and selected scale are saved in the observation row when you tap "Use as pain score".
+        Score and scale are saved with the observation.
       </p>
     </div>
   );

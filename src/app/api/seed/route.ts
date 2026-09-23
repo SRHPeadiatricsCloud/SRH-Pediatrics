@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildDischargeRecord } from "@/lib/discharge";
 import { db } from "@/db";
 import { babies, events, handovers, problems, tasks, vitals } from "@/db/schema";
 import { sql } from "drizzle-orm";
@@ -14,6 +15,23 @@ export async function POST() {
   await db.execute(sql`TRUNCATE TABLE vitals RESTART IDENTITY`);
   await db.execute(sql`TRUNCATE TABLE problems RESTART IDENTITY`);
   await db.execute(sql`TRUNCATE TABLE babies RESTART IDENTITY`);
+
+  /** Local calendar helpers — the archive groups by local day, never UTC. */
+  const daysAgoAt = (days: number, hour = 10): Date => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  /** A date in the previous calendar month, so the monthly archive has 2 groups. */
+  const lastMonthDay = (dayOfMonth: number): Date => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    d.setDate(dayOfMonth);
+    d.setHours(11, 0, 0, 0);
+    return d;
+  };
 
   const seedBabies = [
     {
@@ -295,6 +313,368 @@ export async function POST() {
       vitals: { hr: 132, rr: 42, spo2: 99, temp: 36.9, sbp: 78, dbp: 48, map: 58, crt: 2, rbs: 84, fio2: 21, urineMlKgHr: 3.4 },
       tasks: ["Book discharge teaching session", "High-risk follow-up appointment", "Final weight & HC"],
     },
+
+    /* ------------------------------------------------------------------
+       SAMPLE CASES for the enteral feed plan. IV fluids are entered by hand
+       in every case. Each one mirrors a case in scripts/test-feed-plan.ts, all
+       at 1.5 kg so the per-feed volumes match. Open the Fluids tab to see the
+       plan resolve live.
+       ------------------------------------------------------------------ */
+    {
+      uhid: "SAMPLE-A",
+      babyName: "Sample A - increasing, increase given IV today",
+      motherName: "Sample A",
+      bed: "S1 · Sample bay",
+      sex: "Female",
+      dob: new Date(Date.now() - 5 * 24 * H),
+      gestWeeks: 30,
+      gestDays: 2,
+      birthWeight: 1380,
+      currentWeight: 1500,
+      deliveryMode: "NVD",
+      apgar1: 7,
+      apgar5: 9,
+      bloodGroup: "O+",
+      acuity: "guarded",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "increasing",
+          increaseAppliesTo: "iv-today",
+          ivMlKgDay: 20,
+          tfiMlKgDay: 150,
+          feedIncrementMlKgDay: 20,
+          dextrosePct: 10,
+          feedType: "Preterm formula",
+          feedRoute: "OG tube",
+          feedFreq: "3 hourly",
+        },
+        plan: "Expect enteral 130 + IV 20 ml/kg/d, 24.38 ml x 8 feeds, IV energy 6.8 kcal, total 110.8 kcal/kg/d. Enteral + IV reconciles to the TFI target 150.",
+      },
+      problems: [["Growth / Prematurity", "Moderate preterm (32–33+6 weeks)"]],
+      vitals: { hr: 138, rr: 44, spo2: 96, temp: 36.8, sbp: 62, dbp: 36, map: 45, crt: 2, rbs: 92, fio2: 21, urineMlKgHr: 3 },
+      tasks: ["Recheck feed tolerance", "Advance feeds by 20 ml/kg/d tomorrow"],
+    },
+    {
+      uhid: "SAMPLE-B",
+      babyName: "Sample B - static feeds with IV fluids entered",
+      motherName: "Sample B",
+      bed: "S2 · Sample bay",
+      sex: "Male",
+      dob: new Date(Date.now() - 8 * 24 * H),
+      gestWeeks: 32,
+      gestDays: 0,
+      birthWeight: 1620,
+      currentWeight: 1500,
+      deliveryMode: "LSCS",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "A+",
+      acuity: "guarded",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "static",
+          tfiMlKgDay: 150,
+          ivMlKgDay: 30,
+          dextrosePct: 10,
+          feedType: "Preterm formula",
+          feedRoute: "OG tube",
+          feedFreq: "3 hourly",
+        },
+        plan: "Expect enteral 150 + IV 30 ml/kg/d, total 180 ml/kg/d, IV energy 10.2 kcal, total 130.2 kcal/kg/d. The plan flags that total fluids exceed the TFI target 150.",
+      },
+      problems: [["Metabolic / Endocrine", "Neonatal hypoglycaemia"]],
+      vitals: { hr: 136, rr: 42, spo2: 97, temp: 36.7, sbp: 66, dbp: 38, map: 47, crt: 2, rbs: 78, fio2: 21, urineMlKgHr: 3.2 },
+      tasks: ["Monitor RBS 4 hourly", "Wean IV as feeds tolerated"],
+    },
+    {
+      uhid: "SAMPLE-C",
+      babyName: "Sample C - increase is tomorrow's feed target",
+      motherName: "Sample C",
+      bed: "S3 · Sample bay",
+      sex: "Female",
+      dob: new Date(Date.now() - 10 * 24 * H),
+      gestWeeks: 31,
+      gestDays: 4,
+      birthWeight: 1450,
+      currentWeight: 1500,
+      deliveryMode: "NVD",
+      apgar1: 7,
+      apgar5: 8,
+      bloodGroup: "B+",
+      acuity: "stable",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "increasing",
+          increaseAppliesTo: "tomorrow-target",
+          tfiMlKgDay: 150,
+          feedIncrementMlKgDay: 20,
+          ivMlKgDay: 25,
+          dextrosePct: 10,
+          feedType: "Preterm formula",
+          feedRoute: "OG tube",
+          feedFreq: "3 hourly",
+        },
+        plan: "Expect today enteral 150 + IV 25 ml/kg/d (total 175), next 24 h enteral 170, IV energy 8.5 kcal, total 128.5 kcal/kg/d.",
+      },
+      problems: [["Growth / Prematurity", "Low birth weight (1500–2499 g)"]],
+      vitals: { hr: 134, rr: 40, spo2: 98, temp: 36.9, sbp: 68, dbp: 40, map: 49, crt: 2, rbs: 96, fio2: 21, urineMlKgHr: 3.5 },
+      tasks: ["Advance feeds to 170 ml/kg/d tomorrow"],
+    },
+    {
+      uhid: "SAMPLE-D",
+      babyName: "Sample D - static feeds, no IV",
+      motherName: "Sample D",
+      bed: "S4 · Sample bay",
+      sex: "Male",
+      dob: new Date(Date.now() - 14 * 24 * H),
+      gestWeeks: 34,
+      gestDays: 1,
+      birthWeight: 1900,
+      currentWeight: 1500,
+      deliveryMode: "NVD",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "O+",
+      acuity: "stable",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "static",
+          tfiMlKgDay: 160,
+          feedType: "Preterm formula",
+          feedRoute: "Oral",
+          feedFreq: "2 hourly",
+        },
+        plan: "Expect enteral 160 ml/kg/d, IV 0, 20 ml x 12 feeds, reconciles to TFI 160.",
+      },
+      problems: [["Growth / Prematurity", "Low birth weight (1500–2499 g)"]],
+      vitals: { hr: 130, rr: 38, spo2: 99, temp: 36.8, sbp: 72, dbp: 42, map: 52, crt: 2, rbs: 88, fio2: 21, urineMlKgHr: 3.6 },
+      tasks: ["Weight check", "Establish direct breastfeeding"],
+    },
+    {
+      uhid: "SAMPLE-E",
+      babyName: "Sample E - guard: total fluids exceed the TFI target",
+      motherName: "Sample E",
+      bed: "S5 · Sample bay",
+      sex: "Female",
+      dob: new Date(Date.now() - 6 * 24 * H),
+      gestWeeks: 29,
+      gestDays: 5,
+      birthWeight: 1250,
+      currentWeight: 1500,
+      deliveryMode: "Emergency LSCS",
+      apgar1: 6,
+      apgar5: 8,
+      bloodGroup: "AB+",
+      acuity: "guarded",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "increasing",
+          increaseAppliesTo: "iv-today",
+          tfiMlKgDay: 150,
+          feedIncrementMlKgDay: 20,
+          ivMlKgDay: 40,
+          dextrosePct: 10,
+          feedType: "Preterm formula",
+          feedRoute: "OG tube",
+          feedFreq: "3 hourly",
+        },
+        plan: "IV entered is 40 ml/kg/d but the TFI remainder is 20, so total fluids 170 exceed the TFI target 150. The plan flags it and nothing is overwritten.",
+      },
+      problems: [["Respiratory", "Apnoea of prematurity"]],
+      vitals: { hr: 140, rr: 46, spo2: 95, temp: 36.6, sbp: 60, dbp: 34, map: 43, crt: 3, rbs: 82, fio2: 25, urineMlKgHr: 2.8 },
+      tasks: ["Clarify IV prescription", "Recheck total fluids against TFI"],
+    },
+    {
+      uhid: "SAMPLE-F",
+      babyName: "Sample F - fortified feeds counted in the totals",
+      motherName: "Sample F",
+      bed: "S6 · Sample bay",
+      sex: "Male",
+      dob: new Date(Date.now() - 12 * 24 * H),
+      gestWeeks: 28,
+      gestDays: 3,
+      birthWeight: 1050,
+      currentWeight: 1500,
+      deliveryMode: "Emergency LSCS",
+      apgar1: 5,
+      apgar5: 8,
+      bloodGroup: "O+",
+      acuity: "guarded",
+      consultant: "Dr. Sample",
+      clinical: {
+        fluids: {
+          feedPlan: "static",
+          tfiMlKgDay: 150,
+          ivMlKgDay: 30,
+          dextrosePct: 10,
+          aminoAcid: 3,
+          lipid: 2,
+          feedType: "Expressed breast milk (EBM)",
+          feedRoute: "OG tube",
+          feedFreq: "3 hourly",
+          fortificationName: "Human milk fortifier",
+          fortificationAmount: 4,
+          fortificationAmountUnit: "sachet",
+          fortificationFeedVolumeMl: 100,
+        },
+        plan: "4 sachets per 100 ml lift EBM from 0.67 to 0.83 kcal/ml and protein to 2.42 g/dl. Expect milk 100.5 + fortifier 24 = 124.5 enteral kcal, IV 40.2, total 164.7 kcal/kg/d; protein milk 1.65 + fortifier 1.98 + amino acids 3 = 6.63 g/kg/d.",
+      },
+      problems: [["Growth / Prematurity", "Extremely low birth weight (<1000 g)"]],
+      vitals: { hr: 142, rr: 48, spo2: 94, temp: 36.7, sbp: 58, dbp: 32, map: 41, crt: 3, rbs: 90, fio2: 28, urineMlKgHr: 2.9 },
+      tasks: ["Check feed tolerance after fortification", "Review calcium and phosphate"],
+    },
+    /* ------------------------------------------------------------------
+       Discharged samples, so the discharge register and the MRD archive are
+       demonstrable: two babies left on the same day (day batch export), one
+       transfer, and one from the previous month (monthly archive).
+       ------------------------------------------------------------------ */
+    {
+      uhid: "SAMPLE-G",
+      babyName: "Sample G - discharged home",
+      motherName: "Sample G",
+      bed: "",
+      sex: "Male",
+      dob: new Date(Date.now() - 32 * 24 * H),
+      gestWeeks: 31,
+      gestDays: 2,
+      birthWeight: 1480,
+      currentWeight: 2150,
+      deliveryMode: "LSCS",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "O+",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 160, ivMlKgDay: 0, feedType: "Direct breast feed", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        discharge: ["Maintaining temperature in open cot 24 h", "Weight gain \u226515 g/kg/day for 3 days", "Full oral / breast feeds, no tube"],
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Stable in open cot, exclusive direct breast feeds, gaining 22 g/kg/day. Review in OPD in 5 days; ROP screening due at 4 weeks.",
+          signedBy: "Dr. Sample",
+          at: daysAgoAt(2, 10),
+          weightAtDischarge: 2150,
+          bedAtDischarge: "S7",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Discharged home after 32 days. Two babies left on this day, so the day batch export covers both.",
+      },
+      problems: [["Growth / Prematurity", "Prematurity 31 weeks"]],
+      vitals: { hr: 138, rr: 42, spo2: 98, temp: 36.8, sbp: 68, dbp: 40, map: 49, crt: 2, rbs: 88, fio2: 21, urineMlKgHr: 3.2 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-H",
+      babyName: "Sample H - discharged the same day",
+      motherName: "Sample H",
+      bed: "",
+      sex: "Female",
+      dob: new Date(Date.now() - 18 * 24 * H),
+      gestWeeks: 34,
+      gestDays: 4,
+      birthWeight: 1900,
+      currentWeight: 2400,
+      deliveryMode: "NVD",
+      apgar1: 9,
+      apgar5: 9,
+      bloodGroup: "A+",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 150, ivMlKgDay: 0, feedType: "Expressed breast milk (EBM)", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        discharge: ["Maintaining temperature in open cot 24 h", "Full oral / breast feeds, no tube", "Newborn screening completed"],
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Feeding well orally, afebrile for 72 h, jaundice resolved. Newborn screening sent. Follow up in 1 week.",
+          signedBy: "Dr. Sample",
+          at: daysAgoAt(2, 15),
+          weightAtDischarge: 2400,
+          bedAtDischarge: "S8",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Discharged on the same day as Sample G, so both appear in one day batch and one monthly archive.",
+      },
+      problems: [["Jaundice", "Neonatal jaundice - resolved"]],
+      vitals: { hr: 136, rr: 40, spo2: 99, temp: 36.9, sbp: 72, dbp: 44, map: 53, crt: 2, rbs: 92, fio2: 21, urineMlKgHr: 3.4 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-I",
+      babyName: "Sample I - transferred out",
+      motherName: "Sample I",
+      bed: "",
+      sex: "Male",
+      dob: new Date(Date.now() - 9 * 24 * H),
+      gestWeeks: 27,
+      gestDays: 1,
+      birthWeight: 950,
+      currentWeight: 1080,
+      deliveryMode: "Emergency LSCS",
+      apgar1: 4,
+      apgar5: 6,
+      bloodGroup: "B+",
+      acuity: "critical",
+      consultant: "Dr. Sample",
+      status: "transferred",
+      clinical: {
+        fluids: { feedPlan: "increasing", increaseAppliesTo: "iv-today", tfiMlKgDay: 140, feedIncrementMlKgDay: 15, ivMlKgDay: 120, dextrosePct: 10, aminoAcid: 2.5, lipid: 1, feedType: "Trophic feeds", feedRoute: "OG tube", feedFreq: "2 hourly" },
+        dischargeRecord: buildDischargeRecord({
+          outcome: "transferred",
+          summary: "Transferred to a tertiary centre with paediatric surgery for necrotising enterocolitis. Ventilated, on inotropes. Accepted by Dr. Raman; ambulance with neonatal transport team.",
+          signedBy: "Dr. Sethi (SR)",
+          at: daysAgoAt(5, 21),
+          weightAtDischarge: 1080,
+          bedAtDischarge: "S9",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Transferred, not discharged home. The archive keeps it with the same retention rules and flags the outcome.",
+      },
+      problems: [["Gastrointestinal", "Necrotising enterocolitis"]],
+      vitals: { hr: 155, rr: 62, spo2: 91, temp: 36.4, sbp: 42, dbp: 24, map: 30, crt: 4, rbs: 74, fio2: 60, urineMlKgHr: 1.6 },
+      tasks: [],
+    },
+    {
+      uhid: "SAMPLE-J",
+      babyName: "Sample J - discharged last month",
+      motherName: "Sample J",
+      bed: "",
+      sex: "Female",
+      dob: new Date(lastMonthDay(5).getTime() - 41 * 24 * H),
+      gestWeeks: 32,
+      gestDays: 0,
+      birthWeight: 1620,
+      currentWeight: 2600,
+      deliveryMode: "LSCS",
+      apgar1: 8,
+      apgar5: 9,
+      bloodGroup: "O-",
+      acuity: "ready",
+      consultant: "Dr. Sample",
+      status: "discharged",
+      clinical: {
+        fluids: { feedPlan: "static", tfiMlKgDay: 160, ivMlKgDay: 0, feedType: "Direct breast feed", feedRoute: "Direct breastfeeding", feedFreq: "2 hourly" },
+        dischargeRecord: buildDischargeRecord({
+          outcome: "discharged",
+          summary: "Discharged in the previous calendar month, so this record lands in a separate monthly archive from the others.",
+          signedBy: "Dr. Sample",
+          at: lastMonthDay(5),
+          weightAtDischarge: 2600,
+          bedAtDischarge: "S10",
+          unitAtDischarge: "nicu",
+        }),
+        plan: "Filed under the previous month to prove the monthly consolidation groups correctly.",
+      },
+      problems: [["Respiratory", "RDS - resolved"]],
+      vitals: { hr: 134, rr: 40, spo2: 98, temp: 36.8, sbp: 74, dbp: 46, map: 55, crt: 2, rbs: 90, fio2: 21, urineMlKgHr: 3.5 },
+      tasks: [],
+    },
   ];
 
   const growthSeries = (birth: number, current: number, points: number, dob: Date) => {
@@ -330,9 +710,11 @@ export async function POST() {
     );
     rest.clinical = { ...rest.clinical, growth };
     const [row] = await db.insert(babies).values(rest).returning();
-    await db
-      .insert(problems)
-      .values(probs.map(([system, label]) => ({ babyId: row.id, system, label })));
+    if (probs.length) {
+      await db
+        .insert(problems)
+        .values(probs.map(([system, label]) => ({ babyId: row.id, system, label })));
+    }
     for (let i = 0; i < 5; i++) {
       await db.insert(vitals).values({
         babyId: row.id,
@@ -343,7 +725,10 @@ export async function POST() {
         spo2: Math.min(100, (v.spo2 ?? 95) + (i % 2)),
       });
     }
-    await db.insert(tasks).values(tk.map((t) => ({ babyId: row.id, text: t, priority: "today" })));
+    // A discharged baby has no open tasks, and drizzle rejects values([]).
+    if (tk.length) {
+      await db.insert(tasks).values(tk.map((t) => ({ babyId: row.id, text: t, priority: "today" })));
+    }
     await db.insert(events).values([
       { babyId: row.id, kind: "admission", text: `Admitted · ${row.gestWeeks}+${row.gestDays} wk · ${row.birthWeight} g`, author: "Admitting team", at: row.dob },
       { babyId: row.id, kind: "round", text: "Consultant round completed, plan updated", author: rest.consultant },

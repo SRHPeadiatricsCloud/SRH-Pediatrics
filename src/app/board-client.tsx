@@ -2,16 +2,19 @@
 
 import { AirVent, AlertTriangle, Bed, Columns3, Grid3x3, HeartPulse, Info, LayoutGrid, ListChecks, ListTodo, Maximize2, Minimize2, OctagonAlert, Siren, Wind } from "lucide-react";
 import { ActionChecklist } from "@/components/action-list";
+import { dailyRoundBoard } from "@/lib/daily-round";
 import { interpretVitals, type VitalsInput } from "@/lib/interpret";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackupVault, DeleteConfirmModal, type DeletableBaby } from "@/components/backup-ui";
+import { DischargeModal, type DischargeableBaby } from "@/components/discharge-ui";
 import { OnCallCard } from "@/components/oncall";
 import { TopBar, usePoll, api, useTempUnit } from "@/components/ui";
 import { UnitBadge, UnitSwitcher } from "@/components/unit-ui";
 import { ACUITY_META } from "@/lib/catalog";
 import type { Clinical } from "@/lib/clinical";
 import { correctedGA, dayOfLife, fmtBP, relTime, tempOut, vitalFlag, weightChangePct } from "@/lib/clinical";
+import { isDischarged } from "@/lib/discharge";
 import { UNITS, UNIT_LIST, type UnitKey, unitOf } from "@/lib/units";
 
 type BoardBaby = {
@@ -59,6 +62,7 @@ export default function BoardClient() {
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
   const [pending, setPending] = useState<DeletableBaby | null>(null);
+  const [pendingDischarge, setPendingDischarge] = useState<DischargeableBaby | null>(null);
   const [layoutMode, setLayoutMode] = useState<"masonry" | "uniform">("masonry");
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
 
@@ -82,6 +86,7 @@ export default function BoardClient() {
 
   const babies = useMemo(() => (data?.babies ?? []).filter((b) => b.status === "active"), [data]);
   const deleted = useMemo(() => (data?.babies ?? []).filter((b) => b.status === "deleted"), [data]);
+  const discharged = useMemo(() => (data?.babies ?? []).filter(isDischarged), [data]);
 
   const shown = babies.filter((b) => {
     const text = `${b.babyName} ${b.uhid} ${b.bed} ${b.motherName}`.toLowerCase();
@@ -93,12 +98,14 @@ export default function BoardClient() {
     return b.acuity === filter;
   });
 
+  const roundSummaries = babies.map((b) => dailyRoundBoard(b));
   const counts = {
     total: babies.length,
     critical: babies.filter((b) => b.acuity === "critical").length,
     vent: babies.filter((b) => /SIMV|AC \/|HFOV|HFJV|Volume|NIPPV|ventilat/i.test(b.clinical?.resp?.mode ?? "")).length,
     cpap: babies.filter((b) => /CPAP|HFNC|BiPAP|oxygen|nasal/i.test(b.clinical?.resp?.mode ?? "")).length,
     tasks: babies.reduce((n, b) => n + b.openTasks.length, 0),
+    roundOverdue: roundSummaries.reduce((sum, r) => sum + r.overdue, 0),
   };
   const u = unitOf(isAll ? "nicu" : unit);
   const admitUnit: UnitKey = isAll ? "nicu" : unit;
@@ -137,7 +144,7 @@ export default function BoardClient() {
                 <HeartPulse size={32} strokeWidth={2.2} aria-label="PICU" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/icons/icon-512.png?v=3.1.0" alt="" className="h-full w-full object-contain" />
+                <img src="/icons/icon-512.png?v=3.13.0" alt="" className="h-full w-full object-contain" />
               )}
             </div>
             <div className="min-w-0">
@@ -198,6 +205,9 @@ export default function BoardClient() {
           <Stat label="Ventilated" value={counts.vent} icon={<AirVent size={19} />} iconTone="text-amber-300" tone="text-amber-300" />
           <Stat label="NIV / O₂" value={counts.cpap} icon={<Wind size={18} />} iconTone="text-cyan-300" tone="text-cyan-300" />
           <Stat label="Open actions" value={counts.tasks} icon={<ListChecks size={18} />} iconTone="text-emerald-300" tone="text-emerald-300" />
+          {counts.roundOverdue > 0 && (
+            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-rose-300" tone="text-rose-300" />
+          )}
         </div>
 
         <div className="no-print mb-4 flex flex-wrap items-center gap-2">
@@ -278,6 +288,17 @@ export default function BoardClient() {
                       return next;
                     })
                   }
+                  onDischarge={() =>
+                    setPendingDischarge({
+                      id: b.id,
+                      babyName: b.babyName,
+                      uhid: b.uhid,
+                      bed: b.bed,
+                      motherName: b.motherName,
+                      unit: b.unit,
+                      currentWeight: b.currentWeight,
+                    })
+                  }
                   onDelete={() =>
                     setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
                   }
@@ -302,6 +323,17 @@ export default function BoardClient() {
                     return next;
                   })
                 }
+                onDischarge={() =>
+                  setPendingDischarge({
+                    id: b.id,
+                    babyName: b.babyName,
+                    uhid: b.uhid,
+                    bed: b.bed,
+                    motherName: b.motherName,
+                    unit: b.unit,
+                    currentWeight: b.currentWeight,
+                  })
+                }
                 onDelete={() =>
                   setPending({ id: b.id, babyName: b.babyName, uhid: b.uhid, bed: b.bed, motherName: b.motherName })
                 }
@@ -311,11 +343,25 @@ export default function BoardClient() {
           </div>
         )}
 
+        <section className="card mt-5 flex flex-wrap items-center gap-3 p-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-black text-emerald-200">Discharge register &amp; MRD archive</h3>
+            <p className="text-[11px] text-slate-400">
+              {discharged.length > 0
+                ? `${discharged.length} discharged record${discharged.length === 1 ? "" : "s"} held — review by day, export one, a whole day, or a consolidated month for MRD.`
+                : "Babies marked discharged collect here, grouped by the day they left and archived monthly."}
+            </p>
+          </div>
+          <Link href="/discharge" className="btn-primary !py-1 text-[11px]">
+            Open register
+          </Link>
+        </section>
+
         {deleted.length > 0 && (
           <section className="card mt-5 p-4">
             <h3 className="text-sm font-black text-amber-200">Recently deleted</h3>
             <p className="mb-3 text-[11px] text-slate-400">
-              Hidden from the live board. Restore brings them back. A local backup is always kept.
+              Hidden from the board. A local backup is kept.
             </p>
             <div className="space-y-1.5">
               {deleted.map((b) => (
@@ -372,6 +418,17 @@ export default function BoardClient() {
           }}
         />
       )}
+
+      {pendingDischarge && (
+        <DischargeModal
+          baby={pendingDischarge}
+          onCancel={() => setPendingDischarge(null)}
+          onDone={() => {
+            setPendingDischarge(null);
+            reload();
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -407,6 +464,7 @@ function Stat({
 function BabyCard({
   b,
   onDelete,
+  onDischarge,
   onActionToggled,
   uniform = false,
   expanded = false,
@@ -414,6 +472,7 @@ function BabyCard({
 }: {
   b: BoardBaby;
   onDelete: () => void;
+  onDischarge: () => void;
   onActionToggled?: () => void;
   uniform?: boolean;
   expanded?: boolean;
@@ -440,6 +499,18 @@ function BabyCard({
     >
       <button
         type="button"
+        title="Mark as discharged — moves the card to the discharge register"
+        className="absolute right-11 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-emerald-400/30 bg-slate-950/70 text-sm text-emerald-300 hover:bg-emerald-500 hover:text-white"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDischarge();
+        }}
+      >
+        ⤓
+      </button>
+      <button
+        type="button"
         title="Delete card"
         className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-rose-400/30 bg-slate-950/70 text-sm text-rose-300 hover:bg-rose-500 hover:text-white"
         onClick={(e) => {
@@ -450,7 +521,7 @@ function BabyCard({
       >
         🗑
       </button>
-      <Link href={`/baby/${b.id}`} className="block p-4 pr-12">
+      <Link href={`/baby/${b.id}`} className="block p-4 pr-20">
         <div className="flex items-start gap-3">
           <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot} animate-pulse`} />
           <div className="min-w-0 flex-1">
@@ -479,6 +550,42 @@ function BabyCard({
           </div>
           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${meta.cls}`}>{meta.label}</span>
         </div>
+
+        {(() => {
+          const round = dailyRoundBoard(b);
+          if (round.overdue === 0 && round.outstanding === 0) {
+            return (
+              <div className="mt-2.5 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] text-emerald-300">
+                <span className="font-semibold uppercase tracking-wider">Daily Ward Round</span>
+                <span>All items up to date</span>
+              </div>
+            );
+          }
+          const lateItems = round.items.filter((i) => i.state === "overdue");
+          const pendingItems = round.items.filter((i) => i.state === "todo");
+          return (
+            <div className={`mt-2.5 flex flex-wrap items-center justify-between gap-1 rounded-lg border px-2.5 py-1 text-[10px] ${
+              round.overdue > 0 ? "border-rose-500/40 bg-rose-500/10 text-rose-300" : "border-slate-800 bg-slate-900/60 text-slate-400"
+            }`}>
+              <span className="font-semibold uppercase tracking-wider">Daily Round:</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {lateItems.map((it) => (
+                  <span key={it.key} className="rounded bg-rose-500/20 px-1 py-0.5 font-bold text-rose-200 border border-rose-500/30">
+                    {it.label} due
+                  </span>
+                ))}
+                {pendingItems.slice(0, 2).map((it) => (
+                  <span key={it.key} className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">
+                    {it.label} pending
+                  </span>
+                ))}
+                {pendingItems.length > 2 && (
+                  <span className="text-slate-500">+{pendingItems.length - 2}</span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-7">
           <Mini label="HR" v={v?.hr} k="hr" />

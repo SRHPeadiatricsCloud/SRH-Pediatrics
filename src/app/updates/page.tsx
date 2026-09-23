@@ -302,9 +302,7 @@ export default function UpdatesPage() {
         </section>
 
         <p className="mt-3 text-center text-[10px] text-slate-500">
-          <Globe size={10} className="mr-1 inline" /> Sources are open feeds from AAP, Lancet Child &amp; Adolescent
-          Health, BMJ ADC, WHO and Medscape. When the internet is unreachable, the last successful fetch stays
-          visible.
+          <Globe size={10} className="mr-1 inline" /> AAP · Lancet Child &amp; Adolescent Health · BMJ ADC · WHO · Medscape
         </p>
       </div>
     </main>

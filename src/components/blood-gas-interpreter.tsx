@@ -123,9 +123,7 @@ export function BloodGasInterpreter() {
           </div>
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{SAMPLE_HELPERS[sampleType]}</p>
-        <p className="mt-2 text-xs leading-relaxed text-slate-400">
-          Tap any field below and enter values directly. Larger entry boxes are used here to make bedside typing easier.
-        </p>
+
       </div>
 
       {FIELD_GROUPS.map((group) => (

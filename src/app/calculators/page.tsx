@@ -209,7 +209,7 @@ function ScaleSummaryVisual({ calc, values, result }: { calc: CalcDef; values: R
   const score = rows.reduce((sum, row) => sum + (row.value ?? 0), 0);
   const maxScore = rows.reduce((sum, row) => sum + row.maximum, 0);
   return (
-    <VisualFrame title={`${calc.name} domain map`} subtitle="Each bar mirrors the selected response in that calculator's own scoring domain. The bars improve pattern recognition; the validated result and clinical context remain authoritative.">
+    <VisualFrame title={`${calc.name} domain map`} subtitle="Bars mirror the selected responses; the validated score is authoritative.">
       <div className="grid items-center gap-3 md:grid-cols-[150px_1fr]">
         <div className="scale-summary-meter" style={{ "--meter": `${maxScore ? Math.min(100, Math.abs(score) / maxScore * 100) : 0}%` } as React.CSSProperties}>
           <div><b>{selected ? score : "—"}</b><span>{selected}/{rows.length} selected</span></div>
@@ -231,7 +231,7 @@ function DownesVisual({ values, result }: { values: Record<string, number>; resu
   const score = factors.reduce((total, [key]) => total + (values[key] ?? 0), 0);
   const hasSelection = Object.keys(values).length > 0;
   return (
-    <VisualFrame title="Downes respiratory distress map" subtitle="Each domain contributes 0–2 points. The schematic highlights the bedside features to identify; use the validated score and clinical examination to guide escalation.">
+    <VisualFrame title="Downes respiratory distress map" subtitle="Each domain 0–2 points. The validated score guides escalation.">
       <div className="grid items-center gap-3 md:grid-cols-[150px_1fr]">
         <svg viewBox="0 0 150 112" className="visual-svg h-28 w-full" role="img" aria-label="Schematic lungs and airway">
           <path className="visual-airway" d="M75 18v22M75 40L48 55M75 40l27 15" />
@@ -270,7 +270,7 @@ function BallardVisual({ values, result }: { values: Record<string, number>; res
   const total = allFindingKeys.reduce((sum, key) => sum + (values[key] ?? 0), 0);
   const ga = selected === allFindingKeys.length && values.sex != null ? newBallardCompletedWeeks(total) : null;
   return (
-    <VisualFrame title="New Ballard maturity map" subtitle="Use the actual New Ballard physical and neuromuscular examination findings. This body schematic is an identification aid, not a substitute for examining the infant or for gestational dating when reliable dates are available.">
+    <VisualFrame title="New Ballard maturity map" subtitle="An identification aid, not a substitute for examination or reliable dating.">
       <div className="grid items-center gap-3 md:grid-cols-[160px_1fr]">
         <svg viewBox="0 0 160 156" className="visual-svg h-36 w-full" role="img" aria-label="Schematic newborn body for Ballard assessment">
           <circle className="visual-baby" cx="80" cy="24" r="17" />
@@ -298,7 +298,7 @@ function RopVisual({ values, result }: { values: Record<string, number>; result:
   const preplus = vascular === 1;
   const aprop = values.aprop === 1;
   return (
-    <VisualFrame title="ROP zone, stage and plus-disease guide" subtitle="Schematic only: ROP classification requires a dilated retinal examination by an appropriately trained ophthalmologist. Zone, stage, plus disease and AP-ROP determine urgency together.">
+    <VisualFrame title="ROP zone, stage and plus-disease guide" subtitle="Schematic only — classification needs a dilated retinal examination.">
       <div className="grid items-center gap-3 md:grid-cols-[190px_1fr]">
         <svg viewBox="0 0 190 150" className="visual-svg h-36 w-full" role="img" aria-label="Concentric schematic of retinal zones">
           <circle className={`retina-zone zone-three ${zone === 3 ? "selected" : ""}`} cx="95" cy="72" r="54" />
@@ -374,10 +374,10 @@ function ParklandVisual({ values, onBurnChange }: { values: Record<string, numbe
     if (selectedRegions.size) onBurnChange(Math.round(nextTotal * 10) / 10);
   };
   return (
-    <VisualFrame title="Age-adjusted Lund–Browder TBSA guide" subtitle="The American Burn Association recommends age-appropriate assessment for children. Tap complete regions to add their chart values; enter partial regions manually or use the patient's palm (approximately 1% TBSA). This aid does not replace a formal burn chart or burn-team assessment.">
+    <VisualFrame title="Age-adjusted Lund–Browder TBSA guide" subtitle="Tap complete regions; enter partial regions manually. Not a substitute for burn-team assessment.">
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_250px]">
         <div>
-          <svg viewBox="0 0 430 150" className="visual-svg h-36 w-full" role="img" aria-label="Front and back body regions for age-adjusted total body surface area burn estimation">
+          <svg viewBox="0 0 430 150" className="visual-svg h-36 w-full" role="img" aria-label="Front and back body regions">
             <text x="86" y="14" textAnchor="middle" className="visual-svg-text">FRONT</text>
             <text x="254" y="14" textAnchor="middle" className="visual-svg-text">BACK</text>
             <circle className={`burn-head ${selectedRegions.has("head") ? "selected" : ""}`} cx="86" cy="34" r="13" /><circle className={`burn-head ${selectedRegions.has("head") ? "selected" : ""}`} cx="254" cy="34" r="13" />
@@ -406,7 +406,7 @@ function ParklandVisual({ values, onBurnChange }: { values: Record<string, numbe
           <div className="tbsa-number">{burn}<small>%</small></div>
           <div className="tbsa-track"><i style={{ width: `${burn}%` }} /></div>
           <div className="flex justify-between text-[9px] font-bold text-slate-500"><span>0%</span><span>50%</span><span>100%</span></div>
-          <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[10px] leading-relaxed text-amber-100">Count partial-thickness and full-thickness burns only. Do not count simple erythema. Reassess depth and TBSA with the burn team.</div>
+          <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[10px] leading-relaxed text-amber-100">Partial and full thickness only — not simple erythema.</div>
         </div>
       </div>
     </VisualFrame>
@@ -539,7 +539,7 @@ export default function CalculatorsPage() {
           <div className="calculator-command-main">
             <div className="calculator-command-title">
               <div className="calc-command-mark"><CalculatorIcon size={22} /></div>
-              <div><div className="calc-command-overline">SRH · Pediatric decision support</div><h1>Calculator workspace</h1><p>Choose one tool, complete one workflow, and keep the clinical interpretation in view.</p></div>
+              <div><div className="calc-command-overline">SRH · Pediatric decision support</div><h1>Calculator workspace</h1></div>
             </div>
             <div className="calculator-command-stats"><span><b>{CALCULATORS.length + 2}</b> tools</span><span><b>01</b> active workflow</span><span><b>⌘K</b> quick search</span></div>
           </div>
@@ -562,7 +562,7 @@ export default function CalculatorsPage() {
             {activeCalc && <div className={`calc-stage-heading calc-stage-${activeCalc.category}`}><div><span className="calc-stage-kicker">Active workflow · {categoryLabel(activeCalc.category)}</span><h2>{activeCalc.name}</h2><p>{activeCalc.external ? "Primary source linked" : "Citation and limitations shown below"} · one focused workflow at a time</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Ready for entry</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
             {anthropometryActive && <div className="calc-stage-heading calc-stage-growth"><div><span className="calc-stage-kicker">Active workflow · Growth & nutrition</span><h2>{ANTHROPOMETRY_ITEM.name}</h2><p>WHO, IAP and Fenton references remain separate and visible.</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Reference charts</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
             {fluidGirActive && <div className="calc-stage-heading calc-stage-fluid"><div><span className="calc-stage-kicker">Active workflow · Fluid, renal & metabolic</span><h2>{FLUID_GIR_ITEM.name}</h2><p>Enter weight, dextrose concentration and IV rate to review the arithmetic.</p></div><div className="calc-stage-actions"><span className="calc-stage-status"><i /> Calculation aid</span><button type="button" onClick={() => setFocusCalc("")}><X size={14} /> Close tool</button></div></div>}
-            {activeCalc ? <CalcCard calc={activeCalc} open saved={savedIds.includes(activeCalc.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={(id) => setFocusCalc((current) => current === id ? "" : id)} /> : anthropometryActive ? <AnthropometrySection query="" /> : fluidGirActive ? <FluidsCalcPanel standalone /> : <div className="calc-stage-placeholder"><div className="calc-placeholder-icon"><CalculatorIcon size={25} /></div><span className="calc-stage-kicker">Workspace ready</span><h2>Choose a calculator from the library</h2><p>Only the active tool opens here, so the rest of the library stays compact on mobile and desktop.</p><button type="button" className="btn-primary" onClick={() => searchRef.current?.focus()}><Search size={15} /> Find a tool</button></div>}
+            {activeCalc ? <CalcCard calc={activeCalc} open saved={savedIds.includes(activeCalc.id)} onToggleSaved={toggleSaved} onOpen={rememberCalculator} onToggle={(id) => setFocusCalc((current) => current === id ? "" : id)} /> : anthropometryActive ? <AnthropometrySection query="" /> : fluidGirActive ? <FluidsCalcPanel standalone /> : <div className="calc-stage-placeholder"><div className="calc-placeholder-icon"><CalculatorIcon size={25} /></div><span className="calc-stage-kicker">Workspace ready</span><h2>Choose a calculator from the library</h2><button type="button" className="btn-primary" onClick={() => searchRef.current?.focus()}><Search size={15} /> Find a tool</button></div>}
             {activeCalc && recentCalculators.length > 0 && <div className="calc-stage-recent"><History size={14} /><span>Recent:</span>{recentCalculators.filter((calc) => calc.id !== activeCalc.id).slice(0, 3).map((calc) => <button key={calc.id} type="button" onClick={() => launchCalculator(calc.id)}>{calc.name}<ArrowUpRight size={12} /></button>)}</div>}
           </section>
         </div>

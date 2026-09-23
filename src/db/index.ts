@@ -171,6 +171,16 @@ function createMemoryPool() {
     );
     CREATE INDEX IF NOT EXISTS oncall_day_idx ON oncall (day);
 
+    CREATE TABLE IF NOT EXISTS unit_protocols (
+      id serial PRIMARY KEY,
+      unit text NOT NULL UNIQUE,
+      protocol jsonb NOT NULL DEFAULT '{}'::jsonb,
+      updated_by text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS unit_protocols_unit_idx ON unit_protocols (unit);
+
     CREATE TABLE IF NOT EXISTS handovers (
       id serial PRIMARY KEY,
       baby_id integer NOT NULL,

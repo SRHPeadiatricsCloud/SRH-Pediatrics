@@ -152,13 +152,12 @@ export default function KeymastersPage() {
 
         {bootstrap && (
           <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-[12px] text-amber-200">
-            <b>Setup mode.</b> No keys exist yet, so the unit is open for editing. Register the first person below —
-            from that moment on, editing requires signing in with an employee code.
+            <b>Setup mode.</b> No keys yet, so editing is open. Register the first person below.
           </div>
         )}
         {hasKeys && !user.signedIn && (
           <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-[12px] text-amber-200">
-            You are viewing as a guest. Sign in with your employee code to manage this list or edit records.
+            Guest view. Sign in with your employee code to edit.
           </div>
         )}
 

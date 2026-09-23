@@ -1,3 +1,101 @@
+
+/**
+ * Formulation reference:
+ * Nutritional Composition Reference Table (per 100 ml reconstituted).
+ */
+export type FormulaComposition = {
+  name: string;
+  kcalPer100ml: number;
+  carbG: number;
+  proteinG: number;
+  fatG: number;
+  calciumMg: number;
+  phosphorusMg: number;
+  vitDIu: number;
+  ironMg: number;
+  sodiumMg: number;
+  osmolality?: string;
+  osmolarity?: string;
+};
+
+export const FORMULA_COMPOSITION_TABLE: readonly FormulaComposition[] = [
+  {
+    name: "Mature Preterm Milk (EBM)",
+    kcalPer100ml: 69,
+    carbG: 6.7,
+    proteinG: 1.5,
+    fatG: 3.6,
+    calciumMg: 29,
+    phosphorusMg: 9.3,
+    vitDIu: 1.2,
+    ironMg: 0.09,
+    sodiumMg: 28,
+  },
+  {
+    name: "Neocate",
+    kcalPer100ml: 67,
+    carbG: 7.1,
+    proteinG: 1.8,
+    fatG: 3.5,
+    calciumMg: 77.1,
+    phosphorusMg: 50.2,
+    vitDIu: 64,
+    ironMg: 14,
+    sodiumMg: 29.3,
+    osmolarity: "310 mOsm/L",
+    osmolality: "340 mOsm/kg H2O",
+  },
+  {
+    name: "Enfamil",
+    kcalPer100ml: 66,
+    carbG: 7.8,
+    proteinG: 1.52,
+    fatG: 3.3,
+    calciumMg: 41,
+    phosphorusMg: 28,
+    vitDIu: 34.4,
+    ironMg: 0.51,
+    sodiumMg: 14.1,
+  },
+  {
+    name: "Aptamil Gold",
+    kcalPer100ml: 66.3,
+    carbG: 8.05,
+    proteinG: 1.49,
+    fatG: 3.28,
+    calciumMg: 67.5,
+    phosphorusMg: 40.5,
+    vitDIu: 43.2,
+    ironMg: 0.6,
+    sodiumMg: 22.9,
+  },
+  {
+    name: "Similac PLUS",
+    kcalPer100ml: 65,
+    carbG: 7.58,
+    proteinG: 1.94,
+    fatG: 2.92,
+    calciumMg: 51,
+    phosphorusMg: 31,
+    vitDIu: 36,
+    ironMg: 0.44,
+    sodiumMg: 19,
+  },
+  {
+    name: "NEOSURE",
+    kcalPer100ml: 79,
+    carbG: 8.81,
+    proteinG: 2.56,
+    fatG: 3.67,
+    calciumMg: 107,
+    phosphorusMg: 56,
+    vitDIu: 97,
+    ironMg: 1.57,
+    sodiumMg: 55,
+  },
+];
+
+import { targetsFor, type ProtocolOverrides } from "./feed-guide";
 export type GrowthEntry = {
   at: string;
   weight: number;
@@ -7,6 +105,37 @@ export type GrowthEntry = {
   kcal?: number;
   protein?: number;
   fluids?: number;
+};
+
+/**
+ * How a baby left the unit. Mirrors the `babies.status` column, which already
+ * carries these values — this type just keeps the UI honest about them.
+ */
+export type DischargeOutcome = "discharged" | "transferred" | "death";
+
+export const DISCHARGE_OUTCOMES: readonly DischargeOutcome[] = ["discharged", "transferred", "death"];
+
+/**
+ * The administrative discharge record, written once when a baby is marked as
+ * discharged and kept with the chart for MRD retention.
+ *
+ * Kept separate from `Clinical.discharge` (the discharge-readiness criteria
+ * checklist) and from `babies.status` (the board filter).
+ */
+export type DischargeRecord = {
+  /** Full timestamp of when the discharge was signed. */
+  at: string;
+  /** Local calendar day, YYYY-MM-DD — the grouping key for day/month archives. */
+  date: string;
+  outcome: DischargeOutcome;
+  /** Free-text condition at discharge / instructions given. */
+  summary: string;
+  /** Who signed the discharge. */
+  signedBy: string;
+  /** Snapshot values, so the record still reads correctly if the card changes. */
+  weightAtDischarge?: number;
+  bedAtDischarge?: string;
+  unitAtDischarge?: string;
 };
 
 export type Clinical = {
@@ -33,6 +162,29 @@ export type Clinical = {
     totalMlKgDay?: number;
     enteralMlKgDay?: number;
     ivMlKgDay?: number;
+    /**
+     * How today's enteral volume relates to the total fluid target:
+     *  - "static"     : the whole TFI is enteral, divided across the day.
+     *  - "increasing" : enteral = TFI - increment; the increment is given IV,
+     *                   so feeds step up by that amount over the next 24 h.
+     * Absent means the legacy behaviour (enteral/IV entered directly).
+     */
+    feedPlan?: "static" | "increasing";
+    /** Total fluid intake target, ml/kg/day. */
+    tfiMlKgDay?: number;
+    /** Planned feed increase over the next 24 h, ml/kg/day ("increasing" plan). */
+    feedIncrementMlKgDay?: number;
+    /**
+     * What the increase number means:
+     *  - "iv-today":       feeds run at TFI - increment and the increment is
+     *                      given IV today (steps up over the next 24 h).
+     *  - "tomorrow-target": today's feeds are the full TFI and the increase
+     *                      is the enteral target for the next 24 h.
+     *
+     * The feed plan governs enteral feeds only. IV fluids are always typed
+     * manually in ivMlKgDay — the plan never derives or overrides them.
+     */
+    increaseAppliesTo?: "iv-today" | "tomorrow-target";
     dextrosePct?: number;
     gir?: number;
     girManual?: boolean;
@@ -43,26 +195,49 @@ export type Clinical = {
     feedType?: string;
     feedRoute?: string;
     feedFreq?: string;
-    /** Planned daily advancement step (ml/kg/day), edited in the advancement section. */
-    feedAdvanceStepMlKg?: number;
-    /** Unit the step is entered in; ml/feed converts via interval + weight. */
-    feedAdvanceStepUnit?: "mlkg" | "mlfeed";
     feedVol?: number;
     feedVolManual?: boolean;
     fortificationName?: string;
-    fortificationProductId?: string;
+    /** Which stocked product this is — resolves default values and dose steps. */
+    fortifierProductId?: string;
     fortificationAmount?: number;
     fortificationAmountUnit?: "sachet" | "g" | "ml" | "scoop" | "measure";
     fortificationFeedVolumeMl?: number;
-    /** Per-unit composition for product "custom" (per sachet/g/scoop/measure, or per ml for liquids). */
-    fortificationKcalPerUnit?: number;
-    fortificationProteinPerUnit?: number;
-    /** Grams per sachet for g→sachet conversion (custom products). Defaults to the product's sachet size. */
-    fortificationSachetGrams?: number;
+    /**
+     * How many feeds per day the fortifier is actually given in. Fortification
+     * is not usually added to every feed, so the uplift is scaled by
+     * doses/day ÷ feeds/day — recording "0.5 g twice a day" must not credit the
+     * whole day's enteral volume with the fortifier.
+     *
+     * Absent means every feed is fortified, which preserves older records.
+     */
+    fortificationDosesPerDay?: number;
+    /**
+     * Energy and protein each fortifier unit contributes. Optional — defaults
+     * to a standard human milk fortifier. Set these to match the product on
+     * the label when it differs.
+     */
+    fortifierKcalPerUnit?: number;
+    fortifierProteinPerUnit?: number;
     fortificationNotes?: string;
     residual?: string;
     tpn?: boolean;
     notes?: string;
+    /**
+     * Bedside tolerance record for the current 24 h. `lastFeedAt` drives the
+     * feed-due clock (it is the only field here that is a timestamp), and a
+     * held feed or a residual prompts a review before the next increase.
+     */
+    lastFeedAt?: string;
+    residualMl?: number;
+    feedsHeldToday?: number;
+    feedNotes?: string;
+    /**
+     * The unit's own protocol figures, replacing the published guidance for this
+     * baby. Anything unset falls back to the published value, so an empty or
+     * absent object behaves exactly as before.
+     */
+    protocol?: ProtocolOverrides;
   };
   lines?: { name: string; day: number; site?: string }[];
   drugs?: {
@@ -80,7 +255,13 @@ export type Clinical = {
   };
   labs?: Record<string, string>;
   care?: string[];
+  /** Discharge-readiness criteria checklist — ticked items, not the discharge event. */
   discharge?: string[];
+  /**
+   * The signed discharge record. Distinct from `discharge` above; see
+   * DischargeRecord. Present only once a baby has been marked as discharged.
+   */
+  dischargeRecord?: DischargeRecord;
   antenatal?: string[];
   plan?: string;
   familyNote?: string;
@@ -108,415 +289,203 @@ export function weightChangePct(birth: number, current: number): number {
   return Math.round(((current - birth) / birth) * 1000) / 10;
 }
 
-/* --------------------- feed interval (Q-hours) ------------------ */
-/**
- * Parse a feed-frequency label into interval hours.
- * Accepts Q-notation ("Q2H", "q6h", "Q 12 H") as well as legacy labels
- * ("2 hourly", "1.5 hourly", "every 3 hours"). Returns undefined for
- * continuous / on-demand / unparseable labels.
- */
-export function parseFeedIntervalHours(freq: string | undefined): number | undefined {
-  const raw = freq?.trim() ?? "";
-  if (!raw) return undefined;
-  const q = raw.match(/^q\s*(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?$/i);
-  if (q) {
-    const h = Number(q[1]);
-    return h > 0 && h <= 24 ? h : undefined;
-  }
-  const plain = raw.match(/^(?:every\s+)?(\d+(?:\.\d+)?)\s*(?:hourly|hours?|hrs?|hrly)$/i);
-  if (plain) {
-    const h = Number(plain[1]);
-    return h > 0 && h <= 24 ? h : undefined;
-  }
-  return undefined;
-}
-
-/** Format interval hours back to Q-notation ("Q2H", "Q1.5H"). */
-export function formatFeedInterval(hours: number): string {
-  const h = Math.round(hours * 100) / 100;
-  return `Q${h}H`;
-}
-
-/* --------------------- TFI split (enteral vs IV) ------------------ */
-export type TfiSplit = {
-  tfi: number | undefined;
-  enteral: number;
-  /** Suggested IV = max(0, TFI - enteral); undefined when TFI is not set. */
-  ivSuggested: number | undefined;
-  /** % of TFI reached by feeds; undefined when TFI is not set. */
-  pctReached: number | undefined;
-  fullFeeds: boolean;
-};
-
-/**
- * TFI stays fixed while feeds advance: every ml/kg moved to enteral weans the
- * same from IV. E.g. TFI 100 + enteral 20 -> IV 80, 20% reached.
- */
-export function calcTfiSplit(
-  tfi: number | undefined,
-  enteral: number | undefined,
-): TfiSplit {
-  const e = Math.max(0, enteral ?? 0);
-  if (tfi === undefined || tfi <= 0) {
-    return { tfi: undefined, enteral: e, ivSuggested: undefined, pctReached: undefined, fullFeeds: false };
-  }
-  const ivSuggested = Math.round(Math.max(0, tfi - e) * 10) / 10;
-  const pctReached = Math.round((e / tfi) * 1000) / 10;
-  return { tfi, enteral: e, ivSuggested, pctReached, fullFeeds: e >= tfi && tfi > 0 };
-}
-
 /* --------------------- nutrition / energy auto-calculator ------------------ */
-/**
- * Energy density (kcal per ml) of the milks used in the unit.
- * Human-milk values follow the hospital sheet (EBM 0.69 kcal/ml);
- * formula values follow standard dilutions / manufacturer data (see MILK_FORMULARY).
- */
+/** Energy density (kcal per ml) of the milks used in the unit. */
 export const KCAL_PER_ML: Record<string, number> = {
   "NPO / Nil per oral": 0,
-  "Trophic feeds": 0.69,
+  "Trophic feeds": 0.69, // Formulation reference: mature preterm milk 69 kcal/100ml = 0.69 kcal/ml
   "Expressed breast milk (EBM)": 0.69,
   "Direct breastfeeding": 0.69,
   "Donor human milk": 0.69,
   "EBM + HMF": 0.81,
-  "Preterm formula": 0.8,
-  "Term formula": 0.67,
-  "Aptamil Gold (term formula)": 0.67,
-  "Enfamil A+ (term formula)": 0.68,
-  "Similac Advance Plus (term formula)": 0.68,
-  "Post-discharge formula": 0.73,
-  "Similac NeoSure (post-discharge)": 0.744,
-  "Neocate (amino-acid formula)": 0.67,
-  "Lactose free / hydrolysed formula": 0.68,
+  "Similac Plus": 0.65, // 65 kcal / 100ml
+  "Enfamil A+": 0.66,   // 66 kcal / 100ml
+  "Aptamil Gold": 0.663, // 66.3 kcal / 100ml
+  "Neocate (amino-acid)": 0.67, // 67 kcal / 100ml
+  "Similac NeoSure": 0.79, // 79 kcal / 100ml
+  "Preterm formula": 0.79,
+  "Term formula": 0.66,
+  "Lactose free / hydrolysed formula": 0.67,
+  "Post-discharge formula": 0.79,
 };
 
-/** Protein (g per ml). Hospital sheet: EBM 0.015 g/ml. */
+/** Protein (g per ml). */
 export const PROTEIN_G_PER_ML: Record<string, number> = {
   "NPO / Nil per oral": 0,
-  "Trophic feeds": 0.015,
+  "Trophic feeds": 0.015, // Sri Ramakrishna Hospital Lab: mature preterm milk 1.5 g/100ml = 0.015 g/ml
   "Expressed breast milk (EBM)": 0.015,
   "Direct breastfeeding": 0.015,
   "Donor human milk": 0.015,
   "EBM + HMF": 0.025,
-  "Preterm formula": 0.024,
-  "Term formula": 0.014,
-  "Aptamil Gold (term formula)": 0.013,
-  "Enfamil A+ (term formula)": 0.014,
-  "Similac Advance Plus (term formula)": 0.014,
-  "Post-discharge formula": 0.019,
-  "Similac NeoSure (post-discharge)": 0.0208,
-  "Neocate (amino-acid formula)": 0.018,
-  "Lactose free / hydrolysed formula": 0.019,
+  "Similac Plus": 0.0194, // 1.94 g / 100ml
+  "Enfamil A+": 0.0152,   // 1.52 g / 100ml
+  "Aptamil Gold": 0.0149, // 1.49 g / 100ml
+  "Neocate (amino-acid)": 0.018, // 1.8 g / 100ml
+  "Similac NeoSure": 0.0256, // 2.56 g / 100ml
+  "Preterm formula": 0.0256,
+  "Term formula": 0.0152,
+  "Lactose free / hydrolysed formula": 0.018,
+  "Post-discharge formula": 0.0256,
 };
 
-/** Feed types that are human milk (the only bases a powder HMF should normally fortify). */
-export const HUMAN_MILK_FEEDS = new Set([
-  "Trophic feeds",
-  "Expressed breast milk (EBM)",
-  "Direct breastfeeding",
-  "Donor human milk",
-  "EBM + HMF",
-]);
+/**
+ * Fortifier contribution per unit (sachet / scoop / measure / g / ml).
+ *
+ * A standard human milk fortifier sachet mixed into 25 ml of expressed breast
+ * milk raises it from ~0.67 to ~0.80 kcal/ml (+4 kcal per 25 ml) and protein
+ * from ~1.1 to ~2.4 g/dl (+0.33 g per 25 ml). Override per product with
+ * fortifierKcalPerUnit / fortifierProteinPerUnit.
+ */
+export const FORTIFIER_KCAL_PER_UNIT = 4;
+export const FORTIFIER_PROTEIN_G_PER_UNIT = 0.33;
 
-/** Legacy combined feed type kept for old records — new prescriptions must use an explicit fortifier. */
-export const LEGACY_FORTIFIED_FEED = "EBM + HMF";
+/**
+ * Lipid emulsions supply energy (9 kcal/g) but effectively no protein — the
+ * egg phospholipid emulsifier is not counted as usable protein. Kept as a
+ * named constant so the assumption is visible and easy to change.
+ */
+export const LIPID_PROTEIN_G_PER_G = 0;
 
-/** Hospital formulary reference: base milks at standard dilution. */
-export type MilkFormularyEntry = {
-  label: string;
-  kcalPerMl: number;
-  proteinPerMl: number;
-  group: "Human milk" | "Formula" | "Special" | "None";
-  source: string;
-};
+/** How a fortifier is measured at the bedside — a sachet, or weighed powder. */
+export type FortifierUnit = "sachet" | "g";
 
-export const MILK_FORMULARY: MilkFormularyEntry[] = [
-  { label: "Expressed breast milk (EBM)", kcalPerMl: 0.69, proteinPerMl: 0.015, group: "Human milk", source: "Hospital sheet" },
-  { label: "Direct breastfeeding", kcalPerMl: 0.69, proteinPerMl: 0.015, group: "Human milk", source: "Hospital sheet (= EBM)" },
-  { label: "Donor human milk", kcalPerMl: 0.69, proteinPerMl: 0.015, group: "Human milk", source: "Assumed = EBM unless bank data differs" },
-  { label: "Trophic feeds", kcalPerMl: 0.69, proteinPerMl: 0.015, group: "Human milk", source: "Hospital sheet (= EBM, small volume)" },
-  { label: "Preterm formula", kcalPerMl: 0.8, proteinPerMl: 0.024, group: "Formula", source: "Standard preterm 80 kcal, 2.4 g / 100 ml" },
-  { label: "Term formula", kcalPerMl: 0.67, proteinPerMl: 0.014, group: "Formula", source: "Standard term 67 kcal / 100 ml" },
-  { label: "Aptamil Gold (term formula)", kcalPerMl: 0.67, proteinPerMl: 0.013, group: "Formula", source: "Standard term 67 kcal / 100 ml" },
-  { label: "Enfamil A+ (term formula)", kcalPerMl: 0.68, proteinPerMl: 0.014, group: "Formula", source: "Standard 20 kcal/fl oz dilution" },
-  { label: "Similac Advance Plus (term formula)", kcalPerMl: 0.68, proteinPerMl: 0.014, group: "Formula", source: "Standard 20 kcal/fl oz dilution" },
-  { label: "Post-discharge formula", kcalPerMl: 0.73, proteinPerMl: 0.019, group: "Formula", source: "Generic post-discharge 73 kcal / 100 ml" },
-  { label: "Similac NeoSure (post-discharge)", kcalPerMl: 0.744, proteinPerMl: 0.0208, group: "Formula", source: "Abbott: 744 kcal, 20.83 g protein / 1000 ml" },
-  { label: "Neocate (amino-acid formula)", kcalPerMl: 0.67, proteinPerMl: 0.018, group: "Special", source: "Neocate LCP: 67 kcal, 1.8 g / 100 ml" },
-  { label: "Lactose free / hydrolysed formula", kcalPerMl: 0.68, proteinPerMl: 0.019, group: "Special", source: "Generic hydrolysed 68 kcal / 100 ml" },
-  { label: "NPO / Nil per oral", kcalPerMl: 0, proteinPerMl: 0, group: "None", source: "No enteral intake" },
-];
-
-/** Hospital fortifier reference: composition per sachet at standard dilution. */
+/**
+ * A fortifier / concentrated formula as the unit actually uses it.
+ *
+ * `kcalPerUnit` and `proteinPerUnit` are per ONE unit of `unit` — i.e. per 1 g
+ * sachet, or per gram of powder — never per 100 g, so the bedside arithmetic
+ * stays a single multiplication.
+ */
 export type FortifierProduct = {
   id: string;
-  label: string;
-  short: string;
-  kcalPerSachet: number;
-  proteinPerSachet: number;
-  sachetGrams: number;
-  /** Standard dilution, e.g. 25 = 1 sachet per 25 ml (4 sachets / 100 ml). */
-  standardMlPerSachet: number;
-  /** Safety cap for warnings (sachets per 100 ml of milk). */
-  maxSachetsPer100ml: number;
-  source: string;
-  /** True when the composition is a hospital-sheet estimate — verify against the sachet label. */
-  verifyLabel?: boolean;
+  name: string;
+  unit: FortifierUnit;
+  kcalPerUnit: number;
+  proteinPerUnit: number;
+  /** Volume of milk one unit is nominally mixed into. */
+  mixedWithMl: number;
+  /** Dose steps the bedside actually uses, in units. */
+  steps: readonly number[];
+  /** Human label for a step, e.g. 0.25 -> "1/4 sachet". */
+  stepLabel: (n: number) => string;
+  note: string;
 };
 
-export const FORTIFIER_PRODUCTS: FortifierProduct[] = [
+const sachetLabel = (n: number) =>
+  n === 1 ? "1 sachet" : n === 0.5 ? "1/2 sachet" : n === 0.25 ? "1/4 sachet" : `${n} sachet`;
+const gramLabel = (n: number) => `${n} g`;
+
+/**
+ * Products stocked in the unit.
+ *
+ * All values are per ONE unit of `unit`, so the bedside arithmetic is a single
+ * multiplication. Sources:
+ *  - Lactodex HMF (Raptakos Brett) and NeoLact MMF Plus: per 1 g sachet, from
+ *    the published comparison of Indian multicomponent fortifiers (Cureus 2025,
+ *    "Balancing Nutrition and Osmolality…", Table 1) cross-checked against the
+ *    pack label. Lactodex 3.37 kcal / 0.27 g protein; MMF Plus 3.89 kcal /
+ *    0.27 g protein. Both are reconstituted 1 sachet in 25 ml of milk.
+ *  - PreNAN HMF (Nestlé) sachet: 4 kcal / 0.3 g protein per 1 g, same table.
+ *  - PreNAN FM 85: 435 kcal and 35.5 g protein per 100 g powder (label).
+ *  - Neocate Infant: the mixing chart states 1 g provides 4.87 kcal; protein
+ *    is 13.5 g per 483 kcal, so 0.136 g per gram.
+ *  - Similac NeoSure: 513 kcal and 15 g protein per 100 g powder.
+ *
+ * Every value is still overridable per baby via fortifierKcalPerUnit /
+ * fortifierProteinPerUnit — labels and lot formulations differ, and the record
+ * on the chart must win over a table here.
+ */
+export const FORTIFIER_CATALOG: readonly FortifierProduct[] = [
   {
     id: "prenan-hmf",
-    label: "PreNAN HMF (Nestlé) — 1 g sachet",
-    short: "PreNAN HMF",
-    kcalPerSachet: 4.35,
-    proteinPerSachet: 0.355,
-    sachetGrams: 1,
-    standardMlPerSachet: 25,
-    maxSachetsPer100ml: 4,
-    source: "Nestlé spec: 435 kcal, 35.5 g protein / 100 g powder; standard 1 sachet / 25 ml EBM",
+    name: "HMF PreNAN (Nestlé) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 4,
+    proteinPerUnit: 0.3,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "Formulation reference: 1 g sachet: 4.0 kcal, 0.3 g protein, 0.4 g carb, 0.2 g fat, Ca 15.93 mg, P 8.76 mg, Vit D 28 IU, Fe 0.36 mg, Na 7.34 mg",
   },
   {
-    id: "lactodex-hmf",
-    label: "Lactodex HMF / LHMF — 1 g sachet",
-    short: "Lactodex HMF",
-    kcalPerSachet: 3.9,
-    proteinPerSachet: 0.28,
-    sachetGrams: 1,
-    standardMlPerSachet: 25,
-    maxSachetsPer100ml: 4,
-    source: "Hospital-sheet estimate — confirm against the sachet label",
-    verifyLabel: true,
+    id: "lhmf",
+    name: "Lactodex HMF / LHMF (Raptakos Brett) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.37,
+    proteinPerUnit: 0.27,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "Formulation reference: 1 g sachet: 3.37 kcal, 0.27 g protein, 0.04 g fat · bovine-derived",
   },
   {
-    id: "mmf-plus",
-    label: "MMF Plus (NeoLact, human-milk derived)",
-    short: "MMF Plus",
-    kcalPerSachet: 4.0,
-    proteinPerSachet: 0.3,
-    sachetGrams: 1,
-    standardMlPerSachet: 25,
-    maxSachetsPer100ml: 4,
-    source: "Hospital-sheet estimate — confirm against the sachet label",
-    verifyLabel: true,
+    id: "mmf",
+    name: "MMF PLUS / NeoLact MMF (Mother's Milk Fortifier) — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.89,
+    proteinPerUnit: 0.27,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "Formulation reference: 1 g sachet: 3.89 kcal, 0.27 g protein, 0.62 g carb, 0.04 g fat, Ca 5.99 mg, P 1.36 mg, Vit D <4 IU, Fe 0.09 mg, Na 2.22 mg",
   },
   {
-    id: "smartfort-hmf",
-    label: "Smart Fort HMF — 1 g sachet",
-    short: "Smart Fort HMF",
-    kcalPerSachet: 3.9,
-    proteinPerSachet: 0.28,
-    sachetGrams: 1,
-    standardMlPerSachet: 25,
-    maxSachetsPer100ml: 4,
-    source: "Hospital-sheet estimate — confirm against the sachet label",
-    verifyLabel: true,
+    id: "smart-fort",
+    name: "Smart Fort HMF — 1 g sachet",
+    unit: "sachet",
+    kcalPerUnit: 3.4,
+    proteinPerUnit: 0.3,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "Formulation reference: 1 g sachet: 3.4 kcal, 0.3 g protein, 0.5 g carb, 0.04 g fat, Ca 15 mg, P 8 mg, Vit D 160 IU, Fe 0.4 mg, Na 4.5 mg",
   },
   {
-    id: "custom",
-    label: "Other / custom fortifier (enter per-unit values)",
-    short: "Custom fortifier",
-    kcalPerSachet: 0,
-    proteinPerSachet: 0,
-    sachetGrams: 1,
-    standardMlPerSachet: 25,
-    maxSachetsPer100ml: 4,
-    source: "Clinician-entered per-unit values",
+    id: "neosure",
+    name: "Similac NeoSure (powder fortifier / formula)",
+    unit: "g",
+    kcalPerUnit: 4.88,
+    proteinPerUnit: 0.16,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "Formulation reference: Per 1 g: 4.88 kcal, 0.16 g protein, 0.55 g carb, 0.23 g fat, Ca 6.7 mg, P 3.5 mg, Vit D 6 IU, Fe 0.09 mg, Na 3.41 mg",
+  },
+  {
+    id: "neocate",
+    name: "Neocate (powder fortifier / formula)",
+    unit: "g",
+    kcalPerUnit: 4.93,
+    proteinPerUnit: 0.13,
+    mixedWithMl: 100,
+    steps: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+    stepLabel: gramLabel,
+    note: "Formulation reference: Per 1 g: 4.93 kcal, 0.13 g protein, 0.52 g carb, 0.25 g fat, Ca 5.7 mg, P 3.7 mg, Vit D 4.7 IU, Fe 0.07 mg, Na 2.17 mg",
+  },
+  {
+    id: "prenan-fm85",
+    name: "PreNAN FM 85 (Nestlé) — powder",
+    unit: "sachet",
+    kcalPerUnit: 4.35,
+    proteinPerUnit: 0.355,
+    mixedWithMl: 25,
+    steps: [0.25, 0.5, 1],
+    stepLabel: sachetLabel,
+    note: "per 1 g of powder · 435 kcal and 35.5 g protein per 100 g",
   },
 ];
 
 export function fortifierById(id: string | undefined): FortifierProduct | undefined {
-  if (!id) return undefined;
-  return FORTIFIER_PRODUCTS.find((p) => p.id === id);
-}
-
-export type FortificationCalc = {
-  status: "none" | "incomplete" | "active";
-  /** Short product label, or "" when none selected. */
-  productLabel: string;
-  /** Sachet-equivalents dissolved in the stated mixed volume. */
-  sachets: number;
-  mixedVolumeMl: number;
-  sachetsPer100ml: number;
-  standardSachetsPer100ml: number;
-  /** % of standard strength (100 = full fortification). */
-  strengthPct: number;
-  addedKcalPerMl: number;
-  addedProteinPerMl: number;
-  warnings: string[];
-  notes: string[];
-  /** Human-readable reason when status is "incomplete". */
-  missing?: string;
-};
-
-/**
- * Rectified fortification math.
- * The prescription states an amount dissolved in a mixed volume; the resulting
- * CONCENTRATION (sachets / 100 ml) is what scales to the baby's enteral intake.
- * Returns per-ml additions that calcNutrition adds to the base milk density.
- */
-export function calcFortification(f: NonNullable<Clinical["fluids"]>): FortificationCalc {
-  const blank: FortificationCalc = {
-    status: "none",
-    productLabel: "",
-    sachets: 0,
-    mixedVolumeMl: 0,
-    sachetsPer100ml: 0,
-    standardSachetsPer100ml: 4,
-    strengthPct: 0,
-    addedKcalPerMl: 0,
-    addedProteinPerMl: 0,
-    warnings: [],
-    notes: [],
-  };
-  const product = fortifierById(f.fortificationProductId);
-  const hasAmount = f.fortificationAmount !== undefined && f.fortificationAmount > 0;
-  const hasVolume = f.fortificationFeedVolumeMl !== undefined && f.fortificationFeedVolumeMl > 0;
-
-  // Legacy free-text entries (recorded before products existed) cannot be auto-calculated.
-  if (!product) {
-    if (f.fortificationName?.trim() || hasAmount || hasVolume) {
-      return {
-        ...blank,
-        status: "incomplete",
-        productLabel: f.fortificationName?.trim() || "",
-        missing: "Legacy free-text fortifier entry — select the matching product below so its calories and protein are included.",
-      };
-    }
-    return blank;
-  }
-
-  const isCustom = product.id === "custom";
-  const kcalPerUnit = isCustom ? (f.fortificationKcalPerUnit ?? 0) : product.kcalPerSachet;
-  const proteinPerUnit = isCustom ? (f.fortificationProteinPerUnit ?? 0) : product.proteinPerSachet;
-  const sachetGrams = f.fortificationSachetGrams && f.fortificationSachetGrams > 0
-    ? f.fortificationSachetGrams
-    : product.sachetGrams;
-  const unit = f.fortificationAmountUnit ?? "sachet";
-  const amount = f.fortificationAmount ?? 0;
-
-  if (!hasAmount || !hasVolume) {
-    return {
-      ...blank,
-      status: "incomplete",
-      productLabel: product.short,
-      missing: !hasAmount && !hasVolume
-        ? `Enter the ${product.short} amount and the mixed volume.`
-        : !hasAmount
-          ? `Enter the ${product.short} amount.`
-          : `Enter the feed volume (ml) the ${product.short} is mixed in.`,
-    };
-  }
-  if (isCustom && !(kcalPerUnit > 0)) {
-    return {
-      ...blank,
-      status: "incomplete",
-      productLabel: product.short,
-      missing: "Enter the custom fortifier's kcal per unit (per sachet/g/scoop, or per ml for liquids).",
-    };
-  }
-  // Standard powder products are dosed in sachet-equivalents; liquids need explicit per-ml values.
-  if (!isCustom && unit === "ml") {
-    return {
-      ...blank,
-      status: "incomplete",
-      productLabel: product.short,
-      missing: "Liquid amount with a powder product — use sachet/g, or switch to Custom with per-ml values.",
-    };
-  }
-
-  const notes: string[] = [];
-  let sachets: number;
-  if (unit === "g") {
-    sachets = amount / sachetGrams;
-    if (sachetGrams !== product.sachetGrams) notes.push(`1 sachet assumed = ${sachetGrams} g (custom size).`);
-  } else if (unit === "scoop" || unit === "measure") {
-    sachets = amount;
-    notes.push(`1 ${unit} assumed = 1 sachet-equivalent — confirm against the scoop/measure size.`);
-  } else if (unit === "ml" && isCustom) {
-    // Custom liquid: per-unit values are per ml; express strength in "sachet-equivalents"
-    // so the rest of the math (per-ml additions) stays identical.
-    sachets = amount; // ml of liquid
-    notes.push("Custom liquid: per-unit values applied per ml.");
-  } else {
-    sachets = amount;
-  }
-
-  const mixedVolumeMl = f.fortificationFeedVolumeMl ?? 0;
-  const warnings: string[] = [];
-  if (mixedVolumeMl < 10) warnings.push(`Mixed volume only ${mixedVolumeMl} ml — check the preparation (usually 25–100 ml per sachet).`);
-  if (sachets > 20 && !(unit === "ml" && isCustom)) warnings.push(`${sachets} sachet-equivalents is unusually large — check sachets vs grams.`);
-
-  let sachetsPer100ml: number;
-  let addedKcalPerMl: number;
-  let addedProteinPerMl: number;
-  if (unit === "ml" && isCustom) {
-    // Liquid: amount ml contains kcalPerUnit per ml, diluted into mixedVolumeMl of milk.
-    const liquidMl = amount;
-    addedKcalPerMl = Math.round(((liquidMl * kcalPerUnit) / mixedVolumeMl) * 10000) / 10000;
-    addedProteinPerMl = Math.round(((liquidMl * (proteinPerUnit ?? 0)) / mixedVolumeMl) * 10000) / 10000;
-    sachetsPer100ml = Math.round(((liquidMl / mixedVolumeMl) * 100) * 100) / 100; // ml per 100 ml, for display
-  } else {
-    sachetsPer100ml = Math.round((sachets / mixedVolumeMl) * 100 * 100) / 100;
-    addedKcalPerMl = Math.round(sachetsPer100ml * kcalPerUnit * 100) / 10000;
-    addedProteinPerMl = Math.round(sachetsPer100ml * (proteinPerUnit ?? 0) * 100) / 10000;
-  }
-
-  const standardSachetsPer100ml = Math.round((100 / product.standardMlPerSachet) * 100) / 100;
-  const strengthPct = standardSachetsPer100ml > 0 && !(unit === "ml" && isCustom)
-    ? Math.round((sachetsPer100ml / standardSachetsPer100ml) * 100)
-    : 0;
-
-  if (!(unit === "ml" && isCustom)) {
-    if (sachetsPer100ml > product.maxSachetsPer100ml * 1.5) {
-      warnings.push(`Very high fortification (${sachetsPer100ml} / 100 ml vs standard ${standardSachetsPer100ml}) — hyperosmolality / NEC risk, confirm prescription.`);
-    } else if (sachetsPer100ml > product.maxSachetsPer100ml) {
-      warnings.push(`Above standard strength (${sachetsPer100ml} / 100 ml vs standard ${standardSachetsPer100ml}) — osmolality rises steeply, confirm prescription.`);
-    }
-    if (strengthPct > 0 && strengthPct < 50) {
-      notes.push(`Half-strength fortification (${strengthPct}% of standard) — often a deliberate tolerance step.`);
-    }
-  }
-  if (product.verifyLabel) notes.push(`${product.short} composition is a hospital-sheet estimate — verify against the sachet label.`);
-
-  return {
-    status: "active",
-    productLabel: product.short,
-    sachets: Math.round(sachets * 100) / 100,
-    mixedVolumeMl,
-    sachetsPer100ml,
-    standardSachetsPer100ml,
-    strengthPct,
-    addedKcalPerMl,
-    addedProteinPerMl,
-    warnings,
-    notes,
-  };
+  return FORTIFIER_CATALOG.find((p) => p.id === id);
 }
 
 export type NutritionCalc = {
   feedType: string;
-  /** EFFECTIVE density incl. fortifier (what the baby actually receives per ml). */
   density: number;
-  /** EFFECTIVE protein per ml incl. fortifier. */
   proteinPerMl: number;
-  /** Base milk density before fortifier. */
-  baseDensity: number;
-  baseProteinPerMl: number;
-  densityAssumed: boolean;
   enteralMl: number;
   enteralKcal: number;
   enteralProtein: number;
-  baseEnteralKcal: number;
-  baseEnteralProtein: number;
-  fortStatus: FortificationCalc["status"];
-  fortLabel: string;
-  fortSachetsPer100ml: number;
-  fortKcalPerMl: number;
-  fortProteinPerMl: number;
-  fortKcal: number;
-  fortProtein: number;
-  /** Protein : energy ratio (g protein / 100 kcal). Optimal 2.8–3.4. */
-  peRatio: number;
   gir: number;
   girSource: "auto" | "manual" | "none";
   dextroseG: number;
@@ -530,10 +499,50 @@ export type NutritionCalc = {
   totalProtein: number;
   totalFluids: number;
   ivMl: number;
+  /* --- Fortification, so fortified feeds are counted with unfortified ones --- */
+  /** True when a fortifier amount is recorded. */
+  fortified: boolean;
+  /** kcal/ml added to the base milk, spread across the whole day's feeds. */
+  fortKcalPerMl: number;
+  /** g protein/ml added to the base milk, spread across the whole day's feeds. */
+  fortProteinPerMl: number;
+  /** kcal/ml inside a single fortified feed (before spreading over the day). */
+  fortKcalPerMlInFeed: number;
+  /** g protein/ml inside a single fortified feed. */
+  fortProteinPerMlInFeed: number;
+  /** Stocked product the per-unit values came from, if one was selected. */
+  fortProduct: FortifierProduct | null;
+  /** Feeds per day the fortifier is given in. */
+  fortDosesPerDay: number;
+  /** Total feeds per day implied by the feed frequency. */
+  fortFeedsPerDay: number | undefined;
+  /** Fraction of the day's enteral volume that is fortified, 0-1. */
+  fortFraction: number;
+  /** Effective kcal/ml actually used: base milk density + fortifier. */
+  effectiveKcalPerMl: number;
+  /** Effective g protein/ml actually used: base milk protein + fortifier. */
+  effectiveProteinPerMl: number;
+  /* --- Per-source breakdown so every number can be audited --- */
+  milkKcal: number;
+  fortKcal: number;
+  milkProtein: number;
+  fortProtein: number;
+  /** Protein from IV amino acids (Aminoven / Vaminolact) — equals aaG. */
+  aaProtein: number;
+  /** Protein from lipid emulsion — 0 by definition, shown for completeness. */
+  lipidProtein: number;
   kcalTarget: [number, number];
   proteinTarget: [number, number];
+  /** Total fluid target, ml/kg/day — the day ramp early on, full feeds later. */
+  fluidsTarget: [number, number];
+  /** What sized these targets, e.g. "751–1000 g, day 4 ramp". */
+  targetsBasis: string;
   kcalDeficit: number;
   proteinDeficit: number;
+  /** Total fluids short of (negative) or above (positive) the target. */
+  fluidsGap: number;
+  /** Resolved feed plan (static / increasing) behind these numbers. */
+  feedPlan: FeedPlan;
   warnings: string[];
   isAbnormal: boolean;
 };
@@ -551,35 +560,209 @@ export function calcGir(dextrosePct: number | undefined, ivMlKgDay: number | und
   return Math.round(gir * 100) / 100;
 }
 
-/** Auto-compute kcal/kg/day and protein g/kg/day from the current feed + fortifier + TPN prescription. */
-export function calcNutrition(c: Clinical): NutritionCalc {
+const clampMl = (v: number) => Math.max(0, Math.min(250, v));
+
+/**
+ * Feeds per day implied by an "N hourly" frequency.
+ * Returns undefined for "continuous", on-demand or unrecognised entries,
+ * because those have no fixed number of boluses to divide the day into.
+ */
+export function feedsPerDay(feedFreq: string | undefined): number | undefined {
+  const match = feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  if (!hours || hours <= 0 || hours >= 24) return undefined;
+  return 24 / hours;
+}
+
+export type FeedPlan = {
+  /** False when no TFI target is entered — callers fall back to raw enteral/IV. */
+  active: boolean;
+  mode: "static" | "increasing";
+  increaseAppliesTo: "iv-today" | "tomorrow-target";
+  tfi?: number;
+  /** Only set for the "increasing" plan. */
+  increment?: number;
+  /** Today's enteral volume, the only thing the plan actually drives. */
+  enteralMlKgDay?: number;
+  /** Today's IV volume — always the manually entered value, never derived. */
+  ivMlKgDay?: number;
+  /**
+   * What the IV would have to be to bring enteral + IV up to the TFI target.
+   * Informational only: the UI shows it as a hint and never writes it back.
+   */
+  ivSuggestedMlKgDay?: number;
+  /** Enteral volume planned for the next 24 h (the step-up target). */
+  tomorrowEnteralMlKgDay?: number;
+  /** Enteral + IV actually prescribed today. */
+  totalFluidsMlKgDay?: number;
+  /** True when today's enteral + IV equals the TFI target. */
+  reconciled: boolean;
+  perFeedMl?: number;
+  feedsPerDay?: number;
+  notes: string[];
+};
+
+/**
+ * Resolve today's enteral volume and the next 24 h step-up from the total
+ * fluid intake target. The plan governs enteral feeds only.
+ *
+ *  static                whole TFI is enteral, no change tomorrow
+ *  increasing + iv-today    feeds run at TFI - increment, TFI tomorrow
+ *  increasing + tomorrow    feeds run at the full TFI today and step up to
+ *                           TFI + increment over the next 24 h
+ *
+ * IV fluids are always the manually entered ivMlKgDay. The plan reports what
+ * IV would reconcile the day (ivSuggestedMlKgDay) but never sets it, so a
+ * typed IV prescription can no longer be overwritten or silently zeroed.
+ *
+ * Pure function — used by calcNutrition and the feed UI so both always agree.
+ */
+export function resolveFeedPlan(
+  f: NonNullable<Clinical["fluids"]>,
+  weightKg?: number,
+): FeedPlan {
+  const mode: FeedPlan["mode"] = f.feedPlan === "increasing" ? "increasing" : "static";
+  const increaseAppliesTo: FeedPlan["increaseAppliesTo"] =
+    f.increaseAppliesTo === "tomorrow-target" ? "tomorrow-target" : "iv-today";
+  const notes: string[] = [];
+  const enteredIv = f.ivMlKgDay !== undefined ? clampMl(f.ivMlKgDay) : 0;
+  if (f.ivMlKgDay !== undefined && f.ivMlKgDay > 250) {
+    notes.push(`IV ${f.ivMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
+  }
+  const inactive: FeedPlan = {
+    active: false,
+    mode,
+    increaseAppliesTo,
+    ivMlKgDay: enteredIv,
+    reconciled: false,
+    notes,
+  };
+  if (f.tfiMlKgDay === undefined || !(f.tfiMlKgDay > 0)) return inactive;
+  if (f.tfiMlKgDay > 250) notes.push(`TFI ${f.tfiMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
+  const tfi = clampMl(f.tfiMlKgDay);
+
+  // --- today's enteral volume, plus the step-up target for the next 24 h ---
+  // TFI is Total Fluid Intake: Enteral Feeds + IV Fluids = TFI.
+  // Feeds and IV fluids must NEVER double-count or overcalculate beyond TFI.
+  let enteral = Math.max(0, tfi - enteredIv);
+  let tomorrow = tfi;
+  let increment: number | undefined;
+  if (mode === "increasing") {
+    const rawInc = f.feedIncrementMlKgDay ?? 0;
+    increment = clampMl(rawInc);
+    if (rawInc > 250) notes.push(`Increase ${rawInc} ml/kg/day exceeds the 250 cap — clamped`);
+    if (increaseAppliesTo === "iv-today") {
+      if (increment > tfi) notes.push(`Increase ${increment} exceeds TFI ${tfi} — enteral floored at 0`);
+      // IV today covers the remaining gap up to TFI:
+      enteral = Math.max(0, tfi - Math.max(increment, enteredIv));
+      tomorrow = tfi;
+    } else {
+      const next = enteral + increment;
+      tomorrow = clampMl(next);
+      if (next > 250) notes.push(`Next 24 h target ${Math.round(next)} ml/kg/day exceeds the 250 cap — clamped`);
+    }
+  } else {
+    // In static mode, enteral is the remaining fluid intake after IV fluids:
+    enteral = Math.max(0, tfi - enteredIv);
+    tomorrow = enteral;
+  }
+
+  // --- today's IV volume: whatever was typed, never derived or overridden ---
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  const ivSuggested = Math.max(0, round2(tfi - enteral));
+  const totalFluids = round2(enteral + enteredIv);
+  const reconciled = Math.abs(totalFluids - tfi) < 0.01;
+  if (totalFluids > tfi + 0.01) {
+    notes.push(
+      `Total fluids ${totalFluids} ml/kg/day exceed the TFI target ${tfi} by ${round2(totalFluids - tfi)} — check the IV prescription.`,
+    );
+  }
+
+  const fpd = feedsPerDay(f.feedFreq);
+  const perFeedMl =
+    fpd !== undefined && weightKg !== undefined && weightKg > 0
+      ? round2((enteral * weightKg) / fpd)
+      : undefined;
+  if (fpd === undefined && enteral > 0) {
+    notes.push("Choose an hourly frequency to split the day's volume into feeds");
+  }
+
+  return {
+    active: true,
+    mode,
+    increaseAppliesTo,
+    tfi,
+    increment,
+    enteralMlKgDay: round2(enteral),
+    ivMlKgDay: round2(enteredIv),
+    ivSuggestedMlKgDay: ivSuggested,
+    tomorrowEnteralMlKgDay: round2(tomorrow),
+    totalFluidsMlKgDay: totalFluids,
+    reconciled,
+    perFeedMl,
+    feedsPerDay: fpd,
+    notes,
+  };
+}
+
+/** Auto-compute kcal/kg/day and protein g/kg/day from the current feed + TPN prescription. */
+/**
+ * @param weightG current weight in grams. Optional for backwards compatibility,
+ *   but without it a fortifier dose cannot be converted from "0.5 g twice a
+ *   day" into an absolute daily amount, so the uplift falls back to assuming
+ *   the fortified feeds are an equal share of the day.
+ */
+/**
+ * @param ctx Optional day of life, which moves the fluid target onto the
+ *            day-by-day ramp instead of measuring a day-1 baby against full
+ *            feeds. Energy and protein targets come from the weight alone.
+ */
+export function calcNutrition(c: Clinical, weightG?: number, ctx?: { dol?: number; protocol?: ProtocolOverrides | null }): NutritionCalc {
   const f = c.fluids ?? {};
   const feedType = f.feedType ?? "—";
-  const fort = calcFortification(f);
-  // Legacy "EBM + HMF" records already bake in an assumed fortification; once an
-  // explicit fortifier product is prescribed, the base reverts to plain EBM so the
-  // fortifier is counted exactly once.
-  const legacyWithExplicitFortifier = feedType === LEGACY_FORTIFIED_FEED && fort.status === "active";
-  const baseKey = legacyWithExplicitFortifier ? "Expressed breast milk (EBM)" : feedType;
-  const densityAssumed = KCAL_PER_ML[baseKey] === undefined;
-  const baseDensity = KCAL_PER_ML[baseKey] ?? 0.69;
-  const baseProtPerMl = PROTEIN_G_PER_ML[baseKey] ?? 0.015;
-  // EFFECTIVE density = base milk + fortifier concentration. This is the mistake
-  // the old code made: fortification was recorded but added 0 kcal / 0 protein.
-  const density = Math.round((baseDensity + fort.addedKcalPerMl) * 10000) / 10000;
-  const protPerMl = Math.round((baseProtPerMl + fort.addedProteinPerMl) * 10000) / 10000;
+  const density = KCAL_PER_ML[feedType] ?? 0.67;
+  const protPerMl = PROTEIN_G_PER_ML[feedType] ?? 0.011;
+
+  // --- Feed plan: TFI target split into today's enteral + IV volumes ---
+  // The weight goes in so per-feed volumes resolve for every caller, not just
+  // the feed tab that happens to pass one.
+  const weightKg = weightG != null && weightG > 0 ? weightG / 1000 : undefined;
+  const plan = resolveFeedPlan(f, weightKg);
+
+  const warnings: string[] = [];
+  // The plan's own findings (TFI clamped, total above target, no frequency to
+  // split the day) have to travel with the calculation: the discharge, print
+  // and daily-progress views only ever see `warnings`, never `plan.notes`.
+  warnings.push(...plan.notes);
 
   // --- Input sanitization with physiological limits ---
-  const rawEnteral = f.enteralMlKgDay ?? 0;
-  const enteralMl = Math.max(0, Math.min(250, rawEnteral)); // cap 250 ml/kg/day
+  const rawEnteral = plan.active && plan.enteralMlKgDay !== undefined ? plan.enteralMlKgDay : f.enteralMlKgDay ?? 0;
+  const enteralMl = clampMl(rawEnteral); // cap 250 ml/kg/day
+  if (rawEnteral > 250) {
+    warnings.push(`Enteral ${rawEnteral} ml/kg/day is above the 250 cap — the calculation used 250, check the entry`);
+  }
 
-  const rawIv = f.ivMlKgDay ?? 0;
-  const ivMl = Math.max(0, Math.min(250, rawIv));
+  const rawIv = plan.active && plan.ivMlKgDay !== undefined ? plan.ivMlKgDay : f.ivMlKgDay ?? 0;
+  const ivMl = clampMl(rawIv);
+  // An IV entry above the cap is already reported by the feed plan's notes,
+  // which travel with these warnings — no second copy of the same message.
 
-  const rawGir = f.gir ?? 0;
+  // GIR: an explicit manual value wins. Otherwise DERIVE it from dextrose% and
+  // the IV volume, so IV energy is never silently dropped on the screens that
+  // call calcNutrition on stored data without pre-computing GIR.
+  const derivedGir = calcGir(f.dextrosePct, ivMl);
+  const storedGir = f.gir ?? 0;
+  const rawGir = f.girManual ? storedGir : derivedGir > 0 ? derivedGir : storedGir;
   // GIR should be 0-20 mg/kg/min, if >20 likely data entry error
   const gir = Math.max(0, Math.min(20, rawGir));
-  const girSource: NutritionCalc["girSource"] = f.girManual ? "manual" : f.dextrosePct !== undefined && f.ivMlKgDay !== undefined ? "auto" : rawGir > 0 ? "manual" : "none";
+  const girSource: NutritionCalc["girSource"] = f.girManual
+    ? "manual"
+    : derivedGir > 0
+      ? "auto"
+      : storedGir > 0
+        ? "manual"
+        : "none";
 
   // Dextrose: mg/kg/min -> g/kg/day = GIR * 1440 /1000 = GIR *1.44
   const dextroseG = Math.round(gir * 1.44 * 10) / 10;
@@ -593,33 +776,118 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   const lipidG = Math.max(0, Math.min(6, rawLipid)); // lipid max 3-4 g/kg/day
   const lipidKcal = Math.round(lipidG * 9 * 10) / 10; // 9 kcal/g
 
-  const baseEnteralKcal = Math.round(enteralMl * baseDensity * 10) / 10;
-  const baseEnteralProtein = Math.round(enteralMl * baseProtPerMl * 100) / 100;
-  const fortKcal = Math.round(enteralMl * fort.addedKcalPerMl * 10) / 10;
-  const fortProtein = Math.round(enteralMl * fort.addedProteinPerMl * 100) / 100;
-  const enteralKcal = Math.round((baseEnteralKcal + fortKcal) * 10) / 10;
-  const enteralProtein = Math.round((baseEnteralProtein + fortProtein) * 100) / 100;
+  // --- Feed type: the density behind every enteral kcal and gram of protein --
+  // An unrecognised feed type silently falls back to EBM values, which is the
+  // single quietest way to get the wrong answer on this screen. Say so.
+  if (f.feedType === undefined || f.feedType.trim() === "") {
+    if (enteralMl > 0) {
+      warnings.push(
+        `No feed type chosen — the ${enteralMl} ml/kg/day of feeds is priced as EBM at ${density} kcal/ml and ${protPerMl} g protein/ml`,
+      );
+    }
+  } else if (!(feedType in KCAL_PER_ML)) {
+    warnings.push(
+      `"${feedType}" is not in the milk density table — using ${density} kcal/ml and ${protPerMl} g protein/ml. Pick a listed feed type or the energy and protein will be wrong`,
+    );
+  }
+
+  // --- Fortification: uplift the milk density from the recorded preparation ---
+  // The product sets the per-unit values; amount ÷ volume it was mixed into
+  // gives the concentration inside a fortified feed, and doses/day ÷ feeds/day
+  // scales that across the whole day's enteral volume. Without that last step
+  // "0.5 g given twice a day" would be credited to every feed the baby gets.
+  const fortProduct = fortifierById(f.fortifierProductId);
+  const fortAmount = f.fortificationAmount ?? 0;
+  const fortMixedMl = f.fortificationFeedVolumeMl || fortProduct?.mixedWithMl || 0;
+  const kcalPerUnit = f.fortifierKcalPerUnit ?? fortProduct?.kcalPerUnit ?? FORTIFIER_KCAL_PER_UNIT;
+  const proteinPerUnit = f.fortifierProteinPerUnit ?? fortProduct?.proteinPerUnit ?? FORTIFIER_PROTEIN_G_PER_UNIT;
+  const fortified = fortAmount > 0;
+  if (fortified && /hmf|fortif/i.test(feedType)) {
+    warnings.push(
+      `Feed type "${feedType}" is already priced as fortified milk at ${density} kcal/ml — recording a fortifier as well counts it twice. Use plain EBM as the feed type, or remove the fortifier entry`,
+    );
+  }
+
+  const fortFeedsPerDay = feedsPerDay(f.feedFreq);
+  const fortDosesPerDay = fortified ? (f.fortificationDosesPerDay ?? fortFeedsPerDay ?? 1) : 0;
+  let fortFraction = fortified ? 1 : 0;
+  if (fortified && fortFeedsPerDay && fortDosesPerDay > fortFeedsPerDay) {
+    warnings.push(
+      `Fortifier is recorded for ${fortDosesPerDay} feeds/day but "${f.feedFreq}" only gives ${fortFeedsPerDay} feeds/day — check the dose count`,
+    );
+  }
+
+  // Concentration inside a fortified feed, and the same spread over the day.
+  let fortKcalPerMl = 0;
+  let fortProteinPerMl = 0;
+  let fortKcalPerMlEffective = 0;
+  let fortProteinPerMlEffective = 0;
+  if (fortified && fortMixedMl > 0) {
+    fortKcalPerMl = (fortAmount * kcalPerUnit) / fortMixedMl;
+    fortProteinPerMl = (fortAmount * proteinPerUnit) / fortMixedMl;
+    // How much of the day's enteral volume is actually the fortified mixture:
+    // mixed volume × doses/day, which needs the weight to express per kg.
+    if (fortDosesPerDay === 1 && f.fortificationDosesPerDay === undefined && fortFeedsPerDay === undefined) {
+      warnings.push(
+        `"Times per day" is not set and "${f.feedFreq ?? "no frequency"}" gives no fixed number of feeds, so only 1 dose/day of fortifier has been counted — enter how many times a day it is given`,
+      );
+    }
+    if (weightKg) {
+      const fortifiedMlPerKgDay = (fortMixedMl * fortDosesPerDay) / weightKg;
+      if (enteralMl <= 0) {
+        warnings.push(
+          "A fortifier is recorded but there is no enteral volume — enter the enteral ml/kg/day so its energy and protein can be counted",
+        );
+      } else if (fortifiedMlPerKgDay > enteralMl + 0.001) {
+        warnings.push(
+          `Fortifier mix volume ${fortMixedMl} ml × ${fortDosesPerDay} dose(s)/day exceeds the recorded enteral volume — the uplift is capped at the enteral volume`,
+        );
+      }
+      fortFraction = enteralMl > 0 ? Math.min(1, fortifiedMlPerKgDay / enteralMl) : 0;
+    } else {
+      // No weight on record: fall back to the share of feeds that are fortified,
+      // and say so — without a weight the fortified share cannot be checked
+      // against the enteral volume, so this is an upper bound.
+      fortFraction = fortFeedsPerDay
+        ? Math.max(0, Math.min(1, fortDosesPerDay / fortFeedsPerDay))
+        : 1;
+      warnings.push(
+        `No weight on record — the fortifier is credited to ${(fortFraction * 100).toFixed(0)}% of the enteral volume, which is an upper bound until the weight is entered`,
+      );
+    }
+    fortKcalPerMlEffective = fortKcalPerMl * fortFraction;
+    fortProteinPerMlEffective = fortProteinPerMl * fortFraction;
+  } else if (fortified) {
+    warnings.push(
+      "Fortifier recorded without a mixed volume — enter \"Feed volume mixed (ml)\" so its energy and protein are counted",
+    );
+  }
+  const effectiveKcalPerMl = density + fortKcalPerMlEffective;
+  const effectiveProteinPerMl = protPerMl + fortProteinPerMlEffective;
+
+  const enteralKcal = Math.round(enteralMl * effectiveKcalPerMl * 10) / 10;
+  const fortKcal = Math.round(enteralMl * fortKcalPerMlEffective * 10) / 10;
+  const milkKcal = Math.round((enteralKcal - fortKcal) * 10) / 10;
+  const enteralProtein = Math.round(enteralMl * effectiveProteinPerMl * 100) / 100;
+  const fortProtein = Math.round(enteralMl * fortProteinPerMlEffective * 100) / 100;
+  const milkProtein = Math.round((enteralProtein - fortProtein) * 100) / 100;
 
   // Total IV kcal = dextrose + AA + lipid (TPN)
   const ivKcal = Math.round((dextroseKcal + aaKcal + lipidKcal) * 10) / 10;
-  // Total = enteral + IV
+  // Total energy = enteral (milk + fortifier) + IV (dextrose + AA + lipid)
   const totalKcal = Math.round((enteralKcal + ivKcal) * 10) / 10;
-  const totalProtein = Math.round((enteralProtein + aaG) * 100) / 100;
+  // Total protein = enteral (milk + fortifier) + IV amino acids + lipid (0)
+  const lipidProtein = Math.round(lipidG * LIPID_PROTEIN_G_PER_G * 100) / 100;
+  const totalProtein = Math.round((enteralProtein + aaG + lipidProtein) * 100) / 100;
 
-  const kcalTarget: [number, number] = [110, 135];
-  const proteinTarget: [number, number] = [3.5, 4.5]; // widened to 3.5-4.5 for preterm, was 3.5-4
+  // Targets follow the baby's size and day of life rather than one fixed
+  // preterm pair — a 600 g microprem and a 2.2 kg growing preterm are not
+  // aiming at the same numbers.
+  const targets = targetsFor({ weightG, dol: ctx?.dol, protocol: c.fluids?.protocol ?? ctx?.protocol });
+  const kcalTarget = targets.kcal;
+  const proteinTarget = targets.protein;
+  const fluidsTarget = targets.fluids;
 
-  const warnings: string[] = [];
-  if (densityAssumed && feedType !== "—") warnings.push(`Unknown feed type “${feedType}” — assumed EBM density 0.69 kcal/ml; pick a formulary feed.`);
-  if (feedType === LEGACY_FORTIFIED_FEED && fort.status !== "active") {
-    warnings.push("“EBM + HMF” is a legacy estimate (0.81 kcal/ml) — prescribe the fortifier product below for exact kcal/protein.");
-  }
-  if (legacyWithExplicitFortifier) warnings.push("Legacy “EBM + HMF” feed type overridden by the explicit fortifier prescription (counted once).");
-  for (const w of fort.warnings) warnings.push(`Fortification: ${w}`);
-  if (fort.status === "incomplete" && fort.missing) warnings.push(`Fortification incomplete — ${fort.missing} Calories shown exclude the fortifier.`);
-  if (fort.status === "active" && !HUMAN_MILK_FEEDS.has(feedType)) {
-    warnings.push(`Fortifier prescribed on top of “${feedType}” — HMF is normally added to human milk only; confirm prescription.`);
-  }
   if (gir > 0 && gir < 4) warnings.push(`Low GIR ${gir} mg/kg/min (<4) — risk hypoglycaemia`);
   if (gir > 8 && gir <= 12) warnings.push(`High GIR ${gir} mg/kg/min (>8) — monitor glucose, consider central line if >10`);
   if (gir > 12) warnings.push(`Very high GIR ${gir} mg/kg/min (>12) — requires central line, high osmolarity risk`);
@@ -628,8 +896,34 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   if (aaG > 4) warnings.push(`AA ${aaG} g/kg/day exceeds 4 — check prescription`);
   if (lipidG > 4) warnings.push(`Lipid ${lipidG} g/kg/day exceeds 4 — check prescription`);
   if (enteralMl > 200) warnings.push(`Enteral ${enteralMl} ml/kg/day >200 — fluid overload risk`);
-  if (totalKcal > 0 && totalKcal < 80) warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
-  if (totalKcal > 150) warnings.push(`High energy ${totalKcal} kcal/kg/day (>150) — exceeds target 110-135`);
+  if (ivMl > 0 && derivedGir === 0 && !f.girManual) {
+    warnings.push(
+      `IV ${ivMl} ml/kg/day carries no energy here — enter dextrose% (or GIR) if the IV fluid contains dextrose`,
+    );
+  }
+  if ((f.dextrosePct ?? 0) > 0 && ivMl <= 0 && !f.girManual) {
+    warnings.push(
+      `Dextrose ${f.dextrosePct}% is recorded with no IV volume — the dextrose energy cannot be calculated until "IV ml/kg/d" is filled in`,
+    );
+  }
+  if (f.girManual && derivedGir > 0 && Math.abs(storedGir - derivedGir) >= 1) {
+    warnings.push(
+      `Manual GIR ${storedGir} mg/kg/min disagrees with ${derivedGir} derived from dextrose ${f.dextrosePct}% × IV ${ivMl} ml/kg/day — one of the two is wrong`,
+    );
+  }
+  if (totalKcal > 0 && totalKcal < 80) {
+    warnings.push(`Low energy ${totalKcal} kcal/kg/day (<80) — below basal needs`);
+  } else if (totalKcal > 0 && totalKcal < kcalTarget[0]) {
+    warnings.push(
+      `Energy ${totalKcal} kcal/kg/day is below the ${kcalTarget[0]}–${kcalTarget[1]} target for ${targets.basis}`,
+    );
+  }
+  if (totalKcal > kcalTarget[1]) {
+    warnings.push(`High energy ${totalKcal} kcal/kg/day — above the ${kcalTarget[0]}–${kcalTarget[1]} target for ${targets.basis}`);
+  }
+  if (totalProtein > 0 && totalProtein < proteinTarget[0]) {
+    warnings.push(`Protein ${totalProtein} g/kg/day is below the ${proteinTarget[0]}–${proteinTarget[1]} target for ${targets.basis}`);
+  }
   if (totalProtein > 0 && totalProtein < 2) warnings.push(`Low protein ${totalProtein} g/kg/day (<2) — inadequate for growth`);
   if (totalProtein > 5) warnings.push(`High protein ${totalProtein} g/kg/day (>5) — exceeds safe limit, check AA + enteral`);
 
@@ -637,10 +931,25 @@ export function calcNutrition(c: Clinical): NutritionCalc {
   if (totalKcal > 300) warnings.push(`Grossly high energy ${totalKcal} — likely ml/day entered as ml/kg/day, please check weight and volumes`);
   if (totalProtein > 10) warnings.push(`Grossly high protein ${totalProtein} — likely unit error, check AA g/kg/day vs ml/kg/day`);
 
-  // Protein : energy ratio (ESPGHAN optimal 2.8–3.4 g / 100 kcal) — only meaningful once intake is substantial.
-  const peRatio = totalKcal >= 40 ? Math.round((totalProtein / totalKcal) * 100 * 10) / 10 : 0;
-  if (fort.status === "active" && totalKcal >= 80 && (peRatio < 2.5 || peRatio > 3.8)) {
-    warnings.push(`Protein:energy ratio ${peRatio} g/100 kcal is outside the optimal 2.8–3.4 — review fortification strength.`);
+  const totalFromInputs = Math.round((enteralMl + ivMl) * 10) / 10;
+  if (!plan.active && f.totalMlKgDay !== undefined && Math.abs(f.totalMlKgDay - totalFromInputs) > 1) {
+    warnings.push(
+      `Recorded total fluids ${f.totalMlKgDay} ml/kg/day does not match enteral ${enteralMl} + IV ${ivMl} = ${totalFromInputs} — check which one is current`,
+    );
+  }
+  if (f.kcalManual === true && f.kcal !== undefined && Math.abs(f.kcal - totalKcal) > 5) {
+    warnings.push(
+      `This chart carries a manual energy of ${f.kcal} kcal/kg/day but the inputs calculate ${totalKcal} — reset to automatic or correct the inputs`,
+    );
+  }
+
+  const totalFluidsValue = plan.active
+    ? Math.round((enteralMl + ivMl) * 10) / 10
+    : f.totalMlKgDay ?? Math.round((enteralMl + ivMl) * 10) / 10;
+  if (totalFluidsValue > fluidsTarget[1] + 10) {
+    warnings.push(
+      `Total fluids ${totalFluidsValue} ml/kg/day is more than 10 above the ${fluidsTarget[0]}–${fluidsTarget[1]} target for ${targets.basis}`,
+    );
   }
 
   const isAbnormal = warnings.length > 0;
@@ -649,22 +958,9 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     feedType,
     density,
     proteinPerMl: protPerMl,
-    baseDensity,
-    baseProteinPerMl: baseProtPerMl,
-    densityAssumed,
     enteralMl,
     enteralKcal,
     enteralProtein,
-    baseEnteralKcal,
-    baseEnteralProtein,
-    fortStatus: fort.status,
-    fortLabel: fort.productLabel,
-    fortSachetsPer100ml: fort.sachetsPer100ml,
-    fortKcalPerMl: fort.addedKcalPerMl,
-    fortProteinPerMl: fort.addedProteinPerMl,
-    fortKcal,
-    fortProtein,
-    peRatio,
     gir,
     girSource,
     dextroseG,
@@ -676,10 +972,34 @@ export function calcNutrition(c: Clinical): NutritionCalc {
     ivKcal,
     totalKcal,
     totalProtein,
-    totalFluids: f.totalMlKgDay ?? 0,
+    totalFluids: totalFluidsValue,
     ivMl,
+    fortified,
+    // Spread across the whole day, so effectiveKcalPerMl = density + this.
+    fortKcalPerMl: Math.round(fortKcalPerMlEffective * 1000) / 1000,
+    fortProteinPerMl: Math.round(fortProteinPerMlEffective * 10000) / 10000,
+    // Concentration inside a single fortified feed, for the readout. Kept at
+    // 5 dp because a small fortifier uplift rounds away almost entirely at 3.
+    fortKcalPerMlInFeed: Math.round(fortKcalPerMl * 100000) / 100000,
+    fortProteinPerMlInFeed: Math.round(fortProteinPerMl * 100000) / 100000,
+    fortProduct: fortProduct ?? null,
+    fortDosesPerDay,
+    fortFeedsPerDay,
+    fortFraction: Math.round(fortFraction * 1000) / 1000,
+    effectiveKcalPerMl: Math.round(effectiveKcalPerMl * 1000) / 1000,
+    effectiveProteinPerMl: Math.round(effectiveProteinPerMl * 10000) / 10000,
+    milkKcal,
+    fortKcal,
+    milkProtein,
+    fortProtein,
+    aaProtein: aaG,
+    lipidProtein,
+    feedPlan: plan,
     kcalTarget,
     proteinTarget,
+    fluidsTarget,
+    targetsBasis: targets.basis,
+    fluidsGap: Math.round((totalFluidsValue - fluidsTarget[0]) * 10) / 10,
     kcalDeficit: Math.round((totalKcal - kcalTarget[0]) * 10) / 10,
     proteinDeficit: Math.round((totalProtein - proteinTarget[0]) * 100) / 100,
     warnings,

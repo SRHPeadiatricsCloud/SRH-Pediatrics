@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     title: "SRH Pediatrics",
   },
   icons: {
-    icon: [{ url: "/icons/icon-512.png?v=3.1.0", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/icons/icon-512.png?v=3.1.0", sizes: "512x512", type: "image/png" }],
+    icon: [{ url: "/icons/icon-512.png?v=3.13.0", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/icons/icon-512.png?v=3.13.0", sizes: "512x512", type: "image/png" }],
   },
 };
 
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}var f=parseFloat(localStorage.getItem("srh_font_scale"));if(isFinite(f)){f=Math.min(1.7,Math.max(0.85,f));document.documentElement.style.fontSize=(f*100)+"%"}}catch(e){}})();`;
+const themeBootstrap = `(function(){try{var t=localStorage.getItem("neo_theme");if(t==="light"){document.documentElement.classList.add("light")}var p=localStorage.getItem("srh_palette");if(p){document.documentElement.setAttribute("data-palette",p)}var f=parseFloat(localStorage.getItem("srh_font_scale"));if(isFinite(f)){f=Math.min(1.7,Math.max(0.85,f));document.documentElement.style.fontSize=(f*100)+"%"}}catch(e){}})();`;
 
 const fontVars: CSSProperties = {
   ["--font-display" as string]: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="mb-2 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/hospital-logo.png?v=3.1.0"
+              src="/images/hospital-logo.png?v=3.13.0"
               alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
               width={320}
               height={220}
@@ -72,8 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             iOS · Android · Windows
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
-            Install as an app — iOS: Share → Add to Home Screen · Android: Install app · Windows: install from the
-            browser bar · Use the 🔗 Share link button to invite your team
+            Install as an app · use the 🔗 Share link to invite your team
           </p>
           <p className="mt-1 text-[9px] text-slate-600">
             V.{APP_VERSION} · backup schema v{BACKUP_SCHEMA_VERSION} — backups are versioned and forward-compatible.
