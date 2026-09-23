@@ -106,8 +106,7 @@ export default function LearningPage() {
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-black tracking-tight text-white">Learning Space</h1>
               <p className="text-[11px] text-slate-400">
-                Department of Pediatrics · today's scheduled classes, seminars, journal clubs and skills lab —
-                enter and edit manually
+                Department of Pediatrics · today's schedule
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -364,7 +363,7 @@ export default function LearningPage() {
 
         {locked && (
           <p className="mt-3 text-center text-[11px] text-amber-200/90">
-            🔒 View-only — sign your name in "Signed as" to add or edit sessions.
+            🔒 View-only — sign your name in "Signed as" to edit.
           </p>
         )}
       </div>

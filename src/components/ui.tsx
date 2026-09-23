@@ -5,6 +5,7 @@ import {
   Calculator as CalculatorIcon,
   CalendarDays,
   Check,
+  FolderArchive,
   GraduationCap,
   KeyRound,
   LayoutGrid,
@@ -362,6 +363,7 @@ export function NumField({
   unit = "",
   decimals = 0,
   placeholder = "—",
+  readOnly = false,
 }: {
   label: string;
   value: number | undefined | null;
@@ -372,6 +374,12 @@ export function NumField({
   unit?: string;
   decimals?: number;
   placeholder?: string;
+  /**
+   * The value is driven by something else (e.g. the feed plan sets the enteral
+   * volume). Editing it would be silently discarded, so the field is locked and
+   * the reason is shown instead of pretending it can be typed into.
+   */
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = value === undefined || value === null || Number.isNaN(value) ? "" : String(value);
@@ -387,6 +395,7 @@ export function NumField({
     onChange(Math.min(max, Math.max(min, Number(n.toFixed(decimals)))));
   };
   const nudge = (delta: number) => {
+    if (readOnly) return;
     const base = editing && draft?.trim() ? Number(draft) : value ?? min;
     const safeBase = Number.isNaN(base) ? min : base;
     onChange(Math.min(max, Math.max(min, Number((safeBase + delta).toFixed(decimals)))));
@@ -399,16 +408,21 @@ export function NumField({
         <button
           type="button"
           onClick={() => nudge(-step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={readOnly}
+          aria-hidden={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 disabled:active:scale-100"
         >
           −
         </button>
         <input
           inputMode="decimal"
-          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500"
+          className="w-full min-w-0 rounded-lg bg-transparent py-1 text-center text-base font-bold tabular-nums text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed read-only:text-slate-400"
           value={editing ? draft : shown}
           placeholder={placeholder}
-          onFocus={() => setDraft(shown)}
+          readOnly={readOnly}
+          title={readOnly ? "Set by the feed plan — change the TFI target or the increase instead" : undefined}
+          onFocus={() => { if (!readOnly) setDraft(shown); }}
           onChange={(e) => {
             const raw = e.target.value;
             // Allow a genuinely empty field and a single decimal point while editing.
@@ -437,7 +451,10 @@ export function NumField({
         <button
           type="button"
           onClick={() => nudge(step)}
-          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90"
+          disabled={readOnly}
+          aria-hidden={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          className="h-9 w-9 shrink-0 rounded-lg bg-white/5 text-lg leading-none text-slate-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 disabled:active:scale-100"
         >
           +
         </button>
@@ -510,6 +527,68 @@ export function ThemeToggle() {
         <Moon size={13} strokeWidth={2.5} /> <span>Dark</span>
       </button>
     </div>
+  );
+}
+
+/** Dark-mode colour schemes. Values must match the data-palette selectors in globals.css. */
+const DARK_PALETTES = [
+  { id: "slate-teal", label: "Slate & Teal" },
+  { id: "graphite-copper", label: "Graphite & Copper" },
+  { id: "deep-forest", label: "Deep Forest & Sage" },
+  { id: "ink-orchid", label: "Ink & Orchid" },
+  { id: "midnight-aurora", label: "Midnight Aurora" },
+  { id: "nocturne-plum", label: "Nocturne Plum" },
+  { id: "monochrome", label: "Monochrome" },
+] as const;
+
+const DEFAULT_PALETTE = DARK_PALETTES[0].id;
+
+/**
+ * Persisted dark-mode palette picker. Writes <html data-palette="…"> and
+ * localStorage("srh_palette"); the inline bootstrap in layout.tsx replays it
+ * before first paint. Dark only — the control hides itself in light mode,
+ * because the light palette is deliberately not user-themeable.
+ */
+export function PalettePicker() {
+  const [dark, setDark] = useState(true);
+  const [palette, setPalette] = useState<string>(DEFAULT_PALETTE);
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => {
+      setDark(!el.classList.contains("light"));
+      setPalette(el.getAttribute("data-palette") || DEFAULT_PALETTE);
+    };
+    read();
+    // Track the light/dark switch and any external palette change.
+    const mo = new MutationObserver(read);
+    mo.observe(el, { attributes: true, attributeFilter: ["class", "data-palette"] });
+    return () => mo.disconnect();
+  }, []);
+  const apply = (next: string) => {
+    document.documentElement.setAttribute("data-palette", next);
+    try {
+      localStorage.setItem("srh_palette", next);
+    } catch {
+      // Storage can be unavailable (private mode); the session still themes.
+    }
+    setPalette(next);
+  };
+  if (!dark) return null;
+  return (
+    <label className="palette-picker" title="Choose dark colour scheme">
+      <span className="pp-dot" aria-hidden="true" />
+      <select
+        value={palette}
+        onChange={(e) => apply(e.target.value)}
+        aria-label="Dark colour scheme"
+      >
+        {DARK_PALETTES.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -620,7 +699,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=3.1.0"
+            src="/images/hospital-logo.png?v=3.13.0"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}
@@ -647,6 +726,7 @@ export function TopBar({
           <StaffNameInput />
           <ShareButton />
           <ThemeToggle />
+          <PalettePicker />
           <FontSizeControl />
         </div>
       </div>
@@ -660,6 +740,7 @@ export function TopBar({
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
           <MobileNavLink href="/handover" icon={<Printer size={13} />}>Shift sheet</MobileNavLink>
+          <MobileNavLink href="/discharge" icon={<FolderArchive size={13} />}>Discharge archive</MobileNavLink>
           <MobileNavLink href="/reference" icon={<BookOpen size={13} />}>Drugs &amp; doses</MobileNavLink>
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
           <MobileNavLink href="/roster" icon={<CalendarDays size={13} />}>Duty roster</MobileNavLink>
@@ -1032,8 +1113,7 @@ export function LockBanner() {
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2 text-[11px] font-semibold text-amber-200">
         <LockIcon size={12} strokeWidth={2.5} aria-hidden />
         <span>
-          <b>View-only privacy mode.</b> Clinical content is blurred until you sign in with your <b>employee code</b>
-          {" "}(top-right). The navigation tabs remain available.
+          <b>View-only.</b> Sign in with your <b>employee code</b> to see clinical content.
         </span>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { FlagsList } from "@/components/interpret-ui";
 import { WeightInput } from "@/components/weight-input";
 import type { Clinical, GrowthEntry } from "@/lib/clinical";
 import { anthropometryFlags, growthFlags } from "@/lib/interpret";
-import { calcNutrition, fmtTime, gainGPerKgDay } from "@/lib/clinical";
+import { calcNutrition, dayOfLife, fmtTime, gainGPerKgDay } from "@/lib/clinical";
 
 type BabyLite = {
   dob: string;
@@ -48,7 +48,7 @@ export function DailyProgressTab({
   user: string;
 }) {
   const c = baby.clinical ?? {};
-  const n = useMemo(() => calcNutrition(c), [c]);
+  const n = calcNutrition(c, baby.currentWeight, { dol: dayOfLife(baby.dob) });
   const useKg = baby.unit !== "nicu";
   const [w, setW] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -185,15 +185,12 @@ export function DailyProgressTab({
         {/* ---------------- calorie auto-calculator ---------------- */}
         <Section
           title="Energy & protein auto-calculator"
-          sub="Computed live from the feed type, volume and TPN prescription"
+          sub="Computed live from the prescription"
         >
           <div className="space-y-1.5 text-xs">
-            <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml${n.fortStatus === "active" ? " (incl. fortifier)" : ""}`} />
-            {n.fortStatus === "active" && (
-              <Line k="Fortifier" v={`${n.fortLabel} ${n.fortSachetsPer100ml}/100 ml → +${n.fortKcal} kcal, +${n.fortProtein} g protein`} />
-            )}
-            {n.fortStatus === "incomplete" && (
-              <Line k="Fortifier" v="Incomplete — totals exclude the fortifier" />
+            <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml${n.fortified ? " (incl. fortifier)" : ""}`} />
+            {n.fortified && (
+              <Line k="Fortifier" v={`${n.fortProduct?.name ?? "Fortifier"} → +${n.fortKcal} kcal, +${n.fortProtein} g protein`} />
             )}
             <Line k="Enteral" v={`${n.enteralMl} ml/kg/d → ${n.enteralKcal} kcal/kg/d`} />
             <Line k="Dextrose" v={`GIR ${n.gir} → ${n.dextroseG} g/kg/d → ${n.dextroseKcal} kcal/kg/d`} />
@@ -264,7 +261,7 @@ export function DailyProgressTab({
         <div className="lg:col-span-2">
           <Section
             title="Daily progress — auto-compiled"
-            sub="Weight gain / loss, cumulative loss from birth weight, velocity and calories for every day"
+            sub="Gain, cumulative loss, velocity and calories"
             right={
               <div className="flex items-end gap-1.5">
                 <div className="w-32">
@@ -360,7 +357,7 @@ export function DailyProgressTab({
                   {rows.length === 0 && (
                     <tr>
                       <td colSpan={10} className="p-4 text-center text-slate-400">
-                        No daily weights yet — enter today&apos;s weight and tap “Compile today”.
+                        No daily weights yet.
                       </td>
                     </tr>
                   )}
@@ -368,11 +365,10 @@ export function DailyProgressTab({
               </table>
             </div>
 
-            <p className="mt-2 text-[10px] text-slate-400">
-              Auto-rules (AAP / NNF / IAP): acceptable early loss ≤10% term and ≤15% preterm by day 5–7 · regain
-              birth weight by day 10–14 · target velocity 15–20 g/kg/day · energy 110–135 kcal/kg/day · protein
-              3.5–4 g/kg/day.
-            </p>
+            <details className="quiet"><summary>Auto-rules · AAP / NNF / IAP</summary><p className="text-[10px] text-slate-400">
+              Acceptable early loss ≤10% term and ≤15% preterm by day 5–7 · regain birth weight by day 10–14 ·
+              velocity 15–20 g/kg/day · energy 110–135 kcal/kg/day · protein 3.5–4 g/kg/day.
+            </p></details>
           </Section>
         </div>
       </div>

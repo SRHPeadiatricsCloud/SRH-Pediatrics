@@ -83,14 +83,14 @@ export const CALCULATORS: Calculator[] = [
 
   {
     id: "bp-centiles",
-    name: "Blood Pressure Centiles (Preterm · Neonate · Pediatrics)",
+    name: "Blood Pressure Centiles (24 wk preterm · Neonate · 1–18 y)",
     category: "cardio",
-    citation: "AAP 2017 Tables 4–5 / Flynn et al. 2017; Samanta et al. Indian Pediatrics 2015 neonatal centiles; NNF/neonatal standards context",
+    citation: "AAP 2017 Tables 4–5 / Flynn et al. 2017 (1–18 y); Samanta et al. Indian Pediatrics 2015 neonatal centiles (32–40 wk); Safer Care Victoria neonatal guidance for observed preterm ranges (24–31 wk)",
     fields: [],
     compute: () => ({
       value: "Open the mode-specific BP workflow",
       severity: "info",
-      note: "Separate preterm, term-neonate and pediatric references with independent SBP/DBP interpretation.",
+      note: "Preterm 32–36 wk and term 37–40 wk use centiles on days 4, 7 and 14. Below 32 weeks there is no gestational-age centile table, so 24–31 wk reports published observed ranges and the MAP ≈ gestational-age rule — flagged as ranges, never as percentiles. Paediatric runs 1 to 18 years.",
     }),
     external: { label: "AAP 2017 pediatric BP guideline", url: "https://publications.aap.org/pediatrics/article/140/3/e20171904/38358/Clinical-Practice-Guideline-for-Screening-and" },
   },
@@ -849,6 +849,185 @@ export const CALCULATORS: Calculator[] = [
     ],
     (t) => band(t, [[0, "good", "No dehydration (< 3% loss)."], [3, "warn", "Mild–moderate dehydration (3–9%). ORS 50–100 ml/kg."], [8, "crit", "Severe dehydration (≥ 10%). IV 20 ml/kg bolus NS / RL."]]),
     8),
+
+  {
+    id: "hypernatremia",
+    name: "Hypernatraemia — free water deficit & safe correction rate",
+    category: "fluid",
+    citation:
+      "Adrogué HJ & Madias NE, N Engl J Med 2000;342:1581–9 (water-deficit and rate-of-change formulae); ISPAD/ADA paediatric DKA and hypernatraemia guidance — fall in serum Na⁺ must not exceed 0.5 mmol/L/h",
+    fields: [
+      f("wt", "Body weight", 0.5, 120, "kg"),
+      f("na", "Serum sodium", 130, 190, "mmol/L"),
+      sel("tbw", "Total body water fraction", [
+        [0.6, "Infant / child (0.6)"],
+        [0.5, "Adolescent / adult (0.5)"],
+        [0.45, "Adolescent female (0.45)"],
+      ]),
+      sel("rate", "Maximum fall in Na⁺", [
+        [0.5, "0.5 mmol/L/h (standard)"],
+        [0.25, "0.25 mmol/L/h (chronic > 48 h or symptomatic)"],
+      ]),
+      f("maint", "Maintenance fluid already running", 0, 400, "ml/h"),
+    ],
+    compute: (v) => {
+      const w = v.wt ?? 0, na = v.na ?? 0;
+      if (w <= 0 || na <= 0) return out("—", { severity: "info", note: "Enter weight and serum sodium." });
+      if (na < 145) {
+        return out(`${na} mmol/L`, { severity: "info", interpretation: "Not hypernatraemic — no free water deficit to correct." });
+      }
+      const tbw = (v.tbw ?? 0.6) * w;
+      const deficitL = tbw * (na / 140 - 1);
+      const perHour = v.rate ?? 0.5;
+      const hours = (na - 140) / perHour;
+      const deficitMlHr = (deficitL * 1000) / hours;
+      const total = deficitMlHr + (v.maint ?? 0);
+      return out(`${deficitL.toFixed(2)} L free water deficit`, {
+        severity: na >= 170 ? "crit" : na >= 160 ? "warn" : "info",
+        interpretation:
+          `TBW ${tbw.toFixed(1)} L. Correct over ${hours.toFixed(0)} h at ≤${perHour} mmol/L/h: ` +
+          `free water ${deficitMlHr.toFixed(1)} ml/h${v.maint ? ` + maintenance ${v.maint} ml/h = ${total.toFixed(0)} ml/h` : ""} ` +
+          `(D5W, or 0.45%/0.2% saline if volume depleted).`,
+        note:
+          "Falling sodium faster than 0.5 mmol/L/h risks cerebral oedema. Recheck Na⁺ every 2–4 h and " +
+          "add 1–2 mmol/kg/h of the deficit only while the sodium is actually falling at the target rate.",
+      });
+    },
+  },
+
+  {
+    id: "potassium-correction",
+    name: "Potassium Correction — deficit, concentration & maximum rate",
+    category: "fluid",
+    citation:
+      "Paediatric advanced life support and neonatal electrolyte guidance; maximum peripheral concentration 40 mmol/L, central 60–80 mmol/L; rate ≤0.5 mmol/kg/h peripherally, ≤1 mmol/kg/h centrally with cardiac monitoring",
+    fields: [
+      f("wt", "Body weight", 0.5, 120, "kg"),
+      f("k", "Serum potassium", 1.5, 7, "mmol/L"),
+      f("target", "Target potassium", 3.5, 5.5, "mmol/L"),
+      sel("site", "Access", [
+        [0, "Peripheral (≤40 mmol/L, ≤0.5 mmol/kg/h)"],
+        [1, "Central (≤80 mmol/L, ≤1 mmol/kg/h)"],
+      ]),
+      f("vol", "Volume to give it in", 10, 1000, "ml"),
+    ],
+    compute: (v) => {
+      const w = v.wt ?? 0, k = v.k ?? 0;
+      if (w <= 0 || k <= 0) return out("—", { severity: "info", note: "Enter weight and serum potassium." });
+      const target = v.target ?? 4;
+      if (k >= target) {
+        return out(`${k} mmol/L`, { severity: "info", interpretation: "Already at or above target — no replacement needed." });
+      }
+      // Extracellular-ish distribution space 0.4 L/kg; only ~25% is intravascular.
+      const deficit = (target - k) * 0.4 * w;
+      const central = (v.site ?? 0) === 1;
+      const maxRate = central ? 1 : 0.5;
+      const maxConc = central ? 80 : 40;
+      const vol = Math.max(v.vol ?? 100, 1);
+      const conc = (deficit / vol) * 1000;
+      const hours = deficit / (maxRate * w);
+      return out(`${deficit.toFixed(1)} mmol K⁺ deficit`, {
+        severity: k < 2.5 ? "crit" : k < 3 ? "warn" : "info",
+        interpretation:
+          `Infuse over ${Math.max(1, Math.ceil(hours))} h — ${(deficit / hours).toFixed(2)} mmol/h ` +
+          `= ${(deficit / hours / w).toFixed(2)} mmol/kg/h, limit ${maxRate} mmol/kg/h ${central ? "centrally" : "peripherally"}. ` +
+          `In ${vol} ml that is ${conc.toFixed(1)} mmol/L — ` +
+          `${conc <= maxConc ? "within" : "ABOVE"} the ${maxConc} mmol/L ${central ? "central" : "peripheral"} limit.`,
+        note:
+          deficit > 0 && conc > maxConc
+            ? `Dilute into at least ${Math.ceil(Math.round((deficit / maxConc) * 1000 * 1e6) / 1e6)} ml, or give it through a central line.`
+            : "Continuous ECG monitoring for rates above 0.5 mmol/kg/h. Recheck K⁺ 2 h after the infusion and never give as a bolus.",
+      });
+    },
+  },
+
+  {
+    id: "fena",
+    name: "FENa & FEUrea — prerenal vs intrinsic renal injury",
+    category: "fluid",
+    citation:
+      "Steiner RW, Am J Med 1984 (fractional excretion of sodium); Karapanagiotou et al. Crit Care 2009 (FEUrea when on diuretics); neonatal values run higher than adult cut-offs",
+    fields: [
+      f("una", "Urine sodium", 0, 300, "mmol/L"),
+      f("pna", "Plasma sodium", 110, 170, "mmol/L"),
+      f("ucr", "Urine creatinine", 0, 800, "mg/dL"),
+      f("pcr", "Plasma creatinine", 0.1, 15, "mg/dL"),
+      sel("age", "Age group", [[0, "Neonate (cut-off 2.5–3%)"], [1, "Infant / child (cut-off 1%)"]]),
+      f("uur", "Urine urea (optional)", 0, 400, "mg/dL"),
+      f("pur", "Plasma urea (optional)", 0, 200, "mg/dL"),
+    ],
+    compute: (v) => {
+      const pna = v.pna ?? 0, pcr = v.pcr ?? 0;
+      if (!pna || !pcr) return out("—", { severity: "info", note: "Plasma sodium and creatinine are required." });
+      const fena = ((v.una ?? 0) * pcr) / (pna * (v.ucr ?? 0)) * 100;
+      if (!Number.isFinite(fena) || (v.ucr ?? 0) <= 0) {
+        return out("—", { severity: "info", note: "Urine creatinine must be greater than zero." });
+      }
+      const cutoff = (v.age ?? 1) === 0 ? 2.5 : 1;
+      const prerenal = fena < cutoff;
+      const ureaReady = (v.uur ?? 0) > 0 && (v.pur ?? 0) > 0;
+      const feurea = ureaReady ? ((v.uur ?? 0) * pcr) / ((v.pur ?? 0) * (v.ucr ?? 0)) * 100 : null;
+      const lines = [
+        `FENa ${fena.toFixed(2)}% — ${prerenal ? "prerenal (volume responsive)" : "intrinsic renal injury"} at the ${cutoff}% ${cutoff === 1 ? "paediatric" : "neonatal"} cut-off.`,
+      ];
+      if (feurea != null) lines.push(`FEUrea ${feurea.toFixed(1)}% — ${feurea < 35 ? "prerenal" : "intrinsic"} (useful when on diuretics, which raise FENa).`);
+      return out(`FENa ${fena.toFixed(2)}%`, {
+        severity: prerenal ? "info" : "warn",
+        interpretation: lines.join(" "),
+        note:
+          "Diuretics, bicarbonaturia and glycosuria falsely raise FENa. Neonates normally excrete more sodium, " +
+          "so the neonatal cut-off is higher. Interpret alongside urine output, urine osmolality and clinical volume state.",
+      });
+    },
+  },
+
+  {
+    id: "dka",
+    name: "Paediatric DKA — fluids, insulin, potassium and cerebral-oedema risk",
+    category: "endocrine",
+    citation:
+      "ISPAD Clinical Practice Consensus Guidelines 2022 (diabetic ketoacidosis); NICE NG18; fluid deficit replaced over 24–48 h, insulin 0.05–0.1 U/kg/h after the first hour, no bolus insulin",
+    fields: [
+      f("wt", "Body weight", 3, 120, "kg"),
+      f("glu", "Blood glucose", 50, 900, "mg/dL"),
+      f("na", "Measured sodium", 110, 170, "mmol/L"),
+      f("hco3", "Bicarbonate (or venous CO₂)", 2, 30, "mmol/L"),
+      f("ph", "pH", 6.5, 7.45, ""),
+      f("k", "Potassium", 1.5, 8, "mmol/L"),
+      sel("deh", "Assessed dehydration", [
+        [5, "Mild — 5%"], [7.5, "Moderate — 7.5%"], [10, "Severe — 10%"],
+      ]),
+      sel("over", "Replacement period", [[24, "24 h"], [36, "36 h"], [48, "48 h"]]),
+    ],
+    compute: (v) => {
+      const w = v.wt ?? 0;
+      if (w <= 0) return out("—", { severity: "info", note: "Enter a weight." });
+      const pct = v.deh ?? 7.5;
+      const deficitMl = (pct / 100) * w * 1000;
+      const maint = w <= 10 ? w * 100 : w <= 20 ? 1000 + (w - 10) * 50 : 1500 + (w - 20) * 20;
+      const hours = v.over ?? 36;
+      const rateHr = (deficitMl + maint) / hours;
+      const corrNa = (v.na ?? 0) + 1.6 * (Math.max((v.glu ?? 0) - 100, 0) / 100);
+      const effOsm = 2 * (v.na ?? 0) + (v.glu ?? 0) / 18;
+      const insLow = 0.05 * w, insHigh = 0.1 * w;
+      const hco3 = v.hco3 ?? 0, ph = v.ph ?? 7.4;
+      const severity: Sev = ph < 7 || hco3 < 5 ? "crit" : ph < 7.2 || hco3 < 10 ? "warn" : "info";
+      const k = v.k ?? 4;
+      return out(`${rateHr.toFixed(0)} ml/h total fluids`, {
+        severity,
+        interpretation:
+          `Deficit ${deficitMl.toFixed(0)} ml (${pct}%) + maintenance ${maint.toFixed(0)} ml over ${hours} h. ` +
+          `Insulin ${insLow.toFixed(2)}–${insHigh.toFixed(2)} U/h (0.05–0.1 U/kg/h) started 1 h AFTER fluids. ` +
+          `Corrected Na⁺ ${corrNa.toFixed(1)} mmol/L, effective osmolality ${effOsm.toFixed(0)} mOsm/kg. ` +
+          `K⁺ ${k < 2.5 ? "is low — replace K⁺ and HOLD insulin until it rises." : k > 5.5 ? "is high — start fluids, add K⁺ once urine output is confirmed and K⁺ falls below 5.5." : "is in range — add 40 mmol/L K⁺ once the patient is voiding."}`,
+        note:
+          "Never give an insulin bolus and never exceed 0.1 U/kg/h — both raise cerebral-oedema risk. " +
+          "Watch for headache, vomiting, bradycardia, rising blood pressure or a fall in consciousness: stop the fall in " +
+          "osmolality, give mannitol 0.5–1 g/kg or hypertonic saline 3% 2.5–5 ml/kg, and image only after stabilising. " +
+          "Glucose falling below 250 mg/dL means add dextrose, not reduce the insulin.",
+      });
+    },
+  },
 
   /* ================= Dosing & Sizing ================= */
   {

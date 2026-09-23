@@ -228,6 +228,29 @@ export const oncall = pgTable(
   (t) => [index("oncall_day_idx").on(t.day)],
 );
 
+/**
+ * Unit-wide feeding protocol.
+ *
+ * The published figures in `src/lib/feed-guide.ts` are guidance, and units
+ * differ. One row per unit holds the figures that unit replaces; a baby's own
+ * `clinical.fluids.protocol` still wins over it, so an individual chart can
+ * depart from the unit without changing the unit.
+ */
+export const unitProtocols = pgTable(
+  "unit_protocols",
+  {
+    id: serial("id").primaryKey(),
+    /** Which unit this protocol belongs to: nicu | picu | stepdown | postnatal | paeds */
+    unit: text("unit").notNull().unique(),
+    /** ProtocolOverrides — only the figures the unit replaces. */
+    protocol: jsonb("protocol").notNull().default({}),
+    updatedBy: text("updated_by").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("unit_protocols_unit_idx").on(t.unit)],
+);
+
 export const handovers = pgTable(
   "handovers",
   {

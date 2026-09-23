@@ -112,7 +112,7 @@ export function LabsInterpretation({ baby, labs }: { baby: BabyLite; labs: Recor
   return (
     <Panel title="Provisional interpretation — investigations">
       {filled === 0 ? (
-        <p className="text-[11px] text-slate-400">Enter lab values above to see flags (CBC, CRP, electrolytes, ABG, bilirubin).</p>
+        <p className="text-[11px] text-slate-400">Enter lab values to see flags.</p>
       ) : (
         <FlagsList flags={flags} empty="No out-of-range values detected." />
       )}

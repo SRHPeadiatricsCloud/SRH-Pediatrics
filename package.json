@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "for f in scripts/test-*.ts; do ./node_modules/.bin/tsx $f || exit 1; done && node scripts/test-fluids-tab.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -34,6 +35,8 @@
     "eslint-config-next": "16.2.6",
     "postcss": "8.5.8",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "jsdom": "^25.0.1",
+    "esbuild": "^0.25.4"
   }
 }

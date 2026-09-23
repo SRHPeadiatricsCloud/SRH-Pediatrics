@@ -54,8 +54,7 @@ export function DeleteConfirmModal({
           {baby.motherName ? ` · Mother: ${baby.motherName}` : ""}
         </p>
         <p className="mt-2 text-[11px] text-amber-200">
-          The card leaves the unit board but is <b>not erased immediately</b>. You will get a 60-second Undo, then it
-          stays in Recently deleted. A local backup is saved on this device before the delete.
+          Leaves the board but is <b>not erased</b>. 60-second Undo, then Recently deleted.
         </p>
         <label className="lbl mt-4 mb-1 block">Type YES to confirm delete</label>
         <input
@@ -290,55 +289,52 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
   };
 
   return (
-    <section className="card mt-4 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-black text-white">Local backups — space-optimized</h3>
-        <span className="inline-flex items-center gap-1 rounded bg-cyan-400/10 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">
-          schema v{BACKUP_SCHEMA_VERSION} · app {APP_VERSION}
+    <section className="card mt-4 px-3 py-2">
+      {/* One slim line by default — this is infrastructure, not clinical content,
+          so it should sit quietly under the board until someone needs it. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+        <span className="font-bold text-slate-300">Local backups</span>
+        <span className="text-slate-500">
+          {est.count} snapshot{est.count === 1 ? "" : "s"} · {formatBytes(est.totalSize)}
         </span>
-        <span className="hidden text-[10px] text-slate-400 sm:inline">
-          {est.count} snapshots · {formatBytes(est.totalSize)} · {formatBytes(est.usage)} used / {formatBytes(est.quota)} quota
+        <span className="hidden text-slate-500 sm:inline">
+          · {formatBytes(est.usage)} of {formatBytes(est.quota)}
         </span>
-        <button className="btn-ghost ml-auto !py-1 text-[11px]" onClick={() => setShowSettings((v) => !v)}>
-          {showSettings ? "Hide settings" : "⚙️ Settings"}
-        </button>
-        <button className="btn-ghost !py-1 text-[11px]" onClick={() => setOpen((v) => !v)}>
-          {open ? "Hide" : `Show (${rows.length})`}
-        </button>
-        <button
-          className="btn-ghost !py-1 text-[11px]"
-          onClick={async () => {
-            await snapshotUnit("manual");
-            load();
-          }}
-        >
-          Backup now
-        </button>
-      </div>
-
-      <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-2.5 text-[11px] text-slate-300">
-        <p className="font-bold text-emerald-200">New — space-saving backup strategy:</p>
-        <ul className="mt-1 list-disc pl-5 text-[11px] text-slate-400">
-          <li>
-            <b>Dedup:</b> if data unchanged since last backup, skip saving (saves 70-90% space). Enabled: {settings.dedup ? "yes ✓" : "no"}
-          </li>
-          <li>
-            <b>Smart triggers:</b> backup on tab hide, before close, and 5s after any save — not just every {settings.intervalMinutes} min.
-          </li>
-          <li>
-            <b>Tiered retention:</b> keep last 6 frequent → 1/hour for 24h → 1/day for 7 days → 1/week. Pre-delete always kept.
-          </li>
-          <li>
-            <b>Configurable interval:</b> 15 min default (was 5). You can set 5-60 min below.
-          </li>
-          <li>
-            <b>Size tracking:</b> each snapshot shows size; total {formatBytes(est.totalSize)} across {est.count} entries.
-          </li>
-        </ul>
+        {settings.dedup && <span className="hidden text-slate-500 md:inline">· dedup on</span>}
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <button
+            className="btn-ghost !px-2 !py-0.5 text-[10px]"
+            title="Backup strategy and retention settings"
+            onClick={() => setShowSettings((v) => !v)}
+          >
+            {showSettings ? "Hide settings" : "⚙️ Settings"}
+          </button>
+          <button className="btn-ghost !px-2 !py-0.5 text-[10px]" onClick={() => setOpen((v) => !v)}>
+            {open ? "Hide" : `Show (${rows.length})`}
+          </button>
+          <button
+            className="btn-ghost !px-2 !py-0.5 text-[10px]"
+            onClick={async () => {
+              await snapshotUnit("manual");
+              load();
+            }}
+          >
+            Backup now
+          </button>
+        </div>
       </div>
 
       {showSettings && (
-        <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-3 sm:grid-cols-2">
+        <>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] leading-relaxed text-slate-500">
+            <span className="inline-flex items-center rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-bold text-slate-400">
+              schema v{BACKUP_SCHEMA_VERSION} · app {APP_VERSION}
+            </span>
+            <span>
+              Unchanged data is skipped; retention is tiered.
+            </span>
+          </div>
+          <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-3 sm:grid-cols-2">
           <div className="space-y-3">
             <label className="flex items-center justify-between gap-2 text-[11px]">
               <span className="font-bold text-slate-300">Enable auto backup</span>
@@ -402,15 +398,16 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
               />
             </div>
             <p className="text-[10px] text-slate-500">
-              Tip: Keep tiered + 15 min + dedup ON for best space saving without losing data. Pre-edit and pre-delete are always kept.
+              Pre-edit and pre-delete snapshots are always kept.
             </p>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {open && (
         <div className="mt-3 max-h-80 space-y-1.5 overflow-auto">
-          {rows.length === 0 && <p className="text-xs text-slate-400">No local backups yet — they appear after the first edit.</p>}
+          {rows.length === 0 && <p className="text-xs text-slate-400">No local backups yet.</p>}
           {rows.map((r) => (
             <div key={r.id ?? r.at} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-2 py-1.5 text-[11px]">
               <span className="rounded bg-white/10 px-1.5 py-0.5 font-bold uppercase text-cyan-300">{r.reason}</span>

@@ -80,7 +80,7 @@ export default function ConsultantsPage() {
         <div className="card mb-4 p-4">
           <h1 className="text-xl font-black text-white">Admissions by consultant</h1>
           <p className="text-xs text-slate-400">
-            Department of Pediatrics · view every active admission under a consultant, split by unit
+            Department of Pediatrics
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {CONSULTANTS.map((c) => (

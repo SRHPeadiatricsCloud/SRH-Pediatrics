@@ -18,3 +18,26 @@ export const AAP_BP: Record<AapSex, Record<number, Record<50 | 90 | 95, AapBpRow
 export type NeonatalCentileRow = { sbp: [number, number, number, number]; dbp: [number, number, number, number] };
 export const NEONATAL_GA_CENTILES: Record<number, Record<4 | 7 | 14, NeonatalCentileRow>> = {32: {4: {sbp: [50, 58, 68, 77], dbp: [32, 40, 50, 50]}, 7: {sbp: [55, 62, 72, 74], dbp: [40, 42, 52, 55]}, 14: {sbp: [60, 68, 75, 75], dbp: [40, 50, 55, 56]}}, 33: {4: {sbp: [54, 64, 74, 77], dbp: [35, 42, 51, 52]}, 7: {sbp: [61, 68, 74, 78], dbp: [40, 45, 52, 55]}, 14: {sbp: [62, 68, 78, 78], dbp: [42, 50, 58, 58]}}, 34: {4: {sbp: [55, 62, 70, 78], dbp: [30, 42, 48, 50]}, 7: {sbp: [60, 65, 72, 74], dbp: [40, 48, 52, 54]}, 14: {sbp: [62, 68, 76, 78], dbp: [44, 50, 55, 58]}}, 35: {4: {sbp: [59, 64, 69, 72], dbp: [38, 44, 51, 52]}, 7: {sbp: [62, 68, 74, 76], dbp: [42, 50, 54, 55]}, 14: {sbp: [68, 73, 78, 78], dbp: [48, 52, 58, 60]}}, 36: {4: {sbp: [55, 66, 75, 76], dbp: [40, 44, 52, 55]}, 7: {sbp: [62, 68, 78, 78], dbp: [42, 50, 56, 58]}, 14: {sbp: [65, 74, 80, 82], dbp: [50, 55, 62, 62]}}, 37: {4: {sbp: [62, 72, 80, 82], dbp: [42, 52, 60, 62]}, 7: {sbp: [68, 76, 82, 85], dbp: [50, 56, 62, 62]}, 14: {sbp: [74, 78, 88, 88], dbp: [52, 60, 62, 68]}}, 38: {4: {sbp: [64, 73, 79, 82], dbp: [47, 53, 62, 62]}, 7: {sbp: [70, 78, 84, 84], dbp: [52, 58, 62, 64]}, 14: {sbp: [74, 80, 86, 88], dbp: [54, 60, 66, 68]}}, 39: {4: {sbp: [66, 76, 82, 84], dbp: [44, 54, 62, 62]}, 7: {sbp: [70, 78, 84, 86], dbp: [50, 60, 62, 66]}, 14: {sbp: [74, 82, 88, 90], dbp: [55, 60, 68, 70]}}, 40: {4: {sbp: [68, 77, 84, 87], dbp: [50, 58, 62, 64]}, 7: {sbp: [72, 82, 87, 88], dbp: [53, 60, 66, 68]}, 14: {sbp: [78, 84, 90, 90], dbp: [58, 64, 70, 70]}}};
 export const NEONATAL_STATUS_P5: Record<"preterm" | "term", Record<4 | 7 | 14, { sbp: number; dbp: number }>> = {term: {4: {sbp: 62, dbp: 42}, 7: {sbp: 66, dbp: 50}, 14: {sbp: 72, dbp: 52}}, preterm: {4: {sbp: 46, dbp: 32}, 7: {sbp: 54, dbp: 38}, 14: {sbp: 60, dbp: 40}}};
+
+/**
+ * Neonatal Blood Pressure Centiles by Postconceptional Age (PMA / PCA 26-44 weeks).
+ * Sourced directly from NICU Reference Chart (50th, 95th, 99th percentiles for SBP, DBP, MAP).
+ */
+export type PmaBpValues = {
+  p50: { sbp: number; dbp: number; map: number };
+  p95: { sbp: number; dbp: number; map: number };
+  p99: { sbp: number; dbp: number; map: number };
+};
+
+export const NEONATAL_PMA_BP_CENTILES: Record<number, PmaBpValues> = {
+  44: { p50: { sbp: 88, dbp: 50, map: 63 }, p95: { sbp: 105, dbp: 68, map: 80 }, p99: { sbp: 110, dbp: 73, map: 85 } },
+  42: { p50: { sbp: 85, dbp: 50, map: 62 }, p95: { sbp: 98,  dbp: 65, map: 76 }, p99: { sbp: 102, dbp: 70, map: 81 } },
+  40: { p50: { sbp: 80, dbp: 50, map: 60 }, p95: { sbp: 95,  dbp: 65, map: 75 }, p99: { sbp: 100, dbp: 70, map: 80 } },
+  38: { p50: { sbp: 77, dbp: 50, map: 59 }, p95: { sbp: 92,  dbp: 65, map: 74 }, p99: { sbp: 97,  dbp: 70, map: 79 } },
+  36: { p50: { sbp: 72, dbp: 50, map: 57 }, p95: { sbp: 87,  dbp: 65, map: 72 }, p99: { sbp: 92,  dbp: 70, map: 71 } },
+  34: { p50: { sbp: 70, dbp: 40, map: 50 }, p95: { sbp: 85,  dbp: 55, map: 65 }, p99: { sbp: 90,  dbp: 60, map: 70 } },
+  32: { p50: { sbp: 68, dbp: 40, map: 48 }, p95: { sbp: 83,  dbp: 55, map: 62 }, p99: { sbp: 88,  dbp: 60, map: 69 } },
+  30: { p50: { sbp: 65, dbp: 40, map: 48 }, p95: { sbp: 80,  dbp: 55, map: 65 }, p99: { sbp: 85,  dbp: 60, map: 68 } },
+  28: { p50: { sbp: 60, dbp: 38, map: 45 }, p95: { sbp: 75,  dbp: 50, map: 58 }, p99: { sbp: 80,  dbp: 54, map: 63 } },
+  26: { p50: { sbp: 55, dbp: 30, map: 38 }, p95: { sbp: 72,  dbp: 50, map: 57 }, p99: { sbp: 77,  dbp: 56, map: 63 } },
+};
