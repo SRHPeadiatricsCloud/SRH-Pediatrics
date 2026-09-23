@@ -188,7 +188,13 @@ export function DailyProgressTab({
           sub="Computed live from the feed type, volume and TPN prescription"
         >
           <div className="space-y-1.5 text-xs">
-            <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml`} />
+            <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml${n.fortStatus === "active" ? " (incl. fortifier)" : ""}`} />
+            {n.fortStatus === "active" && (
+              <Line k="Fortifier" v={`${n.fortLabel} ${n.fortSachetsPer100ml}/100 ml → +${n.fortKcal} kcal, +${n.fortProtein} g protein`} />
+            )}
+            {n.fortStatus === "incomplete" && (
+              <Line k="Fortifier" v="Incomplete — totals exclude the fortifier" />
+            )}
             <Line k="Enteral" v={`${n.enteralMl} ml/kg/d → ${n.enteralKcal} kcal/kg/d`} />
             <Line k="Dextrose" v={`GIR ${n.gir} → ${n.dextroseG} g/kg/d → ${n.dextroseKcal} kcal/kg/d`} />
             <Line k="Amino acid" v={`${n.aaG} g/kg/d → ${n.aaKcal} kcal/kg/d`} />

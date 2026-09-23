@@ -13,6 +13,7 @@ import {
   CARE_BUNDLE,
   DISCHARGE_CRITERIA,
   DRUGS,
+  FEED_INTERVALS,
   FEED_ROUTE,
   FEED_TYPE,
   ILLNESS,
@@ -28,10 +29,17 @@ import {
 } from "@/lib/catalog";
 import type { Detail } from "@/lib/types";
 import {
+  FORTIFIER_PRODUCTS,
+  MILK_FORMULARY,
+  calcFortification,
   calcNutrition,
+  calcTfiSplit,
   fmtBP,
   fmtTime,
+  formatFeedInterval,
+  fortifierById,
   gainGPerKgDay,
+  parseFeedIntervalHours,
   pctOfBirth,
   tempIn,
   tempOut,
@@ -443,24 +451,94 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
     kcal: f.kcalManual === true,
     feedVol: f.feedVolManual === true,
   });
+  const [showFormulary, setShowFormulary] = useState(false);
+  const [autoWeanIv, setAutoWeanIv] = useState(true);
   const wt = d.baby.currentWeight / 1000;
   const set = (k: string) => (n: number) => setS((p) => ({ ...p, [k]: n }));
-  const intervalHours = (() => {
-    const match = s.feedFreq?.trim().match(/^(\d+(?:\.5)?) hourly$/i);
-    return match ? Number(match[1]) : undefined;
-  })();
+  const intervalHours = parseFeedIntervalHours(s.feedFreq);
   const autoGir = s.dextrosePct !== undefined && s.ivMlKgDay !== undefined && s.ivMlKgDay > 0
     ? girFromDextrose(s.dextrosePct, Math.min(250, s.ivMlKgDay))
     : s.gir;
   const girValue = manualDerived.gir ? s.gir : autoGir;
-  const autoFeedVolume = intervalHours && intervalHours < 24 && wt > 0 && s.enteralMlKgDay !== undefined
+  const autoFeedVolume = intervalHours !== undefined && intervalHours <= 24 && wt > 0 && s.enteralMlKgDay !== undefined
     ? Number(((Math.min(250, s.enteralMlKgDay) * wt) / (24 / intervalHours)).toFixed(2))
     : s.feedVol;
   const feedVolumeValue = manualDerived.feedVol ? s.feedVol : autoFeedVolume;
-  const enteralForNutrition = manualDerived.feedVol && feedVolumeValue !== undefined && intervalHours && intervalHours < 24 && wt > 0
+  const enteralForNutrition = manualDerived.feedVol && feedVolumeValue !== undefined && intervalHours !== undefined && intervalHours <= 24 && wt > 0
     ? Number((feedVolumeValue * (24 / intervalHours) / wt).toFixed(4))
     : s.enteralMlKgDay;
   const nutrition = calcNutrition({ fluids: { ...s, gir: girValue, enteralMlKgDay: enteralForNutrition } });
+  const fort = calcFortification(s);
+  const fortProduct = fortifierById(s.fortificationProductId);
+  const isCustomFort = s.fortificationProductId === "custom";
+  const sachetsPerFeed = fort.status === "active" && feedVolumeValue !== undefined && (s.fortificationAmountUnit ?? "sachet") !== "ml"
+    ? Math.round(feedVolumeValue * fort.sachetsPer100ml) / 100
+    : null;
+  // --- Feed advancement: editable quantity (ml/kg/day or ml/feed step) + editable hours (Q-interval) ---
+  const advanceStep = s.feedAdvanceStepMlKg ?? 20;
+  const advanceStepUnit = s.feedAdvanceStepUnit ?? "mlkg";
+  const advanceFrom = s.enteralMlKgDay ?? 0;
+  const advanceTo = Math.min(250, Math.round((advanceFrom + advanceStep) * 10) / 10);
+  const advancePerFeed = intervalHours !== undefined && wt > 0
+    ? Math.round(((advanceTo * wt) / (24 / intervalHours)) * 10) / 10
+    : null;
+  const advancePerFeedNow = intervalHours !== undefined && wt > 0
+    ? Math.round(((advanceFrom * wt) / (24 / intervalHours)) * 10) / 10
+    : null;
+  // Interval-aware per-feed rise, e.g. +4 ml/kg/day at Q2H for 1.8 kg = +0.6 ml/feed.
+  const advancePerFeedRise = advancePerFeed !== null && advancePerFeedNow !== null
+    ? Math.round((advancePerFeed - advancePerFeedNow) * 10) / 10
+    : null;
+  const advanceExceedsTotal = s.totalMlKgDay !== undefined && advanceTo > s.totalMlKgDay;
+  const weanedIv = autoWeanIv && s.totalMlKgDay !== undefined
+    ? Math.max(0, Math.round((s.totalMlKgDay - advanceTo) * 10) / 10)
+    : null;
+  const applyAdvancement = () => {
+    setS((p) => ({
+      ...p,
+      enteralMlKgDay: advanceTo,
+      ...(weanedIv !== null ? { ivMlKgDay: weanedIv } : {}),
+    }));
+  };
+  // --- TFI split & advancement tracker ("how much reached") ---
+  const tfiSplit = calcTfiSplit(s.totalMlKgDay, s.enteralMlKgDay);
+  const feedsPerDay = intervalHours !== undefined && intervalHours > 0
+    ? Math.round((24 / intervalHours) * 100) / 100
+    : null;
+  const advanceStepMlFeed = feedsPerDay !== null && wt > 0
+    ? Math.round(((advanceStep * wt) / feedsPerDay) * 100) / 100
+    : undefined;
+  const trackerPerFeed = intervalHours !== undefined && wt > 0 && tfiSplit.enteral > 0
+    ? Math.round(((Math.min(250, tfiSplit.enteral) * wt) / (24 / intervalHours)) * 100) / 100
+    : null;
+  const ivMlPerHr = s.ivMlKgDay !== undefined && wt > 0
+    ? Math.round(((s.ivMlKgDay * wt) / 24) * 10) / 10
+    : null;
+  const ivSuggestedMlPerHr = tfiSplit.ivSuggested !== undefined && wt > 0
+    ? Math.round(((tfiSplit.ivSuggested * wt) / 24) * 10) / 10
+    : null;
+  const showSetIv = tfiSplit.ivSuggested !== undefined && tfiSplit.ivSuggested !== s.ivMlKgDay;
+  const ladderRows: { enteral: number; iv: number; pct: number; perFeed: number | null; now: boolean; full: boolean }[] = [];
+  let ladderTruncated = false;
+  if (tfiSplit.tfi !== undefined && advanceStep > 0) {
+    let stepEnteral = Math.round(advanceFrom * 10) / 10;
+    for (let i = 0; i < 9; i++) {
+      const capped = Math.min(stepEnteral, tfiSplit.tfi);
+      ladderRows.push({
+        enteral: capped,
+        iv: Math.round(Math.max(0, tfiSplit.tfi - capped) * 10) / 10,
+        pct: Math.round((capped / tfiSplit.tfi) * 1000) / 10,
+        perFeed: intervalHours !== undefined && wt > 0
+          ? Math.round(((capped * wt) / (24 / intervalHours)) * 10) / 10
+          : null,
+        now: i === 0,
+        full: capped >= tfiSplit.tfi,
+      });
+      if (capped >= tfiSplit.tfi) break;
+      stepEnteral = Math.round((stepEnteral + advanceStep) * 10) / 10;
+      if (i === 8) ladderTruncated = true;
+    }
+  }
   const hasEnergyInputs = enteralForNutrition !== undefined || s.feedType !== undefined || girValue !== undefined || s.aminoAcid !== undefined || s.lipid !== undefined;
   const autoKcal = hasEnergyInputs || s.kcal === undefined ? (hasEnergyInputs ? nutrition.totalKcal : undefined) : s.kcal;
   const kcalValue = manualDerived.kcal ? s.kcal : autoKcal;
@@ -513,13 +591,13 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const feedVolumeHint = manualDerived.feedVol
     ? "Manual override"
     : intervalHours && wt > 0 && s.enteralMlKgDay !== undefined
-      ? `Auto from ${intervalHours} hourly feeds`
-      : "Choose an hourly frequency and enteral target";
+      ? `Auto from Q${intervalHours}H feeds`
+      : "Choose a Q-hour frequency and enteral target";
   return (
     <div className="grid gap-3">
       <Section
-        title="Fluids, feeds & fortification - corrected GIR & protein"
-        sub="Rectified: GIR = dextrose% x IV ml/kg/day x10 /1440 (0-20 clamp), dextrose g = GIRx1.44, protein = enteral ml x protein/ml + AA (AA 0-4 cap). Gross >300 kcal or >10g protein flagged."
+        title="Fluids, feeds & fortification - corrected GIR, protein & fortifier kcal"
+        sub="Rectified: GIR = dextrose% x IV ml/kg/day x10 /1440 (0-20 clamp); enteral kcal = ml x (base-milk density + fortifier concentration); protein = enteral ml x protein/ml + AA. Fortifier adds real kcal/protein — no longer recorded-but-ignored."
         right={<button type="button" className="btn-primary" onClick={saveFluids}>Save</button>}
       >
         <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite">
@@ -534,14 +612,34 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
               <div className="lbl !mb-1">Energy</div>
               <div className="text-sm font-black text-white">{kcalValue ?? "-"} <span className="text-[10px] font-normal">kcal/kg/day</span></div>
-              <div className="text-[10px] text-slate-400">enteral {nutrition.enteralKcal} + IV {nutrition.ivKcal} (dex {nutrition.dextroseKcal} + AA {nutrition.aaKcal} + lipid {nutrition.lipidKcal})</div>
-              <div className="text-[9px] text-slate-500">target 110-135 - density {nutrition.density} kcal/ml ({nutrition.feedType})</div>
+              <div className="text-[10px] text-slate-400">
+                enteral {nutrition.enteralKcal}
+                {nutrition.fortStatus === "active" && (
+                  <span className="text-violet-300"> (base {nutrition.baseEnteralKcal} + fort {nutrition.fortKcal})</span>
+                )}
+                {" "}+ IV {nutrition.ivKcal} (dex {nutrition.dextroseKcal} + AA {nutrition.aaKcal} + lipid {nutrition.lipidKcal})
+              </div>
+              <div className="text-[9px] text-slate-500">
+                target 110-135 - effective {nutrition.density} kcal/ml
+                {nutrition.fortStatus === "active"
+                  ? ` = base ${nutrition.baseDensity} + ${nutrition.fortLabel} ${nutrition.fortKcalPerMl}`
+                  : ` (${nutrition.feedType})`}
+              </div>
             </div>
             <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
               <div className="lbl !mb-1">Protein</div>
               <div className="text-sm font-black text-white">{nutrition.totalProtein} <span className="text-[10px] font-normal">g/kg/day</span></div>
-              <div className="text-[10px] text-slate-400">enteral {nutrition.enteralProtein} g + AA {nutrition.aaG} g</div>
-              <div className="text-[9px] text-slate-500">target 3.5-4.5 - {nutrition.proteinPerMl} g/ml ({nutrition.feedType})</div>
+              <div className="text-[10px] text-slate-400">
+                enteral {nutrition.enteralProtein} g
+                {nutrition.fortStatus === "active" && (
+                  <span className="text-violet-300"> (base {nutrition.baseEnteralProtein} + fort {nutrition.fortProtein})</span>
+                )}
+                {" "}+ AA {nutrition.aaG} g
+              </div>
+              <div className="text-[9px] text-slate-500">
+                target 3.5-4.5 - {nutrition.proteinPerMl} g/ml ({nutrition.feedType})
+                {nutrition.peRatio > 0 && <span> · P:E {nutrition.peRatio} g/100 kcal</span>}
+              </div>
             </div>
           </div>
         </div>
@@ -569,8 +667,191 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <label className="block"><span className="lbl mb-1 block">Feed type</span><DialWithOther options={FEED_TYPE} value={s.feedType} onChange={(v: string) => setS((p) => ({ ...p, feedType: v }))} otherPlaceholder="Other feed type…" /></label>
             <label className="block"><span className="lbl mb-1 block">Route</span><DialWithOther options={FEED_ROUTE} value={s.feedRoute} onChange={(v: string) => setS((p) => ({ ...p, feedRoute: v }))} otherPlaceholder="Other route…" /></label>
-            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={["1 hourly", "1.5 hourly", "2 hourly", "2.5 hourly", "3 hourly", "4 hourly", "continuous", "2-3 hourly on demand"]} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency…" /></label>
+            <label className="block"><span className="lbl mb-1 block">Frequency</span><DialWithOther options={FEED_INTERVALS} value={s.feedFreq} onChange={(v: string) => setS((p) => ({ ...p, feedFreq: v }))} otherPlaceholder="Other frequency… (e.g. Q1H, 2.5 hourly)" /></label>
           </div>
+        </fieldset>
+
+        <fieldset className="mt-6 border-t border-white/10 pt-5">
+          <legend className="text-base font-black text-slate-100">Feed interval & advancement - editable hours and quantity</legend>
+          <p className="mt-1 text-xs text-slate-400">
+            Hours and quantity are both editable: Q2H–Q24H presets in the frequency row above, exact hours below,
+            and advancement adds to the enteral target (step in ml/kg/day or ml/feed). Tick auto-wean to drop IV by the same step against a fixed TFI.
+            Per-feed volume follows automatically unless on manual override.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <NumField label="Interval hours (Q-hours)" value={intervalHours} onChange={(n) => setS((p) => ({ ...p, feedFreq: formatFeedInterval(n) }))} min={1} max={24} step={1} decimals={1} placeholder="e.g. 2, 3" />
+              <span className="mt-1 block text-[10px] text-slate-500">Synced with frequency — type any hours 1–24</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2 sm:col-span-2">
+              <div>
+                <NumField
+                  label={advanceStepUnit === "mlfeed" ? "+ Advance feeds (ml/feed)" : "+ Advance feeds (ml/kg/day)"}
+                  value={advanceStepUnit === "mlfeed" ? advanceStepMlFeed : advanceStep}
+                  onChange={(n) => {
+                    if (advanceStepUnit === "mlfeed") {
+                      if (feedsPerDay !== null && wt > 0) {
+                        setS((p) => ({ ...p, feedAdvanceStepMlKg: Math.round(((n * feedsPerDay) / wt) * 10) / 10 }));
+                      }
+                    } else {
+                      set("feedAdvanceStepMlKg")(n);
+                    }
+                  }}
+                  min={0}
+                  max={advanceStepUnit === "mlfeed" ? 20 : 60}
+                  step={advanceStepUnit === "mlfeed" ? 0.1 : 5}
+                  decimals={advanceStepUnit === "mlfeed" ? 2 : 1}
+                  placeholder={advanceStepUnit === "mlfeed" ? (feedsPerDay !== null ? "e.g. 0.6" : "needs Q-interval") : "e.g. 20"}
+                />
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-500">Step unit:</span>
+                  <select
+                    className="inp !min-h-0 !py-1 text-[11px]"
+                    value={advanceStepUnit}
+                    onChange={(e) => setS((p) => ({ ...p, feedAdvanceStepUnit: e.target.value as "mlkg" | "mlfeed" }))}
+                  >
+                    <option value="mlkg">ml/kg/day</option>
+                    <option value="mlfeed">ml/feed</option>
+                  </select>
+                </div>
+                {advanceStepUnit === "mlfeed" && (
+                  <span className="mt-1 block text-[10px] text-slate-500">
+                    {feedsPerDay !== null && intervalHours !== undefined
+                      ? `= ${advanceStep} ml/kg/day at Q${intervalHours}H`
+                      : "Select a Q-hour interval to convert ml/feed."}
+                  </span>
+                )}
+              </div>
+              <div className="lbl mb-1 mt-2">Advancement preview</div>
+              <div className="text-sm font-black text-white">
+                {advanceFrom} → {advanceTo} <span className="text-[10px] font-normal">ml/kg/day</span>
+                {advancePerFeed !== null && intervalHours !== undefined && (
+                  <span className="text-[10px] font-normal text-cyan-300"> · {advancePerFeedNow} {"->"} {advancePerFeed} ml/feed Q{intervalHours}H{advancePerFeedRise !== null && advancePerFeedRise > 0 ? ` (+${advancePerFeedRise}/feed)` : ""}</span>
+                )}
+              </div>
+              {weanedIv !== null && (
+                <div className="mt-1 text-[10px] font-bold text-emerald-300">
+                  IV auto-wean on: {s.ivMlKgDay ?? "-"} {"->"} {weanedIv} ml/kg/day (TFI {s.totalMlKgDay} fixed)
+                </div>
+              )}
+              {advanceExceedsTotal && (
+                <div className="mt-1 text-[10px] font-bold text-amber-300">
+                  Exceeds total fluids {s.totalMlKgDay} ml/kg/day — raise the total or wean IV alongside.
+                </div>
+              )}
+              {manualDerived.feedVol && (
+                <div className="mt-1 text-[10px] text-slate-500">
+                  Per-feed volume is on manual override — reset it to automatic to follow the new target.
+                </div>
+              )}
+              <label className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-300">
+                <input type="checkbox" checked={autoWeanIv} onChange={(e) => setAutoWeanIv(e.target.checked)} className="h-4 w-4 accent-cyan-400" />
+                Auto-wean IV against TFI when applying
+              </label>
+              <button type="button" className="btn-primary mt-2" disabled={advanceStep <= 0} onClick={applyAdvancement}>
+                Apply {advanceStepUnit === "mlfeed" && advanceStepMlFeed !== null ? `+${advanceStepMlFeed} ml/feed` : `+${advanceStep} ml/kg/day`}
+              </button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-6 border-t border-white/10 pt-5">
+          <legend className="text-base font-black text-slate-100">TFI split & advancement tracker - how much reached</legend>
+          <p className="mt-1 text-xs text-slate-400">
+            TFI stays fixed while feeds advance: every ml/kg moved to enteral weans the same from IV.
+            E.g. TFI 100 + enteral 20 Q6H {"->"} IV 80, feeds 20% reached, 5 ml/kg per feed x 4 feeds/day.
+          </p>
+          {tfiSplit.tfi === undefined ? (
+            <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">
+              Set <b>Total fluids (TFI)</b> in the prescription above to unlock the split, IV suggestion and ladder.
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/50 p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="lbl">Feeds reached</span>
+                  <span className="text-xl font-black tabular-nums text-cyan-300">
+                    {tfiSplit.pctReached}% <span className="text-[10px] font-normal text-slate-400">of TFI ({tfiSplit.enteral} / {tfiSplit.tfi} ml/kg/day)</span>
+                  </span>
+                </div>
+                <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400" style={{ width: `${Math.min(100, tfiSplit.pctReached ?? 0)}%` }} />
+                </div>
+                {tfiSplit.enteral > (tfiSplit.tfi ?? 0) ? (
+                  <p className="mt-1 text-[10px] font-bold text-amber-300">Enteral exceeds TFI - raise TFI or recheck the enteral target; IV suggestion floored at 0.</p>
+                ) : tfiSplit.fullFeeds ? (
+                  <p className="mt-1 text-[10px] text-emerald-300">Full feeds reached - IV fluids can stop (keep the line for drugs if needed).</p>
+                ) : (
+                  <p className="mt-1 text-[10px] text-slate-400">IV covers the remaining {tfiSplit.ivSuggested} ml/kg/day until feeds advance further.</p>
+                )}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-center">
+                  <div className="lbl">TFI (fixed)</div>
+                  <div className="text-lg font-black tabular-nums text-white">{tfiSplit.tfi}</div>
+                  <div className="text-[9px] text-slate-500">ml/kg/day - set above</div>
+                </div>
+                <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-2 text-center">
+                  <div className="lbl">Enteral (feeds)</div>
+                  <div className="text-lg font-black tabular-nums text-cyan-200">{tfiSplit.enteral}</div>
+                  <div className="text-[9px] text-slate-400">ml/kg/day{feedsPerDay !== null && intervalHours !== undefined ? ` - ${feedsPerDay} feeds/day Q${intervalHours}H` : ""}</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-center">
+                  <div className="lbl">IV prescribed</div>
+                  <div className="text-lg font-black tabular-nums text-white">{s.ivMlKgDay ?? "-"}</div>
+                  <div className="text-[9px] text-slate-500">{ivMlPerHr !== null ? `${ivMlPerHr} ml/hr pump rate` : "ml/kg/day"}</div>
+                </div>
+                <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-2 text-center">
+                  <div className="lbl">IV suggested (TFI - feeds)</div>
+                  <div className="text-lg font-black tabular-nums text-emerald-200">{tfiSplit.ivSuggested}</div>
+                  <div className="text-[9px] text-slate-400">{ivSuggestedMlPerHr !== null ? `${ivSuggestedMlPerHr} ml/hr pump rate` : "ml/kg/day"}</div>
+                  {showSetIv && (
+                    <button type="button" className="btn-ghost mt-1 !px-2 !py-1 text-[10px]" onClick={() => setS((p) => ({ ...p, ivMlKgDay: tfiSplit.ivSuggested }))}>
+                      Set IV to {tfiSplit.ivSuggested}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {trackerPerFeed !== null && feedsPerDay !== null && intervalHours !== undefined && (
+                <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs text-slate-300">
+                  <b className="text-slate-100">24-hour math:</b> {tfiSplit.enteral} ml/kg/day / {feedsPerDay} feeds (Q{intervalHours}H) ={" "}
+                  {Math.round((tfiSplit.enteral / feedsPerDay) * 100) / 100} ml/kg per feed x {wt} kg ={" "}
+                  <b className="text-cyan-300">{trackerPerFeed} ml per feed</b>, round the clock.
+                </div>
+              )}
+              {ladderRows.length > 0 && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
+                  <div className="bg-white/5 px-3 py-1.5 text-[11px] font-black text-slate-200">
+                    Advancement ladder - enteral up / IV down by {advanceStep} ml/kg/day
+                  </div>
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="text-slate-400">
+                      <tr><th className="p-1.5">Step</th><th className="text-right">Enteral</th><th className="text-right">IV</th><th className="text-right">Reached</th><th className="text-right">ml/feed</th><th className="text-right">Rise/feed</th></tr>
+                    </thead>
+                    <tbody className="text-slate-200">
+                      {ladderRows.map((row, i) => (
+                        <tr key={i} className={`border-t border-white/5 ${row.now ? "bg-cyan-400/10" : ""} ${row.full ? "bg-emerald-400/10" : ""}`}>
+                          <td className="p-1.5">
+                            {row.now ? <span className="font-bold text-cyan-300">now</span> : row.full ? <span className="font-bold text-emerald-300">full feeds</span> : `+${i}`}
+                          </td>
+                          <td className="p-1.5 text-right font-bold tabular-nums">{row.enteral}</td>
+                          <td className="p-1.5 text-right tabular-nums">{row.iv}</td>
+                          <td className="p-1.5 text-right tabular-nums">{row.pct}%</td>
+                          <td className="p-1.5 text-right tabular-nums">{row.perFeed ?? "-"}</td>
+                          <td className="p-1.5 text-right tabular-nums text-cyan-300">
+                            {i === 0 || row.perFeed === null || ladderRows[i - 1].perFeed === null
+                              ? "-"
+                              : `+${Math.round((row.perFeed - (ladderRows[i - 1].perFeed ?? 0)) * 10) / 10}`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {ladderTruncated && <p className="border-t border-white/5 bg-white/[0.02] p-2 text-[10px] text-slate-400">Continues to full feeds - showing first {ladderRows.length} steps.</p>}
+                </div>
+              )}
+            </>
+          )}
         </fieldset>
 
         <fieldset className="mt-6 border-t border-white/10 pt-5">
@@ -581,23 +862,178 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             <div><NumField label={`Energy kcal/kg/d - ${manualDerived.kcal ? "manual" : "automatic"} (0-300)`} value={kcalValue} onChange={setDerived("kcal")} min={0} max={300} step={1} decimals={1} placeholder="waiting" />{manualDerived.kcal && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("kcal")}>Use automatic energy</button>}</div>
             <div><NumField label={`Feed volume / feed ml - ${manualDerived.feedVol ? "manual" : "automatic"}`} value={feedVolumeValue} onChange={setDerived("feedVol")} min={0} max={120} step={0.1} decimals={1} placeholder="waiting" />{manualDerived.feedVol && <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={() => resetToAutomatic("feedVol")}>Use automatic feed volume</button>}<span className="mt-1 block text-[10px] text-slate-500">{feedVolumeHint}</span></div>
           </div>
-          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . kcal = enteral ml x density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
+          <p className="mt-3 rounded-lg bg-white/[0.03] p-2 text-[10px] leading-relaxed text-slate-400">Formulas (rectified): GIR = D% x IV ml/kg/day x10 /1440 . dextrose g = GIR x1.44 . effective density = base-milk kcal/ml + fortifier (sachets/100 ml x kcal/sachet /100) . kcal = enteral ml x effective density + dextrose g x3.4 + AA x4 + lipid x9 . protein = enteral ml x effective protein/ml + AA . caps: GIR 0-20, AA/lipid 0-6, fluids 0-250. Gross {">"}300 kcal or {">"}10g protein flagged.</p>
         </fieldset>
 
         <div className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm text-cyan-100">Total ~ {Math.round((s.totalMlKgDay ?? 0) * wt)} ml/day - Energy {kcalValue ?? "-"} kcal/kg/day - Protein {nutrition.totalProtein} g/kg/day {nutrition.isAbnormal && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] text-amber-200">abnormal - check warnings</span>}</div>
         <div className="mt-3"><FlagsList flags={nutritionFlags} /></div>
 
         <fieldset className="mt-6 border-t border-white/10 pt-5">
-          <legend className="text-base font-black text-slate-100">Fortification</legend>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300"><b className="text-slate-100">Record exactly as prepared.</b> Product, amount, and mixed volume. Does not auto-scale.</p>
+          <legend className="text-base font-black text-slate-100">Fortification — product, strength & auto-calculated kcal / protein</legend>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-300">
+            <b className="text-slate-100">Record exactly as prepared:</b> product, amount, and the volume it is mixed in.
+            The <b className="text-violet-200">concentration (sachets / 100 ml)</b> is what scales to the baby&apos;s enteral
+            intake in the energy / protein totals above — the sachet count itself is never auto-changed.
+          </p>
+
+          {/* Legacy free-text migration notice */}
+          {s.fortificationName?.trim() && !s.fortificationProductId && (
+            <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100">
+              <b>Legacy entry “{s.fortificationName.trim()}” is not counted in calories.</b> Select the matching
+              product below (amount and volume carry over) so its kcal and protein are included.
+            </div>
+          )}
+
+          {/* Live fortification status */}
+          {fort.status === "active" && (
+            <div className="mt-3 rounded-xl border border-violet-400/25 bg-violet-400/5 p-3" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <b className="text-sm text-violet-100">
+                  {fort.productLabel} · {fort.sachetsPer100ml} / 100 ml
+                  {fort.strengthPct > 0 && <span className="ml-1 text-xs font-bold text-violet-300">({fort.strengthPct}% of standard)</span>}
+                </b>
+                <span className="text-[10px] font-bold text-violet-300">included in totals above ✓</span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+                  <div className="lbl !mb-0.5">Added energy</div>
+                  <div className="text-sm font-black text-white">+{fort.addedKcalPerMl} <span className="text-[10px] font-normal">kcal/ml</span></div>
+                  <div className="text-[10px] text-slate-400">+{nutrition.fortKcal} kcal/kg/day</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+                  <div className="lbl !mb-0.5">Added protein</div>
+                  <div className="text-sm font-black text-white">+{fort.addedProteinPerMl} <span className="text-[10px] font-normal">g/ml</span></div>
+                  <div className="text-[10px] text-slate-400">+{nutrition.fortProtein} g/kg/day</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+                  <div className="lbl !mb-0.5">Effective density</div>
+                  <div className="text-sm font-black text-white">{nutrition.density} <span className="text-[10px] font-normal">kcal/ml</span></div>
+                  <div className="text-[10px] text-slate-400">base {nutrition.baseDensity} + fort {fort.addedKcalPerMl}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/50 p-2">
+                  <div className="lbl !mb-0.5">Per feed / P:E</div>
+                  <div className="text-sm font-black text-white">{sachetsPerFeed ?? "—"} <span className="text-[10px] font-normal">sachets/feed</span></div>
+                  <div className="text-[10px] text-slate-400">P:E {nutrition.peRatio > 0 ? `${nutrition.peRatio} g/100 kcal` : "—"} (optimal 2.8–3.4)</div>
+                </div>
+              </div>
+              {fort.notes.length > 0 && (
+                <ul className="mt-2 list-disc pl-5 text-[10px] leading-relaxed text-slate-400">
+                  {fort.notes.map((note, i) => <li key={i}>{note}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+          {fort.status === "incomplete" && (
+            <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100" aria-live="polite">
+              <b>Fortification incomplete — totals above exclude the fortifier.</b> {fort.missing}
+            </div>
+          )}
+          {fort.status === "none" && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs text-slate-400">
+              No fortifier selected — enteral kcal / protein come from the base milk only. Select a product below when HMF is started.
+            </div>
+          )}
+
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="block lg:col-span-2"><span className="lbl mb-1 block">Fortification product</span><input className="inp min-h-11" value={s.fortificationName ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationName: event.target.value }))} placeholder="e.g. human milk fortifier" /></label>
-            <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.1} decimals={2} placeholder="enter" />
-            <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml</option><option value="scoop">scoop</option><option value="measure">measure</option></select></label>
-            <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={1} decimals={1} placeholder="enter" />
-            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="Optional" /></label>
+            <label className="block lg:col-span-2">
+              <span className="lbl mb-1 block">Fortifier product</span>
+              <select
+                className="inp min-h-11"
+                value={s.fortificationProductId ?? ""}
+                onChange={(event) => setS((p) => ({ ...p, fortificationProductId: event.target.value || undefined, fortificationName: undefined }))}
+              >
+                <option value="">No fortifier</option>
+                {FORTIFIER_PRODUCTS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+              {fortProduct && !isCustomFort && (
+                <span className="mt-1 block text-[10px] text-slate-500">
+                  1 sachet = {fortProduct.kcalPerSachet} kcal + {fortProduct.proteinPerSachet} g protein · standard 1 per {fortProduct.standardMlPerSachet} ml
+                  {fortProduct.verifyLabel && <span className="text-amber-300"> · verify against sachet label</span>}
+                </span>
+              )}
+            </label>
+            <NumField label="Amount used" value={s.fortificationAmount ?? undefined} onChange={set("fortificationAmount")} min={0} max={100} step={0.5} decimals={2} placeholder="enter" />
+            <label className="block"><span className="lbl mb-1 block">Amount unit</span><select className="inp min-h-11" value={s.fortificationAmountUnit ?? "sachet"} onChange={(event) => setS((p) => ({ ...p, fortificationAmountUnit: event.target.value as NonNullable<typeof p.fortificationAmountUnit> }))}><option value="sachet">sachet</option><option value="g">g</option><option value="ml">ml (custom liquid)</option><option value="scoop">scoop (≈ sachet)</option><option value="measure">measure (≈ sachet)</option></select></label>
+            <NumField label="Feed volume mixed (ml)" value={s.fortificationFeedVolumeMl ?? undefined} onChange={set("fortificationFeedVolumeMl")} min={0} max={1000} step={5} decimals={1} placeholder="e.g. 25 / 50 / 100" />
+            {isCustomFort && (
+              <>
+                <NumField label="Custom: kcal per unit" value={s.fortificationKcalPerUnit ?? undefined} onChange={set("fortificationKcalPerUnit")} min={0} max={50} step={0.1} decimals={2} placeholder="per sachet/g/ml" />
+                <NumField label="Custom: protein g per unit" value={s.fortificationProteinPerUnit ?? undefined} onChange={set("fortificationProteinPerUnit")} min={0} max={5} step={0.01} decimals={3} placeholder="per sachet/g/ml" />
+                <NumField label="Custom: grams per sachet" value={s.fortificationSachetGrams ?? undefined} onChange={set("fortificationSachetGrams")} min={0.1} max={10} step={0.1} decimals={1} placeholder="for g → sachet" />
+              </>
+            )}
+            <label className="block sm:col-span-2 lg:col-span-3"><span className="lbl mb-1 block">Preparation note</span><input className="inp min-h-11" value={s.fortificationNotes ?? ""} onChange={(event) => setS((p) => ({ ...p, fortificationNotes: event.target.value }))} placeholder="e.g. half strength, tolerance step" /></label>
           </div>
-          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100"><b>Safety:</b> amount stays linked to stated mixed volume. Do not auto-adjust.</div>
+
+          {fort.warnings.length > 0 && (
+            <div className="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3">
+              <div className="flex items-center gap-2 text-xs font-black text-rose-200"><AlertTriangle size={14} /> Fortification warnings</div>
+              <ul className="mt-1 list-disc pl-5 text-[11px] text-rose-100">
+                {fort.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100">
+            <b>Safety:</b> the sachet count stays linked to the stated mixed volume and is never auto-changed.
+            Only the <b>concentration</b> scales to the day&apos;s enteral intake. Osmolality rises steeply above
+            standard strength (4 / 100 ml) — watch tolerance, residuals and stools.
+          </div>
+
+          <div className="mt-3">
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              aria-expanded={showFormulary}
+              onClick={() => setShowFormulary((v) => !v)}
+            >
+              {showFormulary ? "▾ Hide" : "▸ Show"} hospital formulary reference (base milks + fortifiers)
+            </button>
+            {showFormulary && (
+              <div className="mt-2 grid gap-3 lg:grid-cols-2">
+                <div className="overflow-hidden rounded-xl border border-white/10">
+                  <div className="bg-white/5 px-3 py-1.5 text-[11px] font-black text-slate-200">Base milks — standard dilution</div>
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="text-slate-400">
+                      <tr><th className="p-1.5">Milk</th><th className="text-right">kcal/ml</th><th className="text-right">protein g/ml</th></tr>
+                    </thead>
+                    <tbody className="text-slate-200">
+                      {MILK_FORMULARY.map((m) => (
+                        <tr key={m.label} className={`border-t border-white/5 ${s.feedType === m.label ? "bg-cyan-400/10" : ""}`}>
+                          <td className="p-1.5">{m.label}{s.feedType === m.label && <span className="ml-1 text-[9px] font-bold text-cyan-300">● in use</span>}<span className="block text-[9px] text-slate-500">{m.source}</span></td>
+                          <td className="p-1.5 text-right font-bold tabular-nums">{m.kcalPerMl}</td>
+                          <td className="p-1.5 text-right tabular-nums">{m.proteinPerMl}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-white/10">
+                  <div className="bg-white/5 px-3 py-1.5 text-[11px] font-black text-slate-200">Fortifiers — per sachet, standard dilution</div>
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="text-slate-400">
+                      <tr><th className="p-1.5">Fortifier</th><th className="text-right">kcal</th><th className="text-right">protein g</th><th className="text-right">standard</th></tr>
+                    </thead>
+                    <tbody className="text-slate-200">
+                      {FORTIFIER_PRODUCTS.filter((p) => p.id !== "custom").map((p) => (
+                        <tr key={p.id} className={`border-t border-white/5 ${s.fortificationProductId === p.id ? "bg-violet-400/10" : ""}`}>
+                          <td className="p-1.5">{p.short}{s.fortificationProductId === p.id && <span className="ml-1 text-[9px] font-bold text-violet-300">● in use</span>}<span className="block text-[9px] text-slate-500">{p.source}</span></td>
+                          <td className="p-1.5 text-right font-bold tabular-nums">{p.kcalPerSachet}</td>
+                          <td className="p-1.5 text-right tabular-nums">{p.proteinPerSachet}</td>
+                          <td className="p-1.5 text-right tabular-nums">1 / {p.standardMlPerSachet} ml</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="border-t border-white/5 bg-white/[0.02] p-2 text-[10px] text-slate-400">
+                    If the sachet label differs from the table, use <b>Other / custom fortifier</b> with the label&apos;s per-sachet values.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </fieldset>
       </Section>
     </div>
