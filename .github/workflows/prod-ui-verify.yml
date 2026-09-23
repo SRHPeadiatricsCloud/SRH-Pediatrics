@@ -10,7 +10,6 @@ name: Production UI verify
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   verify-ui:
