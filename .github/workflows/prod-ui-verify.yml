@@ -1,0 +1,59 @@
+name: Production UI verify
+
+# Read-only smoke test for the live production deployment.
+# Confirms the build actually serving https://srh-pediatrics.vercel.app contains
+# the current UI (and the current service worker) rather than a stale bundle.
+# Deliberately does NOT touch clinical data — /api/seed is destructive, so it is
+# not called here (see prod-verify.yml).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/health
+        run: |
+          BODY=$(curl -fsS https://srh-pediatrics.vercel.app/api/health)
+          echo "health: $BODY"
+          test "$BODY" = '{"ok":true}'
+
+      - name: Service worker is current and not browser-cached
+        run: |
+          set -euo pipefail
+          BASE=https://srh-pediatrics.vercel.app
+          echo "--- /sw.js response headers ---"
+          curl -sSI "$BASE/sw.js" | grep -iE '^(cache-control|content-type)' || true
+          curl -sSI "$BASE/sw.js" | grep -i '^cache-control' | grep -qi 'max-age=0'
+          SW=$(curl -fsS "$BASE/sw.js")
+          echo "--- served sw.js version ---"
+          printf '%s' "$SW" | grep -oE 'srh-nicu-v[0-9]+\.[0-9]+\.[0-9]+' | head -1
+          printf '%s' "$SW" | grep -q 'srh-nicu-v3.1.0'
+          printf '%s' "$SW" | grep -q 'isRouterPayload' # never-cache RSC guard
+          echo "sw.js OK"
+
+      - name: Baby page serves the Feeds tab
+        run: |
+          set -euo pipefail
+          BASE=https://srh-pediatrics.vercel.app
+          HTML=$(curl -fsS "$BASE/baby/17")
+          printf '%s' "$HTML" | grep -q 'Fluids &amp; feeds'
+          echo "document contains the Fluids & feeds tab"
+
+      - name: Deployed JS bundle contains the "+ Advance feeds" UI
+        run: |
+          set -euo pipefail
+          BASE=https://srh-pediatrics.vercel.app
+          HTML=$(curl -fsS "$BASE/baby/17")
+          CHUNKS=$(printf '%s' "$HTML" | grep -oE '/_next/static/chunks/[^" ]+\.js' | sort -u)
+          echo "chunks referenced by /baby/17: $(printf '%s\n' "$CHUNKS" | wc -l)"
+          HIT=""
+          for c in $CHUNKS; do
+            if curl -fsS "$BASE$c" | grep -qa 'Advance feeds'; then
+              echo "found '+ Advance feeds' in $c"
+              HIT=1
+            fi
+          done
+          test -n "$HIT"
+          echo "new Feeds UI is live in production"
