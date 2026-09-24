@@ -223,6 +223,11 @@ async function render(fluids, over = {}) {
   ok(/Protein 3\.33 g\/kg\/d · low \(aim 3\.5–4\.5\)/.test(t), "the protein pill says low against its band");
   ok(/1Feeds/.test(t) && /2IV fluids/.test(t) && /3Check the total/.test(t) && /4Tomorrow: advance the feeds/.test(t),
      "the four numbered steps are all there");
+  const sideBySide = [...el.querySelectorAll("div")].filter(
+    (d) => d.className?.toString?.().includes("lg:grid-cols-2")
+  );
+  const pair = sideBySide.find((d) => /1Feeds/.test(d.textContent) && /2IV fluids/.test(d.textContent));
+  ok(pair, "Feeds and IV fluids cards are grouped side by side on wide screens");
   ok(!/Static/.test(t) && !/Increasing/.test(t), "no feed-plan machinery (Static/Increasing) anywhere");
   ok(!/increase applies to/i.test(t), "no 'increase applies to'");
   ok(!/Feed details & tolerance/.test(t), "the old drawer is gone");

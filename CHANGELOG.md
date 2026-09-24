@@ -33,8 +33,9 @@ a card with a feed plan, a phase rail and a drawer of tolerance fields.
   yet", "nil by mouth", "no IV fluids"), with **Fluids / Energy / Protein** pills against their
   target bands and a feed-due pill ("next feed in…" / "… since it was due — feed is late").
 - **Four numbered steps**: ① Feeds (`Per feed ml` ↔ `Feeds ml/kg/day` synced through interval ×
-  weight, `How often`, `What milk`, `How given`), ② IV fluids (`Pump rate ml/hour` ↔ `IV
-  ml/kg/day` bidirectional, `Dextrose %`, the GIR read in words), ③ Check the total (total in
+  weight, `How often`, `What milk`, `How given`) and ② IV fluids (`Pump rate ml/hour` ↔ `IV
+  ml/kg/day` bidirectional, `Dextrose %`, the GIR read in words) sit **side by side on wide
+  screens** (stacked on phones), ③ Check the total (total in
   ml/kg/day and ml, a feeds/IV/TFI split bar with red overflow, one `TFI target ml/kg/day` box
   with a one-tap "use the guideline's N" link, and a guidance line for closing or undoing the
   gap), ④ Tomorrow: advance the feeds (the advance step in **ml/kg/day or ml/feed** — stored as

@@ -776,8 +776,10 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
 
         {/* --- the four steps ---------------------------------------------- */}
         <div className="mt-3 grid gap-3">
-          {/* ① Feeds */}
-          <Step n={1} title="Feeds" sub="what goes in, and how often">
+          {/* ① Feeds and ② IV fluids sit side by side on wide screens */}
+          <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+            {/* ① Feeds */}
+            <Step n={1} title="Feeds" sub="what goes in, and how often">
             <div className="grid gap-2 sm:grid-cols-3">
               <NumField
                 label="Per feed ml"
@@ -882,7 +884,8 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               />
             </div>
             <p className={`mt-1 text-[10px] leading-relaxed ${girTone}`}>{girLine}</p>
-          </Step>
+            </Step>
+          </div>
 
           {/* ③ Check the total */}
           <Step n={3} title="Check the total" sub="feeds + IV against the TFI target">
