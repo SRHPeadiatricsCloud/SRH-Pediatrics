@@ -29,14 +29,14 @@ function stateBadge(state: RoundState) {
       };
     case "overdue":
       return {
-        icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />,
-        chipCls: "border-amber-500/50 text-slate-200 font-semibold",
+        icon: <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />,
+        chipCls: "border-rose-500/50 text-slate-200 font-semibold",
         tag: "DUE",
       };
     case "todo":
       return {
-        icon: <Clock className="h-3.5 w-3.5 text-amber-400/80" />,
-        chipCls: "border-amber-500/25 text-slate-300",
+        icon: <Clock className="h-3.5 w-3.5 text-amber-400" />,
+        chipCls: "border-amber-500/30 text-slate-300",
         tag: "PENDING",
       };
     case "na":
@@ -62,7 +62,7 @@ export function DailyRoundChecklist({ detail, onNavigateTab }: DailyRoundCheckli
         </div>
         <div className="flex items-center gap-2 text-[11px]">
           {round.overdue > 0 && (
-            <span className="rounded-full border border-amber-500/40 px-2 py-0.5 font-bold text-slate-200">
+            <span className="rounded-full border border-rose-500/40 px-2 py-0.5 font-bold text-slate-200">
               {round.overdue} overdue
             </span>
           )}

@@ -882,7 +882,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               right={<Chip label="NPO — nil by mouth" tone="amber" on={isNpo} onClick={toggleNpo} />}
             >
             <fieldset disabled={isNpo} className={`m-0 min-w-0 border-0 p-0 ${isNpo ? "opacity-40" : ""}`}>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
               <NumField
                 label="Per feed ml"
                 value={feedVolumeValue}
@@ -924,7 +924,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               {s.feedType ? ` · ${s.feedType}` : ""}
               {s.feedRoute ? ` via ${s.feedRoute}` : ""}
             </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <label className="block rounded-xl border border-white/10 bg-slate-900/50 p-2">
                 <span className="lbl mb-1 block">What milk</span>
                 <select className="inp min-h-11 w-full" value={s.feedType ?? ""} onChange={(event) => setField("feedType", event.target.value)}>
@@ -957,7 +957,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           {/* ③ IV fluids */}
           <div className="lg:col-span-4">
           <Step n={3} title="IV fluids" sub="the pump, and the sugar in it">
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
               <NumField
                 label="Pump rate ml/hour"
                 value={pumpRate}

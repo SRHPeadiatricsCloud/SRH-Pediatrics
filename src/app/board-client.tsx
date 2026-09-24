@@ -206,7 +206,7 @@ export default function BoardClient() {
           <Stat label="NIV / O₂" value={counts.cpap} icon={<Wind size={18} />} iconTone="text-cyan-300" tone="text-cyan-300" />
           <Stat label="Open actions" value={counts.tasks} icon={<ListChecks size={18} />} iconTone="text-emerald-300" tone="text-emerald-300" />
           {counts.roundOverdue > 0 && (
-            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-amber-300" tone="text-amber-300" />
+            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-rose-300" tone="text-rose-300" />
           )}
         </div>
 
@@ -565,12 +565,12 @@ function BabyCard({
           const pendingItems = round.items.filter((i) => i.state === "todo");
           return (
             <div className={`mt-2.5 flex flex-wrap items-center justify-between gap-1 rounded-lg border px-2.5 py-1 text-[10px] ${
-              round.overdue > 0 ? "border-amber-500/40 text-slate-300" : "border-white/10 text-slate-400"
+              round.overdue > 0 ? "border-rose-500/40 text-slate-300" : "border-white/10 text-slate-400"
             }`}>
               <span className="font-semibold uppercase tracking-wider">Daily Round:</span>
               <div className="flex flex-wrap items-center gap-1.5">
                 {lateItems.map((it) => (
-                  <span key={it.key} className="rounded border border-amber-500/40 px-1 py-0.5 font-bold text-slate-200">
+                  <span key={it.key} className="rounded border border-rose-500/40 px-1 py-0.5 font-bold text-slate-200">
                     {it.label} due
                   </span>
                 ))}
@@ -669,10 +669,15 @@ function BabyCard({
       </Link>
 
       {b.openTasks.length > 0 && (
-        <div className="mx-4 mb-3 rounded-xl border border-white/10 bg-slate-900/40 p-2">
-          <div className="lbl mb-1 flex items-center gap-1">
+        <details open className="group mx-4 mb-3 rounded-xl border border-white/10 bg-slate-900/40 p-2">
+          <summary className="lbl flex cursor-pointer select-none list-none items-center gap-1">
             <ListTodo size={12} /> Open actions ({b.openTasks.length})
-          </div>
+            <span className="ml-auto text-[9px] font-normal normal-case tracking-normal text-slate-500">
+              <span className="group-open:hidden">show</span>
+              <span className="hidden group-open:inline">hide</span>
+            </span>
+          </summary>
+          <div className="mt-1">
           <ActionChecklist
             tasks={b.openTasks.slice(0, tasksToShowCount).map((t) => ({ ...t, done: false, doneAt: null, doneBy: "" }))}
             onSchedule={async (taskId, iso) => {
@@ -689,7 +694,8 @@ function BabyCard({
           {!showAllTasks && hasMoreTasks && (
             <p className="mt-1 text-[10px] text-slate-400">+{b.openTasks.length - 2} more actions — expand to see</p>
           )}
-        </div>
+          </div>
+        </details>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2 px-4 pb-3">

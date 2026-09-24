@@ -438,13 +438,16 @@ export function RespTab({
           />
         </div>
       </Section>
-      <Section title="Respiratory reference (NNF / AAP)">
-        <ul className="space-y-2 text-xs text-slate-300">
+      <details className="card p-4">
+        <summary className="cursor-pointer select-none text-sm font-bold tracking-wide text-white">
+          Respiratory reference (NNF / AAP)
+        </summary>
+        <ul className="mt-2 space-y-2 text-xs text-slate-300">
           <li>• CPAP failure: FiO₂ &gt; 0.40 with PEEP 6-7, pH &lt; 7.20 with pCO₂ &gt; 60 → intubate + surfactant.</li>
           <li>• Target SpO₂ 90-95% for preterm on oxygen (AAP/NNF).</li>
           <li>• Caffeine citrate for all &lt; 32 wk / &lt; 1250 g.</li>
         </ul>
-      </Section>
+      </details>
     </div>
   );
 }

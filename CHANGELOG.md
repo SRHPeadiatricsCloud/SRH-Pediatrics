@@ -48,14 +48,22 @@ Rules:
   target pills, the late-feed pill, the missing-weight notice, the TargetRow over-band, the
   board's active-problem chips, normal (≤10%) weight loss in the daily progress table, and
   every delete/remove button (now quiet slate until hovered). The daily round keeps its
-  colour coding but wears it as an outline only — no fills, plain text: the board's
-  "Round items due" stat, the per-card round row and due/pending chips, the "N overdue"
+  original colour coding but wears it as an outline only — no fills, plain text: the
+  board's "Round items due" stat, the per-card round row and due chips, the "N overdue"
   and "Round complete" pills, and the ward-rounds checklist tiles on the baby chart
-  (amber border when an item is due, emerald when done — no striking yellow fill, no
-  pulsing red).
+  (red outline when an item is due, amber while pending, emerald when done — no striking
+  yellow fill, no pulsing alarm).
 - **Observation-log duplicates** (`src/components/baby-tabs.tsx`): vitals saves are
   serialised through a promise chain, and a payload identical to the last one that saved
   successfully is skipped, so one round of observations stays one row.
+- **Layout polish**: the Feeds and IV steps stack their fields vertically on wide screens
+  so the narrow columns stop feeling cramped; the board's "Open actions", the daily
+  progress "Energy & protein auto-calculator" and the respiratory reference are now
+  collapsible cards; the auto-compiled daily-progress table gets breathing room (roomier
+  cells, no crushed columns); the handover patient summary drops the raw labs dump and
+  keeps only what the receiving team needs; the event log is rebuilt as one simple
+  screen-height stack of compact colour-coded boxes (one per event, one below the other)
+  instead of a 1800px paper replica plus a duplicated card grid.
 
 ### Tests
 

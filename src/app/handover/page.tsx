@@ -136,7 +136,6 @@ function Sheet() {
                       k="Last vitals"
                       v={`HR ${v.hr ?? "—"} · RR ${v.rr ?? "—"} · SpO₂ ${v.spo2 ?? "—"}% · T ${tempOut(v.temp as number | null, tUnit) ?? "—"}°${tUnit} · BP ${fmtBP(v.sbp as number | null, v.dbp as number | null, v.map as number | null)} · RBS ${v.rbs ?? "—"}`}
                     />
-                    <P k="Labs" v={Object.entries(c.labs ?? {}).filter(([, x]) => x).map(([k, x]) => `${k} ${x}`).join(" · ") || "—"} />
                     <P k="Plan" v={c.plan ?? "—"} />
                     <P k="Actions" v={b.openTasks.map((t) => t.text).join("; ") || "—"} />
                     <P k="If–then" v={b.lastHandover?.contingency?.join(" | ") || "—"} />
