@@ -339,7 +339,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
           <Link href="/handover" className="btn-ghost ml-auto text-xs">
             Print unit sheet
           </Link>
-          <button className="btn-ghost text-xs text-rose-300" onClick={() => setConfirmDelete(true)}>
+          <button className="btn-ghost text-xs text-slate-400 hover:text-rose-300" onClick={() => setConfirmDelete(true)}>
             🗑 Delete card
           </button>
         </div>

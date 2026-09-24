@@ -203,6 +203,13 @@ export type Clinical = {
     feedFreq?: string;
     feedVol?: number;
     feedVolManual?: boolean;
+    /**
+     * The IV volume was typed by hand (or as a pump rate), so it must not be
+     * re-derived from the TFI. When absent/false, the IV follows the TFI:
+     * ivMlKgDay = max(0, TFI − min(250, feeds)) whenever feeds or the TFI
+     * change. "Follow the TFI" clears the flag again.
+     */
+    ivManual?: boolean;
     fortificationName?: string;
     /** Which stocked product this is — resolves default values and dose steps. */
     fortifierProductId?: string;

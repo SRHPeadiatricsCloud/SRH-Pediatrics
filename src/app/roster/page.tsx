@@ -360,7 +360,7 @@ export default function RosterPage() {
                         ))}
                         <td className="p-1">
                           <button
-                            className="text-rose-300"
+                            className="text-slate-400 hover:text-rose-300"
                             title="Remove day"
                             onClick={() =>
                               setPreview((p) => {
@@ -485,7 +485,7 @@ export default function RosterPage() {
               })}
             </div>
             <div className="mt-4 flex justify-between gap-2">
-              <button className="btn-ghost text-rose-300" disabled={saving} onClick={clearDay}>
+              <button className="btn-ghost text-slate-400 hover:text-rose-300" disabled={saving} onClick={clearDay}>
                 <Trash2 size={13} /> Clear day
               </button>
               <div className="flex gap-2">

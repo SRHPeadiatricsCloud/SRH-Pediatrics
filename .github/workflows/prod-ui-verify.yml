@@ -42,7 +42,7 @@ jobs:
           HDRS=$(curl -sSI "$BASE/sw.js" | grep -i '^cache-control' | tr -d '\r')
           SW=$(curl -fsS "$BASE/sw.js")
           SWV=$(printf '%s' "$SW" | grep -oE 'srh-nicu-v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          if printf '%s' "$SW" | grep -q 'srh-nicu-v3.14.0' \
+          if printf '%s' "$SW" | grep -q 'srh-nicu-v3.15.0' \
              && printf '%s' "$SW" | grep -q 'isRouterPayload' \
              && printf '%s' "$HDRS" | grep -qi 'max-age=0'; then
             echo "| /sw.js | ✅ | \`$SWV\` · \`$HDRS\` · RSC guard present |" >> "$REPORT"
@@ -50,17 +50,17 @@ jobs:
             echo "| /sw.js | ❌ | \`$SWV\` · \`$HDRS\` |" >> "$REPORT"; exit 1
           fi
 
-      - name: Check 3 — served document is the 3.14.0 build
+      - name: Check 3 — served document is the 3.15.0 build
         id: c3
         continue-on-error: true
         run: |
           set -uo pipefail
           HTML=$(curl -fsS "$BASE/")
           VER=$(printf '%s' "$HTML" | grep -oE 'V\.(<!-- -->)?[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          if printf '%s' "$HTML" | grep -q 'icon-512.png?v=3.14.0'; then
-            echo "| document build | ✅ | footer \`$VER\` · assets \`?v=3.14.0\` |" >> "$REPORT"
+          if printf '%s' "$HTML" | grep -q 'icon-512.png?v=3.15.0'; then
+            echo "| document build | ✅ | footer \`$VER\` · assets \`?v=3.15.0\` |" >> "$REPORT"
           else
-            echo "| document build | ❌ | footer \`$VER\` · expected \`?v=3.14.0\` assets |" >> "$REPORT"; exit 1
+            echo "| document build | ❌ | footer \`$VER\` · expected \`?v=3.15.0\` assets |" >> "$REPORT"; exit 1
           fi
 
       - name: Check 4 — app shell renders in production

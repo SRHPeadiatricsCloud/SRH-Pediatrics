@@ -19,6 +19,48 @@ Rules:
 
 ---
 
+## 3.15.0
+
+**TFI beside feeds & IV, same-day advancement, NPO switch, calmer palette.**
+
+### Changed
+
+- **Five steps, TFI first** (`src/components/fluids-tab.tsx`): the tab now reads ① Total fluids
+  (TFI), then ② Feeds and ③ IV fluids in one row on wide screens (`lg:grid-cols-12`,
+  col-spans 3/5/4, stacked on phones), then ④ Check the total and ⑤ Feed advancement. The
+  "Tomorrow: advance the feeds" plan is gone — advancing the feeds applies **today**.
+- **The IV follows the TFI**: whenever feeds or the TFI change, the IV re-derives as
+  `max(0, TFI − min(250, feeds))`, unless the clinician typed the IV by hand. Typing the
+  IV ml/kg/day or the pump rate sets `ivManual` (new optional boolean in `Clinical.fluids`,
+  saved alongside the other `*Manual` flags); a "follow the TFI (N)" link hands the IV back.
+- **Advance feeds is capped by the TFI**: the step lands on `min(TFI, 250, feeds + step)` and
+  the IV becomes `TFI − feeds` (or `IV − step applied` when there is no TFI or the IV is
+  manual). When the feeds already fill the TFI the button is disabled and the tab says
+  "The feeds already fill the TFI (N) — raise the TFI in ① to advance further."
+- **NPO — nil by mouth**: an amber chip in the Feeds card header. On, the feed type becomes
+  "NPO / Nil per oral", feeds go to 0, the whole TFI runs IV, and the feed fields and the
+  advancement step are disabled (`<fieldset disabled>`, dimmed). Off restores the previous
+  milk (default EBM). "Use the guideline" while NPO keeps NPO, feeds 0, IV = the guideline's
+  fluid target.
+- **Less red** — red is now reserved for real alarms (total >15% over the TFI, GIR LOW /
+  very high, critical flags, weight loss >10%). Everything that used to shout in red but is
+  really a nudge is now amber or neutral: a slightly-over TFI verdict/bar/guidance, "high"
+  target pills, the late-feed pill, the missing-weight notice, the TargetRow over-band, the
+  board's "Round items due" stat and per-card round chips, the board's active-problem chips,
+  normal (≤10%) weight loss in the daily progress table, and every delete/remove button
+  (now quiet slate until hovered).
+- **Observation-log duplicates** (`src/components/baby-tabs.tsx`): vitals saves are
+  serialised through a promise chain, and a payload identical to the last one that saved
+  successfully is skipped, so one round of observations stays one row.
+
+### Tests
+
+- `scripts/test-fluids-tab.mjs` gains blocks 18 (IV follows the TFI, the advance cap) and
+  19 (the NPO switch); the tab is now covered by 166 checks.
+
+Version markers (backup schema, service worker, layout, manifest, board, handover sheet,
+shell footer, production UI verification) all move to **3.15.0**.
+
 ## 3.14.0
 
 **Novice-first Feeds & fluids redesign** (`src/components/fluids-tab.tsx`): the tab now reads

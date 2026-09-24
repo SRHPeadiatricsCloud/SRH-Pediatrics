@@ -289,7 +289,7 @@ export default function UpdatesPage() {
                 {!locked && r.pinnedBy && (
                   <div className="mt-1.5 flex justify-end">
                     <button
-                      className="btn-ghost !px-2 !py-1 text-[10px] text-rose-300"
+                      className="btn-ghost !px-2 !py-1 text-[10px] text-slate-400 hover:text-rose-300"
                       onClick={() => remove(r.id)}
                     >
                       <Trash2 size={11} /> remove

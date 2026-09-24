@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 import { Chip, NumField, Section, api } from "@/components/ui";
 import { girFromDextrose } from "@/lib/interpret";
@@ -67,6 +67,20 @@ function withoutLegacyPlan(f: FluidsState, weightKg?: number): FluidsState {
 }
 
 /**
+ * The IV follows the TFI: whenever feeds or the TFI target change, the IV
+ * becomes whatever completes the target — unless the clinician typed the IV by
+ * hand (`ivManual`), in which case it stays exactly as typed.
+ */
+function ivFollowsTfi(fl: FluidsState): FluidsState {
+  if (fl.ivManual === true) return fl;
+  if (fl.tfiMlKgDay === undefined || !(fl.tfiMlKgDay > 0)) return fl;
+  return { ...fl, ivMlKgDay: round2(Math.max(0, fl.tfiMlKgDay - Math.min(250, fl.enteralMlKgDay ?? 0))) };
+}
+
+/** NPO is a feed type; this test keeps every spelling of it in one place. */
+const isNpoType = (feedType: string | undefined) => /NPO|nil per oral/i.test(feedType ?? "");
+
+/**
  * One line of "actual against its target band". The shaded part of the track is
  * the target, the fill is where this baby is, so "are we there yet" is a glance
  * rather than a piece of mental arithmetic.
@@ -92,8 +106,9 @@ function TargetRow({
   const loPct = Math.max(0, Math.min(100, (lo / span) * 100));
   const inBand = value >= lo && value <= hi;
   const low = value < lo;
-  const bar = value === 0 ? "bg-slate-600" : inBand ? "bg-emerald-400" : low ? "bg-amber-400" : "bg-rose-400";
-  const text = value === 0 ? "text-slate-400" : inBand ? "text-emerald-200" : low ? "text-amber-200" : "text-rose-200";
+  // Red is reserved for real alarms; sitting above a band is a nudge, not one.
+  const bar = value === 0 ? "bg-slate-600" : inBand ? "bg-emerald-400" : "bg-amber-400";
+  const text = value === 0 ? "text-slate-400" : inBand ? "text-emerald-200" : "text-amber-200";
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
@@ -108,7 +123,7 @@ function TargetRow({
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
         <span>target {lo}&ndash;{hi}</span>
-        <span className={`text-right ${inBand ? "" : low ? "text-amber-200/80" : "text-rose-200/80"}`}>
+        <span className={`text-right ${inBand ? "" : "text-amber-200/80"}`}>
           {note ??
             (value === 0
               ? "nothing recorded"
@@ -199,7 +214,7 @@ const FEED_INTERVALS = [1, 1.5, 2, 2.5, 3, 4] as const;
  * One numbered step of the novice path. A module-level component — defining it
  * inside the render would re-create it (and its inputs) on every keystroke.
  */
-function Step({ n, title, sub, children }: { n: number; title: string; sub?: string; children: React.ReactNode }) {
+function Step({ n, title, sub, right, children }: { n: number; title: string; sub?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
       <div className="mb-2 flex items-center gap-2">
@@ -208,6 +223,7 @@ function Step({ n, title, sub, children }: { n: number; title: string; sub?: str
           <div className="text-xs font-black text-white">{title}</div>
           {sub && <div className="text-[10px] text-slate-400">{sub}</div>}
         </div>
+        {right && <div className="ml-auto">{right}</div>}
       </div>
       {children}
     </div>
@@ -230,12 +246,17 @@ function TargetPill({
 }) {
   const [lo, hi] = target;
   const status = value >= lo && value <= hi ? "ok" : value < lo ? "low" : "high";
+  // "high" stays amber unless it is more than 15% over the band — that is the
+  // point where it becomes a real alarm and earns the red.
+  const alarm = value > hi * 1.15;
   const tone =
     status === "ok"
       ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
       : status === "low"
         ? "border-amber-400/40 bg-amber-400/10 text-amber-100"
-        : "border-rose-400/40 bg-rose-400/10 text-rose-100";
+        : alarm
+          ? "border-rose-400/40 bg-rose-400/10 text-rose-100"
+          : "border-amber-400/40 bg-amber-400/10 text-amber-100";
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tabular-nums ${tone}`}>
       {label} {trimNum(value, decimals)} {unit} · {status === "ok" ? "OK" : status} (aim {lo}&ndash;{hi})
@@ -255,6 +276,8 @@ function FluidSplitBar({ feeds, iv, tfi }: { feeds: number; iv: number; tfi?: nu
   const tfiPct = tfi !== undefined && tfi > 0 ? (tfi / max) * 100 : undefined;
   const overflowPct = tfiPct !== undefined && tfi !== undefined && total > tfi ? ((total - tfi) / max) * 100 : 0;
   const ivSolidPct = Math.max(0, ivPct - overflowPct);
+  // A little over the TFI is an amber nudge; more than 15% over is a red alarm.
+  const overAlarm = tfi !== undefined && tfi > 0 && total > tfi && (total - tfi) / tfi > 0.15;
   const verdict =
     tfi === undefined || !(tfi > 0)
       ? { text: "no TFI target set yet", tone: "text-slate-400" }
@@ -262,14 +285,14 @@ function FluidSplitBar({ feeds, iv, tfi }: { feeds: number; iv: number; tfi?: nu
         ? { text: "on the TFI target", tone: "text-emerald-200" }
         : total < tfi
           ? { text: `${trimNum(tfi - total, 1)} short of the TFI target`, tone: "text-amber-200" }
-          : { text: `${trimNum(total - tfi, 1)} OVER the TFI target`, tone: "text-rose-200" };
+          : { text: `${trimNum(total - tfi, 1)} OVER the TFI target`, tone: overAlarm ? "text-rose-200" : "text-amber-200" };
   return (
     <div>
       <div className="relative h-5 overflow-hidden rounded-full bg-white/5">
         <div className="absolute inset-y-0 left-0 bg-emerald-400/80" style={{ width: `${feedsPct}%` }} />
         <div className="absolute inset-y-0 bg-sky-400/80" style={{ left: `${feedsPct}%`, width: `${ivSolidPct}%` }} />
         {overflowPct > 0 && (
-          <div className="absolute inset-y-0 bg-rose-500/80" style={{ left: `${feedsPct + ivSolidPct}%`, width: `${overflowPct}%` }} />
+          <div className={`absolute inset-y-0 ${overAlarm ? "bg-rose-500/80" : "bg-amber-400/80"}`} style={{ left: `${feedsPct + ivSolidPct}%`, width: `${overflowPct}%` }} />
         )}
         {tfiPct !== undefined && <div className="absolute inset-y-0 w-0.5 bg-white" style={{ left: `${tfiPct}%` }} />}
       </div>
@@ -410,32 +433,57 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const setNum = (key: string) => (n: number) => setS((p) => ({ ...p, [key]: n }));
   const setField = (key: string, value: unknown) => setS((p) => ({ ...p, [key]: value }));
 
-  /** Typing the ml/kg/day figure: the per-feed box re-derives from it. */
-  const setFeeds = (v: number) => setS((p) => ({ ...p, enteralMlKgDay: v, feedVolManual: false }));
+  /** Typing the TFI target: the IV re-derives to complete it. */
+  const setTfi = (v: number) => setS((p) => ivFollowsTfi({ ...p, tfiMlKgDay: v }));
 
-  /** Typing a per-feed volume: ml per feed converts back to ml/kg/day. */
+  /** Typing the ml/kg/day figure: the per-feed box re-derives from it, the IV follows. */
+  const setFeeds = (v: number) => setS((p) => ivFollowsTfi({ ...p, enteralMlKgDay: v, feedVolManual: false }));
+
+  /** Typing a per-feed volume: ml per feed converts back to ml/kg/day, the IV follows. */
   const setPerFeed = (v: number) => {
     setManualDerived((current) => ({ ...current, feedVol: true }));
-    setS((p) => ({
-      ...p,
-      feedVol: v,
-      ...(feedsToday && wt > 0 ? { enteralMlKgDay: round2((v * feedsToday) / wt) } : {}),
-    }));
+    setS((p) =>
+      ivFollowsTfi({
+        ...p,
+        feedVol: v,
+        ...(feedsToday && wt > 0 ? { enteralMlKgDay: round2((v * feedsToday) / wt) } : {}),
+      }),
+    );
   };
 
-  /** Changing the interval re-derives the ml/kg/day when a manual per-feed volume is in force. */
+  /** Changing the interval re-derives the ml/kg/day when a manual per-feed volume is in force; the IV follows. */
   const setFreq = (v: string) =>
     setS((p) => {
       const fpd = feedsPerDay(v);
       if (p.feedVolManual && p.feedVol !== undefined && fpd && wt > 0) {
-        return { ...p, feedFreq: v, enteralMlKgDay: round2((p.feedVol * fpd) / wt) };
+        return ivFollowsTfi({ ...p, feedFreq: v, enteralMlKgDay: round2((p.feedVol * fpd) / wt) });
       }
       return { ...p, feedFreq: v };
     });
 
-  /** Pump rate ↔ IV ml/kg/day, bidirectional through the weight. */
+  /** Typing the IV volume by hand: it stops following the TFI until asked. */
+  const setIv = (v: number) => setS((p) => ({ ...p, ivMlKgDay: v, ivManual: true }));
+
+  /** Pump rate ↔ IV ml/kg/day, bidirectional through the weight. Typed, so manual. */
   const setPumpRate = (v: number) =>
-    setS((p) => (wt > 0 ? { ...p, ivMlKgDay: round2((v * 24) / wt) } : p));
+    setS((p) => (wt > 0 ? { ...p, ivMlKgDay: round2((v * 24) / wt), ivManual: true } : p));
+
+  /** Give the IV back to the TFI: it completes the target again. */
+  const followTfi = () => setS((p) => ivFollowsTfi({ ...p, ivManual: undefined }));
+
+  // NPO — nil by mouth. Feeds go to zero, the whole TFI runs IV, and the feed
+  // fields and the advance step are locked until the chip is switched off,
+  // which restores the milk the baby was on before (default EBM).
+  const isNpo = isNpoType(s.feedType);
+  const npoRestore = useRef<string | undefined>(undefined);
+  const toggleNpo = () => {
+    if (isNpo) {
+      setS((p) => ({ ...p, feedType: npoRestore.current ?? "Expressed breast milk (EBM)" }));
+    } else {
+      if (s.feedType && !isNpoType(s.feedType)) npoRestore.current = s.feedType;
+      setS((p) => ivFollowsTfi({ ...p, feedType: "NPO / Nil per oral", enteralMlKgDay: 0, feedVolManual: false }));
+    }
+  };
 
   /**
    * Copy the whole suggestion in. The volumes are written directly and the TFI
@@ -443,28 +491,33 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
    * take the typed volumes back over.
    */
   const useGuideline = () =>
-    setS((p) => ({
-      ...p,
-      enteralMlKgDay: guide.fields.enteralMlKgDay,
-      ivMlKgDay: guide.fields.ivMlKgDay,
-      dextrosePct: guide.fields.dextrosePct,
-      aminoAcid: guide.fields.aminoAcid,
-      lipid: guide.fields.lipid,
-      feedFreq: guide.fields.feedFreq,
-      feedIncrementMlKgDay: guide.fields.feedIncrementMlKgDay,
-      feedType: p.feedType && !/NPO|nil per oral/i.test(p.feedType) ? p.feedType : "Expressed breast milk (EBM)",
-      tfiMlKgDay: guide.fluidTarget,
-      feedPlan: undefined,
-      increaseAppliesTo: undefined,
-      feedVolManual: false,
-      ...(guide.fields.fortifierProductId
-        ? {
-            fortifierProductId: guide.fields.fortifierProductId,
-            fortificationAmount: guide.fields.fortificationAmount,
-            fortificationDosesPerDay: guide.fields.fortificationDosesPerDay,
-          }
-        : {}),
-    }));
+    setS((p) => {
+      const npo = isNpoType(p.feedType);
+      return {
+        ...p,
+        // NPO stays NPO: no feeds, and the whole fluid target runs IV.
+        enteralMlKgDay: npo ? 0 : guide.fields.enteralMlKgDay,
+        ivMlKgDay: npo ? guide.fluidTarget : guide.fields.ivMlKgDay,
+        dextrosePct: guide.fields.dextrosePct,
+        aminoAcid: guide.fields.aminoAcid,
+        lipid: guide.fields.lipid,
+        feedFreq: guide.fields.feedFreq,
+        feedIncrementMlKgDay: guide.fields.feedIncrementMlKgDay,
+        feedType: npo ? "NPO / Nil per oral" : p.feedType && !isNpoType(p.feedType) ? p.feedType : "Expressed breast milk (EBM)",
+        tfiMlKgDay: guide.fluidTarget,
+        feedPlan: undefined,
+        increaseAppliesTo: undefined,
+        feedVolManual: false,
+        ivManual: undefined,
+        ...(guide.fields.fortifierProductId && !npo
+          ? {
+              fortifierProductId: guide.fields.fortifierProductId,
+              fortificationAmount: guide.fields.fortificationAmount,
+              fortificationDosesPerDay: guide.fields.fortificationDosesPerDay,
+            }
+          : {}),
+      };
+    });
 
   /* --------------------------- advance the feeds ------------------------- */
 
@@ -473,8 +526,17 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
   const currentEnteral = s.enteralMlKgDay ?? 0;
   const currentIv = s.ivMlKgDay ?? 0;
   const fullFeedsCap = guide.band?.fullFeeds ?? 150;
-  const nextEnteral = Math.min(250, currentEnteral + stepMlKgDay);
-  const nextIv = Math.max(0, currentIv - stepMlKgDay);
+  // The advance is capped by the TFI when one is set: feeds can never step
+  // past the target, they fill it. Without a TFI the 250 ceiling applies.
+  const tfiTarget = s.tfiMlKgDay !== undefined && s.tfiMlKgDay > 0 ? s.tfiMlKgDay : undefined;
+  const advanceCap = Math.min(tfiTarget ?? 250, 250);
+  const feedsFillTfi = tfiTarget !== undefined && currentEnteral >= advanceCap;
+  const nextEnteral = Math.min(advanceCap, currentEnteral + stepMlKgDay);
+  const stepApplied = Math.max(0, nextEnteral - currentEnteral);
+  const nextIv =
+    tfiTarget !== undefined && s.ivManual !== true
+      ? Math.max(0, round2(tfiTarget - nextEnteral))
+      : Math.max(0, currentIv - stepApplied);
   const perFeedOf = (mlkgday: number) => (feedsToday && wt > 0 ? round2((mlkgday * wt) / feedsToday) : undefined);
   const mlHOf = (mlkgday: number) => (wt > 0 ? round1((mlkgday * wt) / 24) : undefined);
 
@@ -488,24 +550,34 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
 
   const hasToleranceIssue = (s.feedsHeldToday ?? 0) > 0 || (s.residualMl ?? 0) > 2;
 
-  /** One tap: feeds step up, the IV weans by the same amount. */
+  /** One tap: feeds step up (never past the TFI), the IV weans to match — today. */
   const advanceFeeds = () => {
-    setS((p) => ({
-      ...p,
-      enteralMlKgDay: Math.min(250, (p.enteralMlKgDay ?? 0) + stepMlKgDay),
-      ivMlKgDay: Math.max(0, (p.ivMlKgDay ?? 0) - stepMlKgDay),
-      feedVolManual: false,
-      feedIncrementMlKgDay: stepMlKgDay,
-      // If passing the fortification threshold (100 ml/kg/day), prime the
-      // guideline fortifier once, if not already set.
-      ...(nextEnteral >= 100 && !p.fortifierProductId && guide.fields.fortifierProductId
-        ? {
-            fortifierProductId: guide.fields.fortifierProductId,
-            fortificationAmount: guide.fields.fortificationAmount ?? 1,
-            fortificationDosesPerDay: guide.fields.fortificationDosesPerDay ?? 8,
-          }
-        : {}),
-    }));
+    setS((p) => {
+      const feeds = p.enteralMlKgDay ?? 0;
+      const cap = Math.min(tfiTarget ?? 250, 250);
+      const enteralNext = Math.min(cap, feeds + stepMlKgDay);
+      const applied = Math.max(0, enteralNext - feeds);
+      const ivNext =
+        tfiTarget !== undefined && p.ivManual !== true
+          ? Math.max(0, round2(tfiTarget - enteralNext))
+          : Math.max(0, (p.ivMlKgDay ?? 0) - applied);
+      return {
+        ...p,
+        enteralMlKgDay: enteralNext,
+        ivMlKgDay: ivNext,
+        feedVolManual: false,
+        feedIncrementMlKgDay: stepMlKgDay,
+        // If passing the fortification threshold (100 ml/kg/day), prime the
+        // guideline fortifier once, if not already set.
+        ...(enteralNext >= 100 && !p.fortifierProductId && guide.fields.fortifierProductId
+          ? {
+              fortifierProductId: guide.fields.fortifierProductId,
+              fortificationAmount: guide.fields.fortificationAmount ?? 1,
+              fortificationDosesPerDay: guide.fields.fortificationDosesPerDay ?? 8,
+            }
+          : {}),
+      };
+    });
   };
 
   const setProtocolValue = (key: keyof ProtocolOverrides) => (v: number | undefined) =>
@@ -652,7 +724,8 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             } ml/h`
           : undefined
       : undefined;
-  const guidanceTone = liveTotal < (tfi ?? 0) ? "text-cyan-200" : "text-rose-200";
+  const guidanceTone =
+    liveTotal < (tfi ?? 0) ? "text-cyan-200" : tfi !== undefined && tfi > 0 && (liveTotal - tfi) / tfi > 0.15 ? "text-rose-200" : "text-amber-200";
 
   const feedsPreview =
     perFeedOf(currentEnteral) !== undefined
@@ -731,7 +804,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             {clockLabel !== undefined && (
               <span
                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                  feedOverdue ? "border-rose-400/40 bg-rose-400/10 text-rose-100" : "border-white/15 bg-white/5 text-slate-200"
+                  feedOverdue ? "border-amber-400/40 bg-amber-400/10 text-amber-100" : "border-white/15 bg-white/5 text-slate-200"
                 }`}
               >
                 {clockLabel}
@@ -756,7 +829,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </div>
         )}
         {missingWeight && (
-          <p className="mt-2 flex items-start gap-2 rounded-lg border border-rose-400/30 bg-rose-400/10 p-2 text-[11px] leading-relaxed text-rose-100">
+          <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-[11px] leading-relaxed text-amber-100">
             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
             <span>
               No weight on record, so nothing here can be dosed &mdash; the targets fall back to {nutrition.targetsBasis}.
@@ -774,12 +847,41 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
           </p>
         )}
 
-        {/* --- the four steps ---------------------------------------------- */}
+        {/* --- the five steps ---------------------------------------------- */}
         <div className="mt-3 grid gap-3">
-          {/* ① Feeds and ② IV fluids sit side by side on wide screens */}
-          <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-            {/* ① Feeds */}
-            <Step n={1} title="Feeds" sub="what goes in, and how often">
+          {/* ① TFI, ② Feeds and ③ IV fluids sit in one row on wide screens */}
+          <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+            {/* ① Total fluids (TFI) */}
+            <div className="lg:col-span-3">
+              <Step n={1} title="Total fluids (TFI)" sub="the day's target — feeds + IV">
+                <NumField
+                  label="TFI target ml/kg/day"
+                  value={s.tfiMlKgDay}
+                  onChange={setTfi}
+                  min={0}
+                  max={250}
+                  step={5}
+                  placeholder="e.g 150"
+                />
+                <button
+                  type="button"
+                  className="mt-1 text-[10px] font-bold text-cyan-200 underline"
+                  onClick={() => setTfi(guide.fluidTarget)}
+                >
+                  use the guideline&apos;s {guide.fluidTarget}
+                </button>
+                {guidance && <p className={`mt-2 text-[11px] font-semibold ${guidanceTone}`}>{guidance}</p>}
+              </Step>
+            </div>
+            {/* ② Feeds */}
+            <div className="lg:col-span-5">
+            <Step
+              n={2}
+              title="Feeds"
+              sub="what goes in, and how often"
+              right={<Chip label="NPO — nil by mouth" tone="amber" on={isNpo} onClick={toggleNpo} />}
+            >
+            <fieldset disabled={isNpo} className={`m-0 min-w-0 border-0 p-0 ${isNpo ? "opacity-40" : ""}`}>
             <div className="grid gap-2 sm:grid-cols-3">
               <NumField
                 label="Per feed ml"
@@ -848,10 +950,13 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                 </select>
               </label>
             </div>
+            </fieldset>
           </Step>
+            </div>
 
-          {/* ② IV fluids */}
-          <Step n={2} title="IV fluids" sub="the pump, and the sugar in it">
+          {/* ③ IV fluids */}
+          <div className="lg:col-span-4">
+          <Step n={3} title="IV fluids" sub="the pump, and the sugar in it">
             <div className="grid gap-2 sm:grid-cols-3">
               <NumField
                 label="Pump rate ml/hour"
@@ -866,7 +971,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               <NumField
                 label="IV ml/kg/day"
                 value={s.ivMlKgDay}
-                onChange={setNum("ivMlKgDay")}
+                onChange={setIv}
                 min={0}
                 max={250}
                 step={5}
@@ -883,12 +988,18 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
                 placeholder="—"
               />
             </div>
+            {s.ivManual === true && (s.tfiMlKgDay ?? 0) > 0 && (
+              <button type="button" className="mt-1 text-[10px] font-bold text-cyan-200 underline" onClick={followTfi}>
+                follow the TFI ({s.tfiMlKgDay})
+              </button>
+            )}
             <p className={`mt-1 text-[10px] leading-relaxed ${girTone}`}>{girLine}</p>
             </Step>
           </div>
+          </div>
 
-          {/* ③ Check the total */}
-          <Step n={3} title="Check the total" sub="feeds + IV against the TFI target">
+          {/* ④ Check the total */}
+          <Step n={4} title="Check the total" sub="feeds + IV against the TFI target">
             <div className="text-lg font-black text-white">
               Total today {trimNum(liveTotal, 1)} ml/kg/day
               {totalMlDay !== undefined ? ` ≈ ${totalMlDay} ml` : ""}
@@ -896,33 +1007,11 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             <div className="mt-2">
               <FluidSplitBar feeds={s.enteralMlKgDay ?? 0} iv={s.ivMlKgDay ?? 0} tfi={s.tfiMlKgDay} />
             </div>
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <div className="w-full sm:w-52">
-                <NumField
-                  label="TFI target ml/kg/day"
-                  value={s.tfiMlKgDay}
-                  onChange={setNum("tfiMlKgDay")}
-                  min={0}
-                  max={250}
-                  step={5}
-                  placeholder="e.g. 150"
-                />
-              </div>
-              <button
-                type="button"
-                className="mb-2 text-[10px] font-bold text-cyan-200 underline"
-                onClick={() => setField("tfiMlKgDay", guide.fluidTarget)}
-              >
-                use the guideline&apos;s {guide.fluidTarget}
-              </button>
-            </div>
-            {guidance && (
-              <p className={`mt-2 text-[11px] font-semibold ${guidanceTone}`}>{guidance}</p>
-            )}
           </Step>
 
-          {/* ④ Tomorrow: advance the feeds */}
-          <Step n={4} title="Tomorrow: advance the feeds" sub="step the feeds up and wean the IV">
+          {/* ⑤ Feed advancement — advancing applies today */}
+          <fieldset disabled={isNpo} className={`m-0 border-0 p-0 ${isNpo ? "opacity-40" : ""}`}>
+          <Step n={5} title="Feed advancement" sub="step the feeds up and wean the IV — applies today">
             <div className="flex flex-wrap items-center gap-1.5">
               <Chip label="ml/kg/day" on={stepUnit !== "mlfeed"} onClick={() => setField("feedAdvanceStepUnit", "mlkg")} />
               <Chip label="ml/feed" on={stepUnit === "mlfeed"} onClick={() => setField("feedAdvanceStepUnit", "mlfeed")} />
@@ -964,15 +1053,27 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
             <button
               type="button"
               onClick={advanceFeeds}
-              className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm transition ${
+              disabled={feedsFillTfi}
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 hasToleranceIssue
                   ? "border border-amber-500/40 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
                   : "border border-emerald-400/40 bg-emerald-500/25 text-emerald-100 hover:bg-emerald-500/35"
               }`}
-              title={hasToleranceIssue ? "Feeds held or residual high — review tolerance before advancing" : `Advance feeds by +${stepMlKgDay} ml/kg/day and wean IV`}
+              title={
+                feedsFillTfi
+                  ? "The feeds already fill the TFI — raise the TFI to advance further"
+                  : hasToleranceIssue
+                    ? "Feeds held or residual high — review tolerance before advancing"
+                    : `Advance feeds by +${stepMlKgDay} ml/kg/day and wean IV`
+              }
             >
               {hasToleranceIssue ? "⚠️ Check tolerance & advance" : `+ Advance feeds (+${trimNum(stepMlKgDay, 2)} ml/kg/d)`}
             </button>
+            {feedsFillTfi && (
+              <p className="mt-1 text-[10px] text-amber-200/90">
+                The feeds already fill the TFI ({tfiTarget}) — raise the TFI in ① to advance further.
+              </p>
+            )}
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <NumField
                 label="Last residual ml"
@@ -1029,6 +1130,7 @@ export function FluidsTab({ d, patch }: { d: Detail; patch: (b: Record<string, u
               </p>
             )}
           </Step>
+          </fieldset>
         </div>
 
         {nutrition.warnings.length > 0 && (

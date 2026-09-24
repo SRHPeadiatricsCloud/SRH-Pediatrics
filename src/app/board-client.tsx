@@ -144,7 +144,7 @@ export default function BoardClient() {
                 <HeartPulse size={32} strokeWidth={2.2} aria-label="PICU" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/icons/icon-512.png?v=3.14.0" alt="" className="h-full w-full object-contain" />
+                <img src="/icons/icon-512.png?v=3.15.0" alt="" className="h-full w-full object-contain" />
               )}
             </div>
             <div className="min-w-0">
@@ -206,7 +206,7 @@ export default function BoardClient() {
           <Stat label="NIV / O₂" value={counts.cpap} icon={<Wind size={18} />} iconTone="text-cyan-300" tone="text-cyan-300" />
           <Stat label="Open actions" value={counts.tasks} icon={<ListChecks size={18} />} iconTone="text-emerald-300" tone="text-emerald-300" />
           {counts.roundOverdue > 0 && (
-            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-rose-300" tone="text-rose-300" />
+            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-amber-300" tone="text-amber-300" />
           )}
         </div>
 
@@ -387,7 +387,7 @@ export default function BoardClient() {
                     Restore
                   </button>
                   <button
-                    className="btn-ghost !py-1 text-[11px] text-rose-300"
+                    className="btn-ghost !py-1 text-[11px] text-slate-400 hover:text-rose-300"
                     onClick={async () => {
                       if (!window.confirm(`Permanently erase ${b.babyName}? A local backup is still kept.`)) return;
                       await api(`/api/babies/${b.id}?permanent=1`, "DELETE");
@@ -512,7 +512,7 @@ function BabyCard({
       <button
         type="button"
         title="Delete card"
-        className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-rose-400/30 bg-slate-950/70 text-sm text-rose-300 hover:bg-rose-500 hover:text-white"
+        className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-slate-950/70 text-sm text-slate-400 hover:text-rose-300"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -565,12 +565,12 @@ function BabyCard({
           const pendingItems = round.items.filter((i) => i.state === "todo");
           return (
             <div className={`mt-2.5 flex flex-wrap items-center justify-between gap-1 rounded-lg border px-2.5 py-1 text-[10px] ${
-              round.overdue > 0 ? "border-rose-500/40 bg-rose-500/10 text-rose-300" : "border-slate-800 bg-slate-900/60 text-slate-400"
+              round.overdue > 0 ? "border-amber-500/40 bg-amber-500/10 text-amber-300" : "border-slate-800 bg-slate-900/60 text-slate-400"
             }`}>
               <span className="font-semibold uppercase tracking-wider">Daily Round:</span>
               <div className="flex flex-wrap items-center gap-1.5">
                 {lateItems.map((it) => (
-                  <span key={it.key} className="rounded bg-rose-500/20 px-1 py-0.5 font-bold text-rose-200 border border-rose-500/30">
+                  <span key={it.key} className="rounded bg-amber-500/20 px-1 py-0.5 font-bold text-amber-200 border border-amber-500/30">
                     {it.label} due
                   </span>
                 ))}
@@ -657,7 +657,7 @@ function BabyCard({
           {problemsToShow.map((p) => (
             <span
               key={p.id}
-              className="rounded border border-rose-400/25 bg-rose-400/10 px-1.5 py-0.5 text-[10px] text-rose-200"
+              className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200"
             >
               {p.label}
             </span>

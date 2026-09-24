@@ -107,6 +107,8 @@ export function DailyProgressTab({
   const last3 = rows.slice(-3).map((r) => r.velocity ?? 0).filter((v) => v !== 0);
   const avgVel = last3.length ? Math.round((last3.reduce((a, b) => a + b, 0) / last3.length) * 10) / 10 : null;
   const totalGain = latest ? latest.weight - baby.birthWeight : 0;
+  // Losing up to ~10% of birth weight is expected physiology, not an alarm.
+  const totalLossPct = totalGain < 0 ? Math.round((-totalGain / baby.birthWeight) * 1000) / 10 : 0;
 
   const recordToday = async () => {
     if (!w) return;
@@ -154,7 +156,7 @@ export function DailyProgressTab({
         <Tile
           k="Total change"
           v={`${totalGain > 0 ? "+" : ""}${totalGain} g`}
-          tone={totalGain >= 0 ? "text-emerald-300" : "text-rose-300"}
+          tone={totalGain >= 0 ? "text-emerald-300" : totalLossPct > 10 ? "text-rose-300" : "text-amber-300"}
         />
         <Tile
           k="Cumulative loss (max)"
@@ -316,22 +318,16 @@ export function DailyProgressTab({
                       <td className="font-bold tabular-nums text-white">{r.weight} g</td>
                       <td className="tabular-nums text-slate-300">{r.hc ?? "—"}</td>
                       <td className="tabular-nums text-slate-300">{r.length ?? "—"}</td>
-                      <td className={`tabular-nums ${r.deltaPrev < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+                      <td className={`tabular-nums ${r.deltaPrev < 0 ? "text-amber-300" : "text-emerald-300"}`}>
                         {r.deltaPrev > 0 ? "+" : ""}
                         {r.deltaPrev} g
                       </td>
                       <td
-                        className={`tabular-nums ${
-                          (r.velocity ?? 0) >= 15
-                            ? "text-emerald-300"
-                            : (r.velocity ?? 0) < 0
-                              ? "text-rose-300"
-                              : "text-amber-300"
-                        }`}
+                        className={`tabular-nums ${(r.velocity ?? 0) >= 15 ? "text-emerald-300" : "text-amber-300"}`}
                       >
                         {r.velocity ?? "—"}
                       </td>
-                      <td className={`tabular-nums ${r.cumDelta < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+                      <td className={`tabular-nums ${r.cumDelta < 0 ? (r.cumPct < -10 ? "text-rose-300" : "text-amber-300") : "text-emerald-300"}`}>
                         {r.cumDelta > 0 ? "+" : ""}
                         {r.cumDelta} g ({r.cumPct > 0 ? "+" : ""}
                         {r.cumPct}%)

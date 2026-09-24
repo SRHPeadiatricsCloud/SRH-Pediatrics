@@ -631,7 +631,7 @@ function AdmitForm() {
                     <button
                       key={d}
                       type="button"
-                      className="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[11px] text-rose-200"
+                      className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200 hover:text-rose-200"
                       onClick={() => setDx((prev) => prev.filter((x) => x !== d))}
                       title="Remove"
                     >

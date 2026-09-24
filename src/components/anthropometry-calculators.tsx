@@ -197,7 +197,7 @@ function HologramChart({ version, metric, sex, age, value, points = [], minAge =
 
 function PointHistory({ points, onDelete }: { points: AnthropometryPoint[]; onDelete: (id: string) => void }) {
   if (!points.length) return null;
-  return <div className="flex flex-wrap gap-1.5">{points.map((p, i) => <span key={p.id ?? i} className="inline-flex items-center gap-1 rounded-full border border-rose-400/20 bg-rose-400/5 px-2 py-1 text-[10px] text-rose-100">{p.age} · {p.value}<button type="button" aria-label="Remove measurement" onClick={() => onDelete(p.id ?? "")}><Trash2 size={10} /></button></span>)}</div>;
+  return <div className="flex flex-wrap gap-1.5">{points.map((p, i) => <span key={p.id ?? i} className="inline-flex items-center gap-1 rounded-full border border-rose-400/20 bg-rose-400/5 px-2 py-1 text-[10px] text-rose-100">{p.age} · {p.value}<button type="button" className="text-slate-400 hover:text-rose-300" aria-label="Remove measurement" onClick={() => onDelete(p.id ?? "")}><Trash2 size={10} /></button></span>)}</div>;
 }
 
 function WhoTool() {

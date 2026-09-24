@@ -142,8 +142,14 @@ export function VitalsTab({
   const set = (k: string) => (n: number) => setV((p) => ({ ...p, [k]: n }));
   const useKg = d.baby.unit !== "nicu";
 
+  // Duplicated observation-log rows: the auto-save fires on every round of
+  // edits, and "Save observations" can land on top of it. Saves are serialised
+  // through a single chain, and a payload identical to the last one that saved
+  // successfully is skipped, so one round of vitals stays one row.
+  const vitalsChain = useRef<Promise<void>>(Promise.resolve());
+  const lastSavedVitals = useRef<string | null>(null);
+
   const saveVitals = useCallback(async () => {
-    setSaving(true);
     // Auto-derive MAP from SBP/DBP when not entered, so BP always stores fully.
     const autoMap =
       v.map != null && v.map !== 0
@@ -151,15 +157,25 @@ export function VitalsTab({
         : v.sbp != null && v.dbp != null
           ? Math.round((v.sbp + 2 * v.dbp) / 3)
           : undefined;
+    const payload = {
+      ...v,
+      map: autoMap,
+      painScale,
+      painRaw,
+      painScore: Math.round(painRaw),
+      recordedBy: user || "Nurse",
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSavedVitals.current) return;
+    setSaving(true);
     try {
-      await api(`/api/babies/${id}/vitals`, "POST", {
-        ...v,
-        map: autoMap,
-        painScale,
-        painRaw,
-        painScore: Math.round(painRaw),
-        recordedBy: user || "Nurse",
+      const run = vitalsChain.current.catch(() => undefined).then(async () => {
+        if (serialized === lastSavedVitals.current) return;
+        await api(`/api/babies/${id}/vitals`, "POST", payload);
+        lastSavedVitals.current = serialized;
       });
+      vitalsChain.current = run;
+      await run;
     } finally {
       setSaving(false);
     }
@@ -640,7 +656,7 @@ export function ProblemsTab({ d, id, reload, user }: { d: Detail; id: string; re
                     Re-open
                   </button>
                 )}
-                <button className="btn-ghost !px-2.5 !py-1 text-[11px] text-rose-300" onClick={() => remove(p)}>
+                <button className="btn-ghost !px-2.5 !py-1 text-[11px] text-slate-400 hover:text-rose-300" onClick={() => remove(p)}>
                   Remove
                 </button>
               </div>
@@ -706,7 +722,7 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
               <div className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 text-slate-100">{x.name}{x.dose ? ` - ${x.dose}` : ""}</span>
                 {x.ofDays !== undefined && <span className="shrink-0 text-amber-200">D{currentDrugDay(x)}/{x.ofDays}</span>}
-                <button className="shrink-0 text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
+                <button className="shrink-0 text-slate-400 hover:text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <label className="block"><span className="lbl mb-1 block !text-[9px]">First dose</span><input className="inp !min-h-0 !py-1 text-[11px]" type="datetime-local" value={localDateTimeValue(x.startedAt)} onChange={(event) => updateDrug(i, { startedAt: isoFromDateTimeInput(event.target.value), dayOverride: undefined })} /></label>
@@ -1099,7 +1115,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
                   />
                   <button
                     type="button"
-                    className="shrink-0 text-rose-300 hover:text-rose-200"
+                    className="shrink-0 text-slate-400 hover:text-rose-300"
                     title="Remove"
                     onClick={() => setActions((prev) => prev.filter((_, i) => i !== index))}
                   >
