@@ -47,10 +47,12 @@ Rules:
   really a nudge is now amber or neutral: a slightly-over TFI verdict/bar/guidance, "high"
   target pills, the late-feed pill, the missing-weight notice, the TargetRow over-band, the
   board's active-problem chips, normal (≤10%) weight loss in the daily progress table, and
-  every delete/remove button (now quiet slate until hovered). The daily round — the board's
-  "Round items due" stat, the per-card round chips and the ward-rounds checklist on the baby
-  chart — is deliberately subtle neutral (no striking yellow, no pulsing red): a round item
-  being due is a nudge, not an alarm.
+  every delete/remove button (now quiet slate until hovered). The daily round keeps its
+  colour coding but wears it as an outline only — no fills, plain text: the board's
+  "Round items due" stat, the per-card round row and due/pending chips, the "N overdue"
+  and "Round complete" pills, and the ward-rounds checklist tiles on the baby chart
+  (amber border when an item is due, emerald when done — no striking yellow fill, no
+  pulsing red).
 - **Observation-log duplicates** (`src/components/baby-tabs.tsx`): vitals saves are
   serialised through a promise chain, and a payload identical to the last one that saved
   successfully is skipped, so one round of observations stays one row.

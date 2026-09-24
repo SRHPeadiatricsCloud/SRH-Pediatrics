@@ -206,7 +206,7 @@ export default function BoardClient() {
           <Stat label="NIV / O₂" value={counts.cpap} icon={<Wind size={18} />} iconTone="text-cyan-300" tone="text-cyan-300" />
           <Stat label="Open actions" value={counts.tasks} icon={<ListChecks size={18} />} iconTone="text-emerald-300" tone="text-emerald-300" />
           {counts.roundOverdue > 0 && (
-            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-slate-300" tone="text-slate-300" />
+            <Stat label="Round items due" value={counts.roundOverdue} icon={<AlertTriangle size={18} />} iconTone="text-amber-300" tone="text-amber-300" />
           )}
         </div>
 
@@ -555,7 +555,7 @@ function BabyCard({
           const round = dailyRoundBoard(b);
           if (round.overdue === 0 && round.outstanding === 0) {
             return (
-              <div className="mt-2.5 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] text-emerald-300">
+              <div className="mt-2.5 flex items-center justify-between rounded-lg border border-emerald-500/30 px-2.5 py-1 text-[10px] text-slate-300">
                 <span className="font-semibold uppercase tracking-wider">Daily Ward Round</span>
                 <span>All items up to date</span>
               </div>
@@ -565,17 +565,17 @@ function BabyCard({
           const pendingItems = round.items.filter((i) => i.state === "todo");
           return (
             <div className={`mt-2.5 flex flex-wrap items-center justify-between gap-1 rounded-lg border px-2.5 py-1 text-[10px] ${
-              round.overdue > 0 ? "border-white/10 bg-white/5 text-slate-300" : "border-slate-800 bg-slate-900/60 text-slate-400"
+              round.overdue > 0 ? "border-amber-500/40 text-slate-300" : "border-white/10 text-slate-400"
             }`}>
               <span className="font-semibold uppercase tracking-wider">Daily Round:</span>
               <div className="flex flex-wrap items-center gap-1.5">
                 {lateItems.map((it) => (
-                  <span key={it.key} className="rounded bg-white/10 px-1 py-0.5 font-bold text-slate-200 border border-white/15">
+                  <span key={it.key} className="rounded border border-amber-500/40 px-1 py-0.5 font-bold text-slate-200">
                     {it.label} due
                   </span>
                 ))}
                 {pendingItems.slice(0, 2).map((it) => (
-                  <span key={it.key} className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">
+                  <span key={it.key} className="rounded border border-white/10 px-1 py-0.5 text-slate-400">
                     {it.label} pending
                   </span>
                 ))}
