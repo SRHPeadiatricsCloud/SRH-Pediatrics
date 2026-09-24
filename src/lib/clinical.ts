@@ -175,6 +175,12 @@ export type Clinical = {
     /** Planned feed increase over the next 24 h, ml/kg/day ("increasing" plan). */
     feedIncrementMlKgDay?: number;
     /**
+     * Which unit the "Advance by" field in the Feeds tab is shown in. The step
+     * is always stored as feedIncrementMlKgDay (ml/kg/day); this only records
+     * whether the clinician is thinking in ml/kg/day or per individual feed.
+     */
+    feedAdvanceStepUnit?: "mlkg" | "mlfeed";
+    /**
      * What the increase number means:
      *  - "iv-today":       feeds run at TFI - increment and the increment is
      *                      given IV today (steps up over the next 24 h).
@@ -612,6 +618,13 @@ export type FeedPlan = {
  *  increasing + tomorrow    feeds run at the full TFI today and step up to
  *                           TFI + increment over the next 24 h
  *
+ * The plan is a legacy mechanism: it drives volumes only while a chart
+ * explicitly carries `feedPlan`. A bare `tfiMlKgDay` is just a target number
+ * — it never derives volumes on its own. The redesigned Feeds tab edits
+ * enteral and IV volumes directly (and drops `feedPlan` on save), so a plan
+ * becoming active means a legacy chart that has not been opened in the new
+ * tab yet.
+ *
  * IV fluids are always the manually entered ivMlKgDay. The plan reports what
  * IV would reconcile the day (ivSuggestedMlKgDay) but never sets it, so a
  * typed IV prescription can no longer be overwritten or silently zeroed.
@@ -638,6 +651,10 @@ export function resolveFeedPlan(
     reconciled: false,
     notes,
   };
+  // The plan is a legacy mechanism: it drives volumes only while the chart
+  // explicitly carries a feedPlan. A bare tfiMlKgDay is a target number, not a
+  // prescription — without an explicit plan it must never derive volumes.
+  if (f.feedPlan === undefined) return inactive;
   if (f.tfiMlKgDay === undefined || !(f.tfiMlKgDay > 0)) return inactive;
   if (f.tfiMlKgDay > 250) notes.push(`TFI ${f.tfiMlKgDay} ml/kg/day exceeds the 250 cap — clamped`);
   const tfi = clampMl(f.tfiMlKgDay);

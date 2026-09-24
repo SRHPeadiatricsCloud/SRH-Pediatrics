@@ -19,6 +19,54 @@ Rules:
 
 ---
 
+## 3.14.0
+
+**Novice-first Feeds & fluids redesign** (`src/components/fluids-tab.tsx`): the tab now reads
+top to bottom the way a first-week resident prescribes — one line, then four steps — instead of
+a card with a feed plan, a phase rail and a drawer of tolerance fields.
+
+### Added
+
+- **"Today in one line"** card: the whole day's prescription in one plain sentence (per-feed
+  volume, interval, milk and route, the IV pump rate and dextrose, the total, and the verdict
+  against the TFI target — "exactly the TFI target", "N short", "N OVER", "no TFI target set
+  yet", "nil by mouth", "no IV fluids"), with **Fluids / Energy / Protein** pills against their
+  target bands and a feed-due pill ("next feed in…" / "… since it was due — feed is late").
+- **Four numbered steps**: ① Feeds (`Per feed ml` ↔ `Feeds ml/kg/day` synced through interval ×
+  weight, `How often`, `What milk`, `How given`), ② IV fluids (`Pump rate ml/hour` ↔ `IV
+  ml/kg/day` bidirectional, `Dextrose %`, the GIR read in words), ③ Check the total (total in
+  ml/kg/day and ml, a feeds/IV/TFI split bar with red overflow, one `TFI target ml/kg/day` box
+  with a one-tap "use the guideline's N" link, and a guidance line for closing or undoing the
+  gap), ④ Tomorrow: advance the feeds (the advance step in **ml/kg/day or ml/feed** — stored as
+  `feedIncrementMlKgDay` with `feedAdvanceStepUnit: "mlkg" | "mlfeed"` — a cur → next preview
+  for feeds, IV and total, the **"+ Advance feeds (+N ml/kg/d)"** button that steps feeds up and
+  weans the IV by the same amount, and the tolerance record `Last residual ml`, `Feeds held
+  today`, `Last feed given` with the amber "⚠️ Check tolerance & advance" gate).
+- **`resolveFeedPlan` contract change** (`src/lib/clinical.ts`): the plan now returns inactive
+  unless `f.feedPlan` is explicitly set — a bare `tfiMlKgDay` never derives volumes. The TFI
+  target is a target number, not a prescription.
+- **Legacy feed-plan migration**: charts that still carry a Static/Increasing plan are migrated
+  once on open (`withoutLegacyPlan`) — the plan's derived enteral volume (TFI minus the running
+  IV) is written into the Feeds box, everything is editable, and the save writes
+  `feedPlan: undefined, increaseAppliesTo: undefined`. The TFI and the increment survive as the
+  plain target and tomorrow's default advance step.
+
+### Changed
+
+- "Use the guideline" writes `tfiMlKgDay = guide.fluidTarget` and the volumes directly — it
+  never arms a feed plan.
+- Saves always write `totalMlKgDay` (the live feeds + IV total), `gir`, `kcal`, `feedVol` and
+  the three `*Manual` flags.
+- The collapsed **Advanced** section gathers everything that is not day-to-day: parenteral
+  nutrition (amino acids, lipid, manual/recalculate GIR), "Against the targets" (the fluids /
+  energy / protein bars, the energy override, and the one-line guideline with its "why?"
+  bullets), the Fortification editor, the Protocol figures editor and the Feeding note. The
+  Formulation reference and Sources & Protocols stay below.
+- Removed from the UI: the Static/Increasing feed plan, "increase applies to", the second TFI /
+  frequency boxes, the phase rail, and the "Feed details & tolerance" drawer.
+- Version markers (`APP_VERSION`, worker cache name, icon/logo `?v=` query, prod-ui-verify
+  assertions) all move to **3.14.0**.
+
 ## 3.13.0
 
 Merged the Midnight Aurora / NICU operations branch (PR #14, last released as 3.12.2) with the
