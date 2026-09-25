@@ -19,6 +19,7 @@ import {
   birthWeightBand,
   dayKey,
   monthOf,
+  type MonthExtras,
   type StatBaby,
 } from "../src/lib/stats";
 
@@ -48,6 +49,9 @@ type Factory = {
   acuity?: string;
   consultant?: string;
   insurance?: string;
+  bloodGroup?: string;
+  birthLength?: number;
+  birthHc?: number;
   apgar1?: number | null;
   apgar5?: number | null;
   clinical?: StatBaby["clinical"];
@@ -64,6 +68,9 @@ const baby = (f: Factory): StatBaby => ({
   gestDays: f.gestDays ?? 0,
   birthWeight: f.birthWeight ?? 2500,
   currentWeight: f.currentWeight ?? f.birthWeight ?? 2500,
+  birthLength: f.birthLength ?? 0,
+  birthHc: f.birthHc ?? 0,
+  bloodGroup: f.bloodGroup ?? "Unknown",
   deliveryMode: f.deliveryMode ?? "NVD",
   inborn: f.inborn ?? false,
   acuity: f.acuity ?? "standard",
@@ -82,12 +89,18 @@ const b1 = baby({
   dob: at(2026, 9, 1),
   inborn: true,
   gestWeeks: 30, gestDays: 3, birthWeight: 1400, currentWeight: 1600,
+  birthLength: 41, birthHc: 28, bloodGroup: "O+",
   apgar1: 7, apgar5: 8,
   clinical: {
-    fluids: { totalMlKgDay: 150, feedType: "EBM" },
+    fluids: { totalMlKgDay: 150, feedType: "EBM", gir: 8, kcal: 80 },
     resp: { mode: "CPAP" },
-    lines: [{ name: "UVC" }],
-    eventLog: { CPAP: { date: "1/9/26" } },
+    lines: [{ name: "UVC", day: 1 }],
+    drugs: [{ name: "Caffeine" }],
+    eventLog: {
+      CPAP: { date: "1/9/26" },
+      FIRST_FEED: { date: "2/9/26", result: "EBM 2ml" },
+      BLOOD_CULTURE_1: { date: "1/9/26", result: "sent" },
+    },
     growth: [{ at: at(2026, 9, 3), weight: 1380 }],
   },
 });
@@ -98,8 +111,14 @@ const b2 = baby({
   sex: "Female",
   dob: at(2026, 8, 20),
   gestWeeks: 38, birthWeight: 2800, currentWeight: 2900,
-  deliveryMode: "LSCS", apgar5: 6,
+  birthLength: 49, birthHc: 34, bloodGroup: "A+",
+  deliveryMode: "LSCS", apgar1: 4, apgar5: 6,
   clinical: {
+    eventLog: {
+      CUS1: { date: "8/9/26", result: "normal" },
+      FULL_FEED: { date: "12/9/26", result: "full enteral" },
+      PHOTOTHERAPY: { date: "7/9/26" },
+    },
     growth: [
       { at: at(2026, 8, 21), weight: 2750 },
       { at: at(2026, 8, 23), weight: 2650 },
@@ -135,6 +154,8 @@ const b5 = baby({
   gestWeeks: 34, birthWeight: 2000, currentWeight: 2400,
   clinical: {
     resp: { mode: "HFNC" },
+    fluids: { tpn: true, feedType: "Donor milk" },
+    eventLog: { ROP1: { date: "28/9/26", result: "zone II" } },
     growth: [
       { at: at(2026, 9, 12), weight: 1950 },
       { at: at(2026, 10, 1), weight: 2400 },
@@ -154,6 +175,36 @@ const b8 = baby({ admitted: at(2026, 9, 15), unit: "picu", gestWeeks: 40, birthW
 
 const ROWS = [b1, b2, b3, b4, b5, b6, b7, b8];
 
+/* Companion records for the September window. */
+const EXTRAS: MonthExtras = {
+  vitals: [
+    { babyId: b1.id, recordedAt: at(2026, 9, 2, 8), hr: 150, rr: 55, spo2: 95, temp: 36.4, rbs: 60, urineMlKgHr: 2 },
+    { babyId: b1.id, recordedAt: at(2026, 9, 3, 8), hr: 142, rr: 48, spo2: 97, temp: 36.8, rbs: 52 },
+    { babyId: b3.id, recordedAt: at(2026, 9, 9, 8), hr: 180, rr: 70, spo2: 85, temp: 38.5, rbs: 40 },
+    { babyId: b3.id, recordedAt: at(2026, 9, 10, 8), hr: 176, spo2: 88, temp: 35.8 },
+    // Outside the September window — must never count.
+    { babyId: b1.id, recordedAt: at(2026, 10, 5, 8), hr: 160, temp: 37 },
+    // Another unit — excluded by the NICU filter.
+    { babyId: b8.id, recordedAt: at(2026, 9, 16, 8), hr: 120 },
+  ],
+  problems: [
+    { babyId: b3.id, system: "GI", label: "NEC", status: "active", onsetAt: at(2026, 9, 10) },
+    { babyId: b2.id, system: "Respiratory", label: "RDS", status: "resolved", onsetAt: at(2026, 9, 6), resolvedAt: at(2026, 9, 18) },
+    // Onset in August — not a new September problem.
+    { babyId: b6.id, system: "Respiratory", label: "TTN", status: "resolved", onsetAt: at(2026, 8, 25), resolvedAt: at(2026, 8, 28) },
+  ],
+  handovers: [
+    { babyId: b1.id, createdAt: at(2026, 9, 15, 19), acknowledgedBy: "Dr A" },
+    { babyId: b5.id, createdAt: at(2026, 9, 20, 19), acknowledgedBy: "" },
+    { babyId: b5.id, createdAt: at(2026, 10, 2, 19), acknowledgedBy: "" },
+  ],
+  tasks: [
+    { babyId: b1.id, createdAt: at(2026, 9, 4, 9), done: true },
+    { babyId: b3.id, createdAt: at(2026, 9, 9, 9), done: true },
+    { babyId: b5.id, createdAt: at(2026, 9, 25, 9), done: false },
+  ],
+};
+
 /* ------------------------------ calendar ------------------------------- */
 ok(monthDays("2026-09").length === 30, "September has 30 local days");
 ok(monthDays("2026-09")[0] === "2026-09-01", "month days start on the 1st");
@@ -168,7 +219,7 @@ ok(birthWeightBand(750) === "VLBW (750–999 g)", "weight band edge: 750 g");
 ok(birthWeightBand(2500) === "≥2500 g", "weight band edge: 2500 g");
 
 /* --------------------------- September cohort --------------------------- */
-const s = computeMonthStats(ROWS, SEP, "nicu", NOW);
+const s = computeMonthStats(ROWS, SEP, "nicu", NOW, EXTRAS);
 
 ok(s.admissions === 5, `September NICU admissions are 5 (got ${s.admissions})`);
 ok(!s.cohort.some((b) => b.status === "deleted"), "deleted charts never enter the cohort");
@@ -207,7 +258,9 @@ ok(row(s.consultants, "Dr B") === 1, "consultant tally per chart");
 ok(row(s.interventions, "CPAP") === 1, "CPAP counted once (event log or resp mode)");
 ok(row(s.interventions, "Nasal HFNC / flow") === 1, "HFNC from resp mode");
 ok(row(s.interventions, "UVC") === 1, "UVC counted");
-ok(row(s.interventions, "Antibiotics") === 1, "antibiotics from the drug list");
+ok(row(s.interventions, "Antibiotics") === 2, "antibiotics from the drug lists (b1, b3)");
+ok(row(s.interventions, "Phototherapy") === 1, "phototherapy from the event log (b2)");
+ok(row(s.interventions, "Blood culture sent") === 1, "blood culture from the event log (b1)");
 ok(row(s.interventions, "Mechanical ventilation") === 0, "no ventilations this month");
 
 /* growth & nutrition */
@@ -216,7 +269,7 @@ ok(s.growth.avgMaxLossPct === 3.9, `average max weight loss 3.9% (got ${s.growth
 ok(s.growth.avgRegainDay === 20, `average regain day 20 (got ${s.growth.avgRegainDay})`);
 ok(s.growth.avgVelocity === 6.8, `average velocity 6.8 g/kg/d (got ${s.growth.avgVelocity})`);
 ok(s.growth.avgFluidsMlKgDay === 150, "fluids snapshot from the active cohort only");
-ok(s.growth.humanMilkPct === 50, "human-milk rate over the active cohort");
+ok(s.growth.humanMilkPct === 100, "human-milk rate counts EBM and donor milk");
 
 /* outcomes */
 ok(s.outcomes.active === 2, "two still active from the cohort");
@@ -246,5 +299,65 @@ ok(o.admissions === 0, "no October admissions in the fixtures");
 const all = computeMonthStats(ROWS, SEP, "all", NOW);
 ok(row(all.admissionsByUnit, "NICU") === 5 && row(all.admissionsByUnit, "PICU") === 1, "admissions split by unit");
 ok(all.patientDays === 117, "all-units patient-days add the PICU carry-over");
+
+/* --------------------------- deep blocks (4.0) --------------------------- */
+/* vitals — September window only, NICU only */
+ok(s.vitals.observations === 4, `4 September NICU observations (got ${s.vitals.observations})`);
+ok(s.vitals.babies === 2, "observations cover two babies");
+ok(s.vitals.fever === 1, "one fever episode (38.5)");
+ok(s.vitals.hypothermia === 1, "one hypothermia episode (35.8)");
+ok(s.vitals.hypoglycemia === 1, "one hypoglycaemia (RBS 40)");
+ok(s.vitals.desaturations === 2, "two desaturations (85, 88)");
+ok(s.vitals.hr.max === 180 && s.vitals.hr.min === 142, "heart-rate range across the window");
+ok(s.vitals.avgUrine === 2, "urine output averaged");
+
+/* problems */
+ok(s.problems.newCount === 2, "two problems with September onset");
+ok(s.problems.active === 1, "NEC still active");
+ok(s.problems.resolved === 1, "RDS resolved in September");
+ok(row(s.problems.bySystem, "GI") === 1 && row(s.problems.bySystem, "Respiratory") === 1, "problems grouped by system");
+
+/* daily flow */
+ok(s.flowByDay.find((f) => f.day === "2026-09-01")?.admissions === 1, "flow chart admission on the 1st");
+ok(s.flowByDay.find((f) => f.day === "2026-09-20")?.departures === 1, "flow chart departure on the 20th");
+ok(s.flowByDay.reduce((a, f) => a + f.departures, 0) === 4, "flow departures sum to the month total");
+
+/* mortality & LOS by band */
+ok(s.mortalityByGa.find((r) => r.label === "Extremely preterm (<28 wk)")?.deaths === 1, "the ELBW death lands in the <28 wk band");
+ok(s.mortalityByGa.find((r) => r.label === "Extremely preterm (<28 wk)")?.admitted === 1, "band admits counted");
+ok(s.mortalityByWeight.find((r) => r.label === "ELBW (<750 g)")?.deaths === 1, "the death lands in the ELBW weight band");
+ok(s.losByGa.find((r) => r.label === "Term (≥37 wk)")?.avgLos === 31, "term LOS from the discharged cohort baby");
+ok(s.losByWeight.find((r) => r.label === "≥2500 g")?.avgLos === 31, "term-weight LOS matches");
+
+/* milestones & screens */
+ok(row(s.milestones, "First feed") === 1, "first feed milestone");
+ok(row(s.milestones, "Full feeds") === 1, "full feeds milestone");
+ok(row(s.screens, "Cranial ultrasound (CUS 1–3)") === 1, "CUS screen counted");
+ok(row(s.screens, "ROP screen (1–2)") === 1, "ROP screen counted");
+
+/* snapshot blocks */
+ok(row(s.respiratoryModes, "CPAP") === 1 && row(s.respiratoryModes, "HFNC") === 1, "respiratory snapshot of the active cohort");
+ok(row(s.lines, "UVC") === 1, "line names tallied");
+ok(s.drugs.babiesOnDrugs === 2, "two babies on drugs");
+ok(row(s.drugs.top, "Caffeine") === 1 && row(s.drugs.top, "Amikacin") === 1, "top drugs listed");
+ok(s.bloodGroups.length === 3, "blood groups tallied");
+ok(row(s.bloodGroups, "O+") === 1, "blood group counts");
+
+/* growth categories & feeds detail */
+ok(row(s.growthCategories, "Slow (<12 g/kg/day)") === 2, "both velocities are slow");
+ok(s.avgGir === 8 && s.avgKcal === 80, "GIR and kcal snapshot from the active cohort");
+ok(s.tpnBabies === 1, "one baby on TPN");
+
+/* demographics extras */
+ok(s.apgar1Below7 === 1, "one baby with Apgar1 < 7");
+ok(s.meanBirthLength === 45 && s.meanBirthHc === 31, "mean birth length & head circumference");
+
+/* ward activity */
+ok(s.activity.handovers === 2 && s.activity.acknowledged === 1, "September handovers, one acknowledged");
+ok(s.activity.tasksCreated === 3 && s.activity.tasksDone === 2, "September tasks, two done");
+
+/* registers for export */
+ok(s.departureRows.length === 4, "departure register holds the four babies who left");
+ok(s.cohort.length === s.admissions, "cohort feeds the admissions register");
 
 console.log(`✓ stats: ${checks} checks passed`);

@@ -19,6 +19,9 @@ export type StatBaby = Archivable & {
   gestWeeks: number;
   gestDays: number;
   birthWeight: number;
+  birthLength?: number;
+  birthHc?: number;
+  bloodGroup?: string;
   deliveryMode: string;
   inborn: boolean;
   acuity: string;
@@ -28,14 +31,46 @@ export type StatBaby = Archivable & {
   apgar5?: number | null;
   createdAt: string | Date;
   clinical?: {
-    fluids?: { totalMlKgDay?: number; feedType?: string };
+    fluids?: { totalMlKgDay?: number; feedType?: string; gir?: number; kcal?: number; tpn?: boolean; feedRoute?: string };
     resp?: { mode?: string };
-    lines?: { name: string }[];
+    lines?: { name: string; day?: number }[];
     drugs?: { name: string }[];
     growth?: { at: string; weight: number }[];
     eventLog?: Record<string, { date?: string; result?: string; starting?: string; ending?: string; notes?: string }>;
     dischargeRecord?: import("./clinical").DischargeRecord;
   } | null;
+};
+
+/** Observation row — the fields the monthly report reads from the vitals table. */
+export type StatVital = {
+  babyId: number;
+  recordedAt: string | Date;
+  hr?: number | null;
+  rr?: number | null;
+  spo2?: number | null;
+  temp?: number | null;
+  rbs?: number | null;
+  urineMlKgHr?: number | null;
+};
+
+export type StatProblem = {
+  babyId: number;
+  system: string;
+  label: string;
+  status: string;
+  onsetAt: string | Date;
+  resolvedAt?: string | Date | null;
+};
+
+export type StatHandover = { babyId: number; createdAt: string | Date; acknowledgedBy?: string | null };
+export type StatTask = { babyId: number; createdAt: string | Date; done: boolean };
+
+/** Companion records for the month window, fetched from /api/statistics. */
+export type MonthExtras = {
+  vitals?: StatVital[];
+  problems?: StatProblem[];
+  handovers?: StatHandover[];
+  tasks?: StatTask[];
 };
 
 export type CountRow = { label: string; n: number };
@@ -137,6 +172,8 @@ export type MonthStats = {
   admissionsByUnit: CountRow[];
   /** Departures that happened inside the month, whenever admitted. */
   departures: { discharged: number; transferred: number; death: number; total: number };
+  /** The actual rows that left this month — for registers and exports. */
+  departureRows: StatBaby[];
   /** Occupancy across the month. */
   census: { day: string; n: number }[];
   patientDays: number;
@@ -156,6 +193,9 @@ export type MonthStats = {
   apgar5Below7: number;
   /** Cohort interventions (event log / prescription). */
   interventions: CountRow[];
+  /** Feeding milestones & screening from the event log of the cohort. */
+  milestones: CountRow[];
+  screens: CountRow[];
   /** Cohort growth & nutrition. */
   growth: {
     withWeights: number;
@@ -185,7 +225,52 @@ export type MonthStats = {
     patientDays: number;
     avgDailyCensus: number;
   } | null;
+  /* ------------------------- deeper blocks (4.0) ------------------------ */
+  /** Observations recorded in the month window, with safety-flag counts. */
+  vitals: {
+    observations: number;
+    babies: number;
+    hr: Range;
+    rr: Range;
+    spo2: Range;
+    temp: Range;
+    fever: number;
+    hypothermia: number;
+    hypoglycemia: number;
+    desaturations: number;
+    avgUrine: number | null;
+  };
+  problems: {
+    newCount: number;
+    active: number;
+    resolved: number;
+    top: CountRow[];
+    bySystem: CountRow[];
+  };
+  /** Admissions vs departures on each day, for the flow chart. */
+  flowByDay: { day: string; admissions: number; departures: number }[];
+  /** Deaths and length of stay split by gestational-age and weight band. */
+  mortalityByGa: { label: string; admitted: number; deaths: number }[];
+  mortalityByWeight: { label: string; admitted: number; deaths: number }[];
+  losByGa: { label: string; discharged: number; avgLos: number | null }[];
+  losByWeight: { label: string; discharged: number; avgLos: number | null }[];
+  bloodGroups: CountRow[];
+  respiratoryModes: CountRow[];
+  lines: CountRow[];
+  drugs: { babiesOnDrugs: number; top: CountRow[] };
+  /** Weight-velocity categories among babies with growth series. */
+  growthCategories: CountRow[];
+  /** Ward activity: handovers and tasks in the month window. */
+  activity: { handovers: number; acknowledged: number; tasksCreated: number; tasksDone: number };
+  meanBirthLength: number | null;
+  meanBirthHc: number | null;
+  apgar1Below7: number;
+  avgGir: number | null;
+  avgKcal: number | null;
+  tpnBabies: number;
 };
+
+export type Range = { avg: number | null; min: number | null; max: number | null };
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
@@ -194,7 +279,13 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
  * `today` is injectable so tests (and month-end reports run a day early or
  * late) compute against a fixed date.
  */
-export function computeMonthStats(rows: StatBaby[], month: string, unit: string, today: Date = new Date()): MonthStats {
+export function computeMonthStats(
+  rows: StatBaby[],
+  month: string,
+  unit: string,
+  today: Date = new Date(),
+  extras: MonthExtras = {},
+): MonthStats {
   const live = rows.filter((b) => b.status !== "deleted" && (unit === "all" || b.unit === unit));
   const cohort = live.filter((b) => admissionDay(b) && monthOf(b.createdAt) === month);
 
@@ -267,6 +358,27 @@ export function computeMonthStats(rows: StatBaby[], month: string, unit: string,
     { label: "NEC", hit: (b) => logged(b.clinical, "NEC") },
   ];
   const interventions = interventionDefs.map((d) => ({ label: d.label, n: cohort.filter(d.hit).length }));
+  const milestoneDefs = [
+    { label: "First feed", keys: ["FIRST_FEED"] },
+    { label: "Full feeds", keys: ["FULL_FEED"] },
+    { label: "HMF (max strength)", keys: ["HMF"] },
+    { label: "PO feeds", keys: ["PO_FEEDS"] },
+    { label: "DBF (direct breast feed)", keys: ["DBF"] },
+    { label: "Adverse event recorded", keys: ["EVENT"] },
+  ];
+  const milestones = milestoneDefs.map((d) => ({
+    label: d.label,
+    n: cohort.filter((b) => d.keys.some((k) => logged(b.clinical, k))).length,
+  }));
+  const screenDefs = [
+    { label: "Cranial ultrasound (CUS 1–3)", keys: ["CUS1", "CUS2", "CUS3"] },
+    { label: "Echocardiogram (Echo 1–2)", keys: ["ECHO1", "ECHO2"] },
+    { label: "ROP screen (1–2)", keys: ["ROP1", "ROP2"] },
+  ];
+  const screens = screenDefs.map((d) => ({
+    label: d.label,
+    n: cohort.filter((b) => d.keys.some((k) => logged(b.clinical, k))).length,
+  }));
 
   /* ---------------------------- growth & feeds --------------------------- */
   const growthRows = cohort
@@ -358,6 +470,107 @@ export function computeMonthStats(rows: StatBaby[], month: string, unit: string,
     };
   }
 
+  /* ------------------------- deeper blocks (4.0) ------------------------ */
+  const inWindow = (iso: string | Date) => {
+    const d = dayKey(iso);
+    return d !== "" && monthOf(iso) === month && d <= todayDay;
+  };
+  const rangeOf = (vals: number[]): Range => ({
+    avg: vals.length ? r1(vals.reduce((a, b) => a + b, 0) / vals.length) : null,
+    min: vals.length ? Math.min(...vals) : null,
+    max: vals.length ? Math.max(...vals) : null,
+  });
+  const liveIds = new Set(live.map((b) => b.id));
+
+  const obs = (extras.vitals ?? []).filter((v) => liveIds.has(v.babyId) && inWindow(v.recordedAt));
+  const nums = (pick: (v: StatVital) => number | null | undefined) =>
+    obs.map(pick).filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+  const vitalsBlock = {
+    observations: obs.length,
+    babies: new Set(obs.map((v) => v.babyId)).size,
+    hr: rangeOf(nums((v) => v.hr)),
+    rr: rangeOf(nums((v) => v.rr)),
+    spo2: rangeOf(nums((v) => v.spo2)),
+    temp: rangeOf(nums((v) => v.temp)),
+    fever: nums((v) => v.temp).filter((t) => t >= 38).length,
+    hypothermia: nums((v) => v.temp).filter((t) => t < 36).length,
+    hypoglycemia: nums((v) => v.rbs).filter((r) => r < 47).length,
+    desaturations: nums((v) => v.spo2).filter((s) => s < 90).length,
+    avgUrine: avg(nums((v) => v.urineMlKgHr)),
+  };
+
+  const probs = (extras.problems ?? []).filter((p) => liveIds.has(p.babyId));
+  const newProblems = probs.filter((p) => inWindow(p.onsetAt));
+  const problemsBlock = {
+    newCount: newProblems.length,
+    active: probs.filter((p) => p.status !== "resolved").length,
+    resolved: probs.filter((p) => p.status === "resolved" && p.resolvedAt && inWindow(p.resolvedAt)).length,
+    top: tally(newProblems.map((p) => p.label)).slice(0, 8),
+    bySystem: tally(newProblems.map((p) => p.system || "Other")),
+  };
+
+  const flowByDay = days.map((day) => ({
+    day,
+    admissions: cohort.filter((b) => admissionDay(b) === day).length,
+    departures: leftInMonth.filter((b) => dischargeDay(b) === day).length,
+  }));
+
+  const gaOf = (b: StatBaby) => b.gestWeeks + (b.gestDays ?? 0) / 7;
+  const losOf = (b: StatBaby) => lengthOfStayDays(b);
+  const bandOutcome = (bands: { label: string; test: (v: number) => boolean }[], value: (b: StatBaby) => number) =>
+    bands.map((band) => {
+      const inside = cohort.filter((b) => band.test(value(b)));
+      return {
+        label: band.label,
+        admitted: inside.length,
+        deaths: inside.filter((b) => b.status === "death").length,
+        discharged: inside.filter(hasLeft).length,
+        losVals: inside.filter(hasLeft).map(losOf).filter((x): x is number => x !== null),
+      };
+    });
+  const gaOutcome = bandOutcome(GEST_BANDS, gaOf);
+  const wtOutcome = bandOutcome(WEIGHT_BANDS, (b) => b.birthWeight);
+  const mortalityByGa = gaOutcome.map(({ label, admitted, deaths }) => ({ label, admitted, deaths }));
+  const mortalityByWeight = wtOutcome.map(({ label, admitted, deaths }) => ({ label, admitted, deaths }));
+  const losByGa = gaOutcome.map(({ label, discharged, losVals }) => ({ label, discharged, avgLos: avg(losVals) }));
+  const losByWeight = wtOutcome.map(({ label, discharged, losVals }) => ({ label, discharged, avgLos: avg(losVals) }));
+
+  const bloodGroups = tally(cohort.map((b) => b.bloodGroup || "Unknown"));
+  const respiratoryModes = tally(
+    stillIn.map((b) => (b.clinical?.resp?.mode ?? "").trim() || "Room air / none"),
+  );
+  const lineNames = tally(
+    cohort.flatMap((b) => (b.clinical?.lines ?? []).map((l) => (l.name ?? "").toUpperCase().trim())).filter(Boolean),
+  );
+  const drugNames = cohort.flatMap((b) => (b.clinical?.drugs ?? []).map((d) => (d.name ?? "").trim())).filter(Boolean);
+  const drugsBlock = {
+    babiesOnDrugs: cohort.filter((b) => (b.clinical?.drugs ?? []).length > 0).length,
+    top: tally(drugNames).slice(0, 10),
+  };
+  const growthCategories = [
+    { label: "Slow (<12 g/kg/day)", n: velocities.filter((v) => v < 12).length },
+    { label: "Expected (12–20 g/kg/day)", n: velocities.filter((v) => v >= 12 && v <= 20).length },
+    { label: "Fast (>20 g/kg/day)", n: velocities.filter((v) => v > 20).length },
+  ];
+
+  const handovers = (extras.handovers ?? []).filter((h) => liveIds.has(h.babyId) && inWindow(h.createdAt));
+  const tasks = (extras.tasks ?? []).filter((t) => liveIds.has(t.babyId) && inWindow(t.createdAt));
+  const activity = {
+    handovers: handovers.length,
+    acknowledged: handovers.filter((h) => (h.acknowledgedBy ?? "").trim() !== "").length,
+    tasksCreated: tasks.length,
+    tasksDone: tasks.filter((t) => t.done).length,
+  };
+
+  const positiveVals = (pick: (b: StatBaby) => number | undefined) =>
+    cohort.map(pick).filter((x): x is number => typeof x === "number" && x > 0);
+  const meanBirthLength = avg(positiveVals((b) => b.birthLength));
+  const meanBirthHc = avg(positiveVals((b) => b.birthHc));
+  const apgar1Below7 = cohort.filter((b) => typeof b.apgar1 === "number" && b.apgar1 < 7).length;
+  const avgGir = avg(stillIn.map((b) => b.clinical?.fluids?.gir).filter((x): x is number => typeof x === "number" && x > 0));
+  const avgKcal = avg(stillIn.map((b) => b.clinical?.fluids?.kcal).filter((x): x is number => typeof x === "number" && x > 0));
+  const tpnBabies = stillIn.filter((b) => b.clinical?.fluids?.tpn === true).length;
+
   return {
     month,
     unit,
@@ -366,6 +579,7 @@ export function computeMonthStats(rows: StatBaby[], month: string, unit: string,
     admissionsByDay,
     admissionsByUnit,
     departures,
+    departureRows: leftInMonth,
     census,
     patientDays,
     avgDailyCensus,
@@ -385,8 +599,29 @@ export function computeMonthStats(rows: StatBaby[], month: string, unit: string,
     consultants,
     apgar5Below7,
     interventions,
+    milestones,
+    screens,
     growth,
     outcomes,
     prev,
+    vitals: vitalsBlock,
+    problems: problemsBlock,
+    flowByDay,
+    mortalityByGa,
+    mortalityByWeight,
+    losByGa,
+    losByWeight,
+    bloodGroups,
+    respiratoryModes,
+    lines: lineNames,
+    drugs: drugsBlock,
+    growthCategories,
+    activity,
+    meanBirthLength,
+    meanBirthHc,
+    apgar1Below7,
+    avgGir,
+    avgKcal,
+    tpnBabies,
   };
 }

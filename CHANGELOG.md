@@ -19,6 +19,53 @@ Rules:
 
 ---
 
+## 4.0.0
+
+**Deep month-end statistics — every extractable parameter, with Excel & PDF export.**
+
+### Added
+
+- **Deep statistics engine** (`src/lib/stats.ts`, now `computeMonthStats` with a
+  `MonthExtras` feed): alongside the existing census, demographics and outcomes, the
+  month-end report now reads the observations table, the problems list, handovers and
+  tasks, and every event-log milestone — so every parameter the charts capture can be
+  reported.
+- **Observations & monitoring**: observation count and babies monitored, heart rate,
+  respiratory rate, SpO₂ and temperature ranges (avg/min/max), plus safety flags —
+  fever ≥38 °C, hypothermia <36 °C, hypoglycaemia (RBS <47), desaturations (SpO₂ <90)
+  and average urine output.
+- **Problems**: new problems this month (top labels and by system), still-active and
+  resolved counts.
+- **Patient flow chart**: admissions (up) versus departures (down) drawn around a centre
+  line for each day of the month, beside the census curve.
+- **Outcomes by band**: mortality and average length of stay split by gestational-age
+  band (extremely/very/moderate–late preterm/term) and birth-weight band
+  (ELBW/VLBW/LBW/1500–2499/≥2500 g).
+- **Feeding milestones & screening** from the event log: first feed, full feeds, HMF,
+  PO feeds, DBF, adverse events, cranial ultrasound, echocardiogram and ROP screens.
+- **Richer cohort detail**: blood groups, mean birth length & head circumference,
+  Apgar 1′ < 7, respiratory support snapshot, lines in situ, top medications,
+  weight-velocity categories (slow/expected/fast), GIR, kcal and TPN among the active
+  cohort, plus handover/task activity and an admissions register table.
+- **Excel export** (`src/app/statistics/xlsx.ts`, lazy-loaded SheetJS): one workbook with
+  Overview, Daily census & flow, Demographics, Interventions & events, Growth &
+  nutrition, Vitals & problems, Outcomes by band and Admissions register sheets —
+  ready for the hospital's monthly audit trail.
+- **PDF export**: the report's Export PDF button prints the page through the browser,
+  so the census curve, flow chart and every bar export exactly as drawn.
+- **Data endpoint** (`src/app/api/statistics?month=YYYY-MM`): returns the charts plus
+  the observations, problems, handovers and tasks for the month window; the numbers are
+  computed client-side by the unit-tested engine. All dates stay on the local calendar
+  day. The statistics engine is now covered by **106 hand-counted checks**
+  (`scripts/test-stats.ts`).
+
+### Changed
+
+- **Version 4.0.0** — a major release: `APP_VERSION`, the service worker, asset
+  cache-busters and the prod-ui-verify checks all move to `4.0.0`.
+
+---
+
 ## 3.16.0
 
 **Month-end statistics — a printable monthly report beside the Keymaster list.**
