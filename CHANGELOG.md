@@ -19,6 +19,35 @@ Rules:
 
 ---
 
+## 3.16.0
+
+**Month-end statistics — a printable monthly report beside the Keymaster list.**
+
+### Added
+
+- **Statistics tab** (`src/app/statistics/page.tsx`, linked in the top navigation right
+  after the Keymaster list): a month-end report for any month and any unit (or all units),
+  ready to print or save as a PDF for the monthly review.
+- **Census & patient flow**: the daily census curve for the whole month, patient-days,
+  average and peak daily census, end-of-month census, admissions by day and by unit, and the
+  current occupancy per unit.
+- **Every assessable parameter of the cohort admitted that month**: sex, inborn/outborn,
+  gestational-age bands (extremely/very/moderate–late preterm/term), birth-weight bands
+  (ELBW/VLBW/LBW/≥2500 g), delivery mode, admission acuity, Apgar 5′ < 7, insurance,
+  consultant, and the interventions recorded for them — ventilation, CPAP, HFNC, surfactant,
+  caffeine, phototherapy, UVC, PICC, blood cultures, antibiotics, NS boluses, NEC.
+- **Growth & nutrition**: average maximum weight loss, average day to regain birth weight,
+  average weight velocity (g/kg/day), the active cohort's current fluids (ml/kg/day) and
+  human-milk rate.
+- **Overall progress**: where each admitted baby is now (still in / home / transferred /
+  death), mortality and survival-to-discharge rates, average length of stay and discharge
+  weight, all set beside the previous month's figures with up/down trend marks.
+- **Stats engine** (`src/lib/stats.ts`): the pure month math behind the page, covered by
+  65 hand-counted assertions in `scripts/test-stats.ts`. All dates are local calendar days —
+  the same convention as the discharge archive — and deleted charts never count.
+
+---
+
 ## 3.15.0
 
 **TFI beside feeds & IV, same-day advancement, NPO switch, calmer palette.**
