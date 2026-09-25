@@ -4,7 +4,7 @@
  * figures as the on-screen report, with numerators and denominators intact —
  * nothing is invented where data was never captured.
  */
-import { downloadXlsx } from "../statistics/xlsx-helpers";
+import { downloadXlsx } from "./xlsx-helpers";
 import type { AnalyticsReport, CountRow } from "@/lib/analytics";
 
 type Cell = string | number | null;

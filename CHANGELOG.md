@@ -19,6 +19,14 @@ Rules:
 
 ---
 
+## 4.1.1 — 2026-09-25
+
+- Merged the month-end Statistics report and the Unit QI scorecard under a
+  single **Statistics & QI** tab: the page has a segmented switcher between
+  the two reports; each keeps its own toolbar and Excel export. `/analytics`
+  now redirects to `/statistics` so existing links keep working. No data or
+  engine changes — reorganization only.
+
 ## 4.1.0
 
 **Level III-B NICU analytics & quality-improvement system.**
