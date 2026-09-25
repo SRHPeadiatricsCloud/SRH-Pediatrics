@@ -6,6 +6,7 @@ import {
   Calculator as CalculatorIcon,
   CalendarDays,
   Check,
+  LineChart,
   FolderArchive,
   GraduationCap,
   KeyRound,
@@ -700,7 +701,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=4.0.0"
+            src="/images/hospital-logo.png?v=4.1.0"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}
@@ -749,6 +750,7 @@ export function TopBar({
           <MobileNavLink href="/updates" icon={<Newspaper size={13} />}>Recent updates</MobileNavLink>
           <MobileNavLink href="/keymasters" icon={<KeyRound size={13} />}>Keymaster List</MobileNavLink>
           <MobileNavLink href="/statistics" icon={<BarChart3 size={13} />}>Statistics</MobileNavLink>
+          <MobileNavLink href="/analytics" icon={<LineChart size={13} />}>Analytics &amp; QI</MobileNavLink>
         </div>
         {/* soft edge fades hint at scrollable content on small screens */}
         <span className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-slate-950/90 to-transparent md:hidden" />

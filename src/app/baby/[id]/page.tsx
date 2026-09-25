@@ -47,6 +47,7 @@ import {
   HandoverTab,
   LabsTab,
   ProblemsTab,
+  QITab,
   RespTab,
   TimelineTab,
   VitalsTab,
@@ -152,6 +153,7 @@ const TABS = [
   "Handover",
   "Timeline",
   "Event Log",
+  "QI data",
 ] as const;
 
 export default function BabyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -379,6 +381,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         {tab === "Handover" && <HandoverTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Timeline" && <TimelineTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Event Log" && <EventLogTab d={data} id={id} reload={reload} user={name} patch={patch} />}
+        {tab === "QI data" && <QITab d={data} patch={patch} />}
       </div>
     </main>
   );

@@ -19,6 +19,53 @@ Rules:
 
 ---
 
+## 4.1.0
+
+**Level III-B NICU analytics & quality-improvement system.**
+
+### Added
+
+- **Analytics & QI tab** (`src/app/analytics/page.tsx`, in the top navigation beside
+  Statistics): a unit-wide scorecard over every recorded chart, following the
+  quality-improvement framework end to end — data quality → activity → case mix →
+  mortality → risk adjustment → every morbidity domain → LOS & discharge → monthly
+  trends → the quality-indicator dashboard → Pareto, subgroups and declared data gaps.
+- **Analytics engine** (`src/lib/analytics.ts`): one pure, unit-tested function turns
+  the raw store (charts, observations, problems) into the report. Nothing is invented —
+  a field never recorded shows up as a coverage gap, and every rate carries its
+  numerator and denominator. Covered by **112 hand-counted checks**
+  (`scripts/test-analytics.ts`).
+- **QI domain & calculators** (`src/lib/qi.ts`): CRIB-II (published point table,
+  levels I–IV; scores without a recorded admission temperature or base excess are
+  flagged incomplete, never estimated), the fine gestational-age (<24 … ≥37 wk) and
+  birth-weight (<500 … ≥2500 g) bands, SGA/AGA/LGA against the bundled Fenton 2013
+  reference, ROP screening eligibility (≤34 wk or ≤1750 g), and published reference
+  values for the indicator dashboard.
+- **QI data tab on each baby chart** (`src/components/baby-tabs.tsx`): structured
+  capture for everything the free-text chart never could — antenatal steroids, first-hour
+  temperature and base excess (with a live CRIB-II readout), IVH grade/PVL/seizures,
+  ventilator/CPAP/oxygen days and support at 36 weeks PMA, EOS/LOS/CLABSI with
+  antibiotic days, line days, transfusions, feeding days, KMC, ROP stage/zone/treatment,
+  discharge PMA and 28-day readmission. These fields feed the Analytics report going
+  forward.
+- **Data-quality scorecard**: record & duplicate counts, missing-value percentages for
+  every key variable, and implausible-value flags (gestation outside 22–44 wk, birth
+  weight outside 300–6000 g, Apgar >10, discharge before admission, death without a
+  discharge record, temperatures outside 30–43 °C).
+- **Quality-indicator dashboard**: outcome, process and safety indicators with
+  numerator/denominator, the published reference and an automatic review flag
+  (mortality, admission normothermia, antenatal steroids, severe IVH, BPD, NEC, CLABSI,
+  ROP screening compliance, human milk, KMC, antibiotic exposure).
+- **Exports**: the Analytics report exports to a 14-sheet Excel workbook (lazy-loaded
+  SheetJS) and to PDF through the browser print path with all charts.
+
+### Changed
+
+- **Version 4.1.0** — `APP_VERSION`, the service worker, asset cache-busters and the
+  prod-ui-verify checks all move to `4.1.0`.
+
+---
+
 ## 4.0.0
 
 **Deep month-end statistics — every extractable parameter, with Excel & PDF export.**
