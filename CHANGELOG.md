@@ -19,6 +19,16 @@ Rules:
 
 ---
 
+## 4.1.2 — 2026-09-26
+
+- Fixed the top navigation being unreachable on Windows desktops: the tab
+  strip relied on a hidden horizontal scroll, so tabs at the right end could
+  not be reached with a mouse. The main tabs (Unit board, New admission, By
+  consultant, Shift sheet, Discharge archive, Drugs & doses, Calculators,
+  Duty roster, Learning space) now stay visible, and the remaining sections
+  (Recent updates, Keymaster List, Statistics & QI) are grouped under a
+  **More** dropdown menu.
+
 ## 4.1.1 — 2026-09-25
 
 - Merged the month-end Statistics report and the Unit QI scorecard under a
