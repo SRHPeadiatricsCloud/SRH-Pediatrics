@@ -19,6 +19,15 @@ Rules:
 
 ---
 
+## 4.1.5 — 2026-09-26
+
+- Removed the slide (range slider) from every numeric input. The shared
+  stepper control rendered a thin slider under each number field; on touch
+  screens a stray swipe nudged the value and the change auto-saved. Numbers
+  are now changed only by typing or the large − / + buttons (press-and-hold
+  still repeats), everywhere: observations, drug & dose calculators,
+  admission and edit forms.
+
 ## 4.1.4 — 2026-09-26
 
 - Fixed duplicate entries under the **Vitals & growth** tab: the observation

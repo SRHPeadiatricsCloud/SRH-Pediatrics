@@ -339,16 +339,9 @@ export function Stepper({
           +
         </button>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={v}
-        onChange={(e) => set(Number(e.target.value))}
-        disabled={disabled}
-        className="mt-1 h-1 w-full accent-cyan-400 disabled:opacity-40"
-      />
+      {/* No slide control here: a range slider under every numeric field was
+          far too sensitive on touch screens — a stray swipe changed the value
+          and auto-saved it. Values are entered by typing or the ± buttons. */}
     </div>
   );
 }
@@ -700,7 +693,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=4.1.4"
+            src="/images/hospital-logo.png?v=4.1.5"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}
