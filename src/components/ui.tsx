@@ -6,7 +6,6 @@ import {
   Calculator as CalculatorIcon,
   CalendarDays,
   Check,
-  ChevronDown,
   FolderArchive,
   GraduationCap,
   KeyRound,
@@ -20,7 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; import { createPortal } from "react-dom";
 import { EditableListField } from "@/components/editable-list";
 
@@ -701,7 +700,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=4.1.2"
+            src="/images/hospital-logo.png?v=4.1.3"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}
@@ -732,14 +731,14 @@ export function TopBar({
           <FontSizeControl />
         </div>
       </div>
-      {/* Primary navigation — the main tabs stay visible; remaining sections are
-          grouped under a "More" dropdown so nothing is hidden behind horizontal
-          scrolling on Windows/desktop. */}
+      {/* Primary navigation — every tab is always visible on the main screen:
+          the strip wraps onto multiple rows on narrow windows instead of
+          hiding items behind horizontal scrolling or a dropdown. */}
       <nav
         aria-label="Primary"
-        className="relative border-t border-white/10 bg-slate-950/70"
+        className="border-t border-white/10 bg-slate-950/70"
       >
-        <div className="mx-auto flex max-w-[1600px] items-center gap-1 overflow-x-auto whitespace-nowrap px-3 py-2 [scrollbar-width:thin]">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-1 px-3 py-2">
           <MobileNavLink href="/" icon={<LayoutGrid size={13} />}>Unit board</MobileNavLink>
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
@@ -749,7 +748,10 @@ export function TopBar({
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
           <MobileNavLink href="/roster" icon={<CalendarDays size={13} />}>Duty roster</MobileNavLink>
           <MobileNavLink href="/learning" icon={<GraduationCap size={13} />}>Learning space</MobileNavLink>
-          <MoreMenu />
+          <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 bg-white/15" />
+          <MobileNavLink href="/updates" icon={<Newspaper size={13} />}>Recent updates</MobileNavLink>
+          <MobileNavLink href="/keymasters" icon={<KeyRound size={13} />}>Keymaster List</MobileNavLink>
+          <MobileNavLink href="/statistics" icon={<BarChart3 size={13} />}>Statistics &amp; QI</MobileNavLink>
         </div>
       </nav>
     </header>
@@ -764,92 +766,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
     >
       {children}
     </Link>
-  );
-}
-
-/**
- * "More" dropdown — sections that don't fit in the primary strip are grouped
- * here so every tab is reachable with a single click on desktop (no hidden
- * horizontal scrolling required).
- */
-function MoreMenu() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const items: { href: string; label: string; icon: React.ReactNode }[] = [
-    { href: "/updates", label: "Recent updates", icon: <Newspaper size={13} /> },
-    { href: "/keymasters", label: "Keymaster List", icon: <KeyRound size={13} /> },
-    { href: "/statistics", label: "Statistics & QI", icon: <BarChart3 size={13} /> },
-  ];
-  const active = items.some((it) => (pathname ?? "").startsWith(it.href));
-
-  // Close on outside click or Escape.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("touchstart", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("touchstart", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative inline-flex shrink-0">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-          active || open
-            ? "border border-cyan-400/60 bg-cyan-400/15 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.25)]"
-            : "border border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
-        }`}
-      >
-        <span>More</span>
-        <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-40 mt-2 w-48 rounded-xl border border-white/10 bg-slate-900 p-1.5 shadow-xl shadow-black/40"
-        >
-          {items.map((it) => {
-            const isActive = (pathname ?? "").startsWith(it.href);
-            return (
-              <button
-                key={it.href}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  router.push(it.href);
-                }}
-                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition ${
-                  isActive
-                    ? "bg-cyan-400/15 text-cyan-100"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <span aria-hidden>{it.icon}</span>
-                {it.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -873,7 +789,7 @@ function MobileNavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
         active
           ? "border border-cyan-400/60 bg-cyan-400/15 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.25)]"
           : "border border-transparent text-slate-300 hover:bg-white/5 hover:text-white"

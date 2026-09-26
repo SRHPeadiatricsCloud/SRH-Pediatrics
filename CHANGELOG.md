@@ -19,6 +19,15 @@ Rules:
 
 ---
 
+## 4.1.3 — 2026-09-26
+
+- Fixed the "More" dropdown rendering as a clipped scrollable box: it was
+  positioned inside the horizontally scrollable nav strip, which trapped the
+  menu. The dropdown is removed — the navigation now simply **wraps onto
+  rows on the main screen**, so every tab (including Recent updates,
+  Keymaster List and Statistics & QI, set apart by a divider) is always
+  visible on any screen size, with no scrolling needed.
+
 ## 4.1.2 — 2026-09-26
 
 - Fixed the top navigation being unreachable on Windows desktops: the tab
