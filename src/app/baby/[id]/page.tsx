@@ -139,8 +139,9 @@ type Detail = {
 
 const TABS = [
   "Overview",
-  // Vitals and growth live together: weight is recorded during the observation
-  // round, so splitting them across two tabs meant entering it twice.
+  // Vitals and growth share one tab, but each value is entered exactly once:
+  // observation parameters in the vitals section, weight/HC/length only in the
+  // growth section (they briefly existed in both, producing duplicate entries).
   "Vitals & growth",
   "Respiratory",
   "Fluids & feeds",
@@ -362,7 +363,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         {tab === "Overview" && <Overview d={data} patch={patch} user={name} onNavigateTab={(targetTab) => setTab(targetTab as (typeof TABS)[number])} />}
         {tab === "Vitals & growth" && (
           <>
-            <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />
+            <VitalsTab d={data} id={id} reload={reload} user={name} />
             <div className="mt-6">
               <GrowthTab d={data} patch={patch} user={name} reload={reload} />
             </div>

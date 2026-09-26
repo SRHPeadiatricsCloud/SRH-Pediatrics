@@ -108,19 +108,14 @@ export function VitalsTab({
   id,
   reload,
   user,
-  patch,
 }: {
   d: Detail;
   id: string;
   reload: () => void;
   user: string;
-  patch: (b: Record<string, unknown>) => Promise<void>;
 }) {
   const last = d.vitals[0] ?? {};
   const { unit } = useTempUnit();
-  const [weight, setWeight] = useState<number | undefined>(undefined);
-  const [hc, setHc] = useState<number | undefined>(undefined);
-  const [length, setLength] = useState<number | undefined>(undefined);
   const [painScale, setPainScale] = useState(String(last.painScale ?? "NIPS"));
   const [painRaw, setPainRaw] = useState(Number(last.painRaw ?? last.painScore ?? 0));
   const [v, setV] = useState<Record<string, number>>({
@@ -141,7 +136,6 @@ export function VitalsTab({
   const [saving, setSaving] = useState(false);
   const [painOpen, setPainOpen] = useState(false);
   const set = (k: string) => (n: number) => setV((p) => ({ ...p, [k]: n }));
-  const useKg = d.baby.unit !== "nicu";
 
   // Duplicated observation-log rows: the auto-save fires on every round of
   // edits, and "Save observations" can land on top of it. Saves are serialised
@@ -184,38 +178,13 @@ export function VitalsTab({
 
   // Keep parameter entry safe when the clinician changes tabs without pressing
   // the button. The debounce groups a round of edits into one observation.
+  // Weights / HC / length are recorded once, in the growth section below —
+  // they no longer live here, which previously produced duplicate growth
+  // entries (auto-save appended one, then "Save observations" appended another).
   useAutoSave(saveVitals, v);
-
-  useAutoSave(async () => {
-    if (weight === undefined) return;
-    const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
-    const existingGrowth = d.baby.clinical?.growth ?? [];
-    const lastGrowth = existingGrowth.at(-1);
-    const sameAsLast = lastGrowth?.weight === grams && lastGrowth.hc === hc && lastGrowth.length === length;
-    const growth = sameAsLast
-      ? existingGrowth
-      : [...existingGrowth, { at: new Date().toISOString(), weight: grams, hc, length }];
-    await patch({
-      currentWeight: grams,
-      clinical: { growth, ...(length ? { birthLength: length } : {}) },
-    });
-  }, `${weight ?? ""}|${hc ?? ""}|${length ?? ""}`);
 
   const submit = async () => {
     await saveVitals();
-    if (weight) {
-      const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
-      const growth = [...(d.baby.clinical?.growth ?? []), { at: new Date().toISOString(), weight: grams, hc, length }];
-      await patch({
-        currentWeight: grams,
-        clinical: { growth, ...(length ? { birthLength: length } : {}) },
-        logEvent: {
-          kind: "growth",
-          text: `Daily weight ${useKg ? `${weight} kg` : `${grams} g`} recorded${hc ? `, HC ${hc} cm` : ""} during observation round`,
-          author: user,
-        },
-      });
-    }
     reload();
   };
 
@@ -301,25 +270,10 @@ export function VitalsTab({
           <div className="mt-3">
             <VitalsInterpretation baby={d.baby} v={v} painScale={painScale} painRaw={painRaw} />
           </div>
-          <div className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-2">
-            <div className="lbl mb-1.5">
-              Serial anthropometry - {d.baby.unit === "nicu" ? "daily weight - weekly HC & length" : d.baby.unit === "postnatal" ? "daily weight" : "weight on admission & weekly"}
-            </div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-              <WeightInput
-                label={`Weight ${useKg ? "(kg)" : "(g)"}`}
-                valueGrams={weight != null ? (useKg ? Math.round(weight * 1000) : weight) : undefined}
-                onChangeGrams={(g) => setWeight(useKg ? g / 1000 : g)}
-                neonatal={!useKg}
-              />
-              <NumField label="Head circumference (cm)" value={hc} onChange={setHc} min={20} max={60} step={0.5} decimals={1} />
-              <NumField label="Length / height (cm)" value={length} onChange={setLength} min={20} max={200} step={0.5} decimals={1} />
-            </div>
-            <p className="mt-1.5 text-[10px] text-slate-400">
-              Weigh on the same scale, same time, minimal clothing. HC and {useKg ? "length" : "height"} weekly or on
-              admission. Values save with the observation round and feed the growth chart.
-            </p>
-          </div>
+          <p className="mt-3 text-[10px] text-slate-400">
+            Daily weight, head circumference and length are recorded once in the
+            growth section below — no duplicate entry here.
+          </p>
         </Section>
       </div>
       <Section title="Observation log" sub="Most recent entries">

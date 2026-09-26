@@ -19,6 +19,16 @@ Rules:
 
 ---
 
+## 4.1.4 — 2026-09-26
+
+- Fixed duplicate entries under the **Vitals & growth** tab: the observation
+  round carried its own weight / HC / length inputs that appended to the
+  growth series twice (once on auto-save, again on "Save observations"), and
+  mirrored the inputs already present in the growth section. The vitals
+  section no longer records anthropometry — weight, HC and length are
+  entered once, in the growth section, which is the single source for the
+  growth chart.
+
 ## 4.1.3 — 2026-09-26
 
 - Fixed the "More" dropdown rendering as a clipped scrollable box: it was
