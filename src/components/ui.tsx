@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   BookOpen,
   Calculator as CalculatorIcon,
   CalendarDays,
@@ -338,16 +339,9 @@ export function Stepper({
           +
         </button>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={v}
-        onChange={(e) => set(Number(e.target.value))}
-        disabled={disabled}
-        className="mt-1 h-1 w-full accent-cyan-400 disabled:opacity-40"
-      />
+      {/* No slide control here: a range slider under every numeric field was
+          far too sensitive on touch screens — a stray swipe changed the value
+          and auto-saved it. Values are entered by typing or the ± buttons. */}
     </div>
   );
 }
@@ -699,7 +693,7 @@ export function TopBar({
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hospital-logo.png?v=3.14.0"
+            src="/images/hospital-logo.png?v=4.1.5"
             alt="Sri Ramakrishna Multi-Speciality Hospital — Dept. Of Pediatrics"
             width={48}
             height={33}
@@ -730,12 +724,14 @@ export function TopBar({
           <FontSizeControl />
         </div>
       </div>
-      {/* Primary navigation — visible on every device (horizontally scrollable on mobile/tablet) */}
+      {/* Primary navigation — every tab is always visible on the main screen:
+          the strip wraps onto multiple rows on narrow windows instead of
+          hiding items behind horizontal scrolling or a dropdown. */}
       <nav
         aria-label="Primary"
-        className="relative border-t border-white/10 bg-slate-950/70"
+        className="border-t border-white/10 bg-slate-950/70"
       >
-        <div className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto whitespace-nowrap px-3 py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-1 px-3 py-2">
           <MobileNavLink href="/" icon={<LayoutGrid size={13} />}>Unit board</MobileNavLink>
           <MobileNavLink href="/admit" icon={<UserPlus size={13} />}>New admission</MobileNavLink>
           <MobileNavLink href="/consultants" icon={<Users size={13} />}>By consultant</MobileNavLink>
@@ -745,12 +741,11 @@ export function TopBar({
           <MobileNavLink href="/calculators" icon={<CalculatorIcon size={13} />}>Calculators</MobileNavLink>
           <MobileNavLink href="/roster" icon={<CalendarDays size={13} />}>Duty roster</MobileNavLink>
           <MobileNavLink href="/learning" icon={<GraduationCap size={13} />}>Learning space</MobileNavLink>
+          <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 bg-white/15" />
           <MobileNavLink href="/updates" icon={<Newspaper size={13} />}>Recent updates</MobileNavLink>
           <MobileNavLink href="/keymasters" icon={<KeyRound size={13} />}>Keymaster List</MobileNavLink>
+          <MobileNavLink href="/statistics" icon={<BarChart3 size={13} />}>Statistics &amp; QI</MobileNavLink>
         </div>
-        {/* soft edge fades hint at scrollable content on small screens */}
-        <span className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-slate-950/90 to-transparent md:hidden" />
-        <span className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-slate-950/90 to-transparent md:hidden" />
       </nav>
     </header>
   );
@@ -787,7 +782,7 @@ function MobileNavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
         active
           ? "border border-cyan-400/60 bg-cyan-400/15 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.25)]"
           : "border border-transparent text-slate-300 hover:bg-white/5 hover:text-white"

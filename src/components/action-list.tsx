@@ -140,7 +140,7 @@ export function ActionChecklist({
                       {t.scheduledAt && (
                         <button
                           type="button"
-                          className="text-[10px] font-bold text-rose-300 hover:text-rose-200"
+                          className="text-[10px] font-bold text-slate-400 hover:text-rose-300"
                           onClick={() => onSchedule(t.id, null)}
                         >
                           clear

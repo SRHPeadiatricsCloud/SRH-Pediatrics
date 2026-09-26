@@ -144,7 +144,7 @@ export default function BoardClient() {
                 <HeartPulse size={32} strokeWidth={2.2} aria-label="PICU" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/icons/icon-512.png?v=3.14.0" alt="" className="h-full w-full object-contain" />
+                <img src="/icons/icon-512.png?v=4.1.5" alt="" className="h-full w-full object-contain" />
               )}
             </div>
             <div className="min-w-0">
@@ -387,7 +387,7 @@ export default function BoardClient() {
                     Restore
                   </button>
                   <button
-                    className="btn-ghost !py-1 text-[11px] text-rose-300"
+                    className="btn-ghost !py-1 text-[11px] text-slate-400 hover:text-rose-300"
                     onClick={async () => {
                       if (!window.confirm(`Permanently erase ${b.babyName}? A local backup is still kept.`)) return;
                       await api(`/api/babies/${b.id}?permanent=1`, "DELETE");
@@ -512,7 +512,7 @@ function BabyCard({
       <button
         type="button"
         title="Delete card"
-        className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-rose-400/30 bg-slate-950/70 text-sm text-rose-300 hover:bg-rose-500 hover:text-white"
+        className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-slate-950/70 text-sm text-slate-400 hover:text-rose-300"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -555,7 +555,7 @@ function BabyCard({
           const round = dailyRoundBoard(b);
           if (round.overdue === 0 && round.outstanding === 0) {
             return (
-              <div className="mt-2.5 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] text-emerald-300">
+              <div className="mt-2.5 flex items-center justify-between rounded-lg border border-emerald-500/30 px-2.5 py-1 text-[10px] text-slate-300">
                 <span className="font-semibold uppercase tracking-wider">Daily Ward Round</span>
                 <span>All items up to date</span>
               </div>
@@ -565,17 +565,17 @@ function BabyCard({
           const pendingItems = round.items.filter((i) => i.state === "todo");
           return (
             <div className={`mt-2.5 flex flex-wrap items-center justify-between gap-1 rounded-lg border px-2.5 py-1 text-[10px] ${
-              round.overdue > 0 ? "border-rose-500/40 bg-rose-500/10 text-rose-300" : "border-slate-800 bg-slate-900/60 text-slate-400"
+              round.overdue > 0 ? "border-rose-500/40 text-slate-300" : "border-white/10 text-slate-400"
             }`}>
               <span className="font-semibold uppercase tracking-wider">Daily Round:</span>
               <div className="flex flex-wrap items-center gap-1.5">
                 {lateItems.map((it) => (
-                  <span key={it.key} className="rounded bg-rose-500/20 px-1 py-0.5 font-bold text-rose-200 border border-rose-500/30">
+                  <span key={it.key} className="rounded border border-rose-500/40 px-1 py-0.5 font-bold text-slate-200">
                     {it.label} due
                   </span>
                 ))}
                 {pendingItems.slice(0, 2).map((it) => (
-                  <span key={it.key} className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">
+                  <span key={it.key} className="rounded border border-white/10 px-1 py-0.5 text-slate-400">
                     {it.label} pending
                   </span>
                 ))}
@@ -657,7 +657,7 @@ function BabyCard({
           {problemsToShow.map((p) => (
             <span
               key={p.id}
-              className="rounded border border-rose-400/25 bg-rose-400/10 px-1.5 py-0.5 text-[10px] text-rose-200"
+              className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200"
             >
               {p.label}
             </span>
@@ -669,10 +669,15 @@ function BabyCard({
       </Link>
 
       {b.openTasks.length > 0 && (
-        <div className="mx-4 mb-3 rounded-xl border border-white/10 bg-slate-900/40 p-2">
-          <div className="lbl mb-1 flex items-center gap-1">
+        <details open className="group mx-4 mb-3 rounded-xl border border-white/10 bg-slate-900/40 p-2">
+          <summary className="lbl flex cursor-pointer select-none list-none items-center gap-1">
             <ListTodo size={12} /> Open actions ({b.openTasks.length})
-          </div>
+            <span className="ml-auto text-[9px] font-normal normal-case tracking-normal text-slate-500">
+              <span className="group-open:hidden">show</span>
+              <span className="hidden group-open:inline">hide</span>
+            </span>
+          </summary>
+          <div className="mt-1">
           <ActionChecklist
             tasks={b.openTasks.slice(0, tasksToShowCount).map((t) => ({ ...t, done: false, doneAt: null, doneBy: "" }))}
             onSchedule={async (taskId, iso) => {
@@ -689,7 +694,8 @@ function BabyCard({
           {!showAllTasks && hasMoreTasks && (
             <p className="mt-1 text-[10px] text-slate-400">+{b.openTasks.length - 2} more actions — expand to see</p>
           )}
-        </div>
+          </div>
+        </details>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2 px-4 pb-3">

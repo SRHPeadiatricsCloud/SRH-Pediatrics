@@ -8,6 +8,7 @@ import { GrowthFlagsRow, LabsInterpretation, RespInterpretation, VitalsInterpret
 import { interpretVitals, type VitalsInput } from "@/lib/interpret";
 import { PainScoreCalculator } from "@/components/pain-scores";
 import { EditableListField } from "@/components/editable-list";
+import { crib2 } from "@/lib/qi";
 import {
   ACTION_PRESETS,
   CARE_BUNDLE,
@@ -107,19 +108,14 @@ export function VitalsTab({
   id,
   reload,
   user,
-  patch,
 }: {
   d: Detail;
   id: string;
   reload: () => void;
   user: string;
-  patch: (b: Record<string, unknown>) => Promise<void>;
 }) {
   const last = d.vitals[0] ?? {};
   const { unit } = useTempUnit();
-  const [weight, setWeight] = useState<number | undefined>(undefined);
-  const [hc, setHc] = useState<number | undefined>(undefined);
-  const [length, setLength] = useState<number | undefined>(undefined);
   const [painScale, setPainScale] = useState(String(last.painScale ?? "NIPS"));
   const [painRaw, setPainRaw] = useState(Number(last.painRaw ?? last.painScore ?? 0));
   const [v, setV] = useState<Record<string, number>>({
@@ -140,10 +136,15 @@ export function VitalsTab({
   const [saving, setSaving] = useState(false);
   const [painOpen, setPainOpen] = useState(false);
   const set = (k: string) => (n: number) => setV((p) => ({ ...p, [k]: n }));
-  const useKg = d.baby.unit !== "nicu";
+
+  // Duplicated observation-log rows: the auto-save fires on every round of
+  // edits, and "Save observations" can land on top of it. Saves are serialised
+  // through a single chain, and a payload identical to the last one that saved
+  // successfully is skipped, so one round of vitals stays one row.
+  const vitalsChain = useRef<Promise<void>>(Promise.resolve());
+  const lastSavedVitals = useRef<string | null>(null);
 
   const saveVitals = useCallback(async () => {
-    setSaving(true);
     // Auto-derive MAP from SBP/DBP when not entered, so BP always stores fully.
     const autoMap =
       v.map != null && v.map !== 0
@@ -151,15 +152,25 @@ export function VitalsTab({
         : v.sbp != null && v.dbp != null
           ? Math.round((v.sbp + 2 * v.dbp) / 3)
           : undefined;
+    const payload = {
+      ...v,
+      map: autoMap,
+      painScale,
+      painRaw,
+      painScore: Math.round(painRaw),
+      recordedBy: user || "Nurse",
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSavedVitals.current) return;
+    setSaving(true);
     try {
-      await api(`/api/babies/${id}/vitals`, "POST", {
-        ...v,
-        map: autoMap,
-        painScale,
-        painRaw,
-        painScore: Math.round(painRaw),
-        recordedBy: user || "Nurse",
+      const run = vitalsChain.current.catch(() => undefined).then(async () => {
+        if (serialized === lastSavedVitals.current) return;
+        await api(`/api/babies/${id}/vitals`, "POST", payload);
+        lastSavedVitals.current = serialized;
       });
+      vitalsChain.current = run;
+      await run;
     } finally {
       setSaving(false);
     }
@@ -167,38 +178,13 @@ export function VitalsTab({
 
   // Keep parameter entry safe when the clinician changes tabs without pressing
   // the button. The debounce groups a round of edits into one observation.
+  // Weights / HC / length are recorded once, in the growth section below —
+  // they no longer live here, which previously produced duplicate growth
+  // entries (auto-save appended one, then "Save observations" appended another).
   useAutoSave(saveVitals, v);
-
-  useAutoSave(async () => {
-    if (weight === undefined) return;
-    const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
-    const existingGrowth = d.baby.clinical?.growth ?? [];
-    const lastGrowth = existingGrowth.at(-1);
-    const sameAsLast = lastGrowth?.weight === grams && lastGrowth.hc === hc && lastGrowth.length === length;
-    const growth = sameAsLast
-      ? existingGrowth
-      : [...existingGrowth, { at: new Date().toISOString(), weight: grams, hc, length }];
-    await patch({
-      currentWeight: grams,
-      clinical: { growth, ...(length ? { birthLength: length } : {}) },
-    });
-  }, `${weight ?? ""}|${hc ?? ""}|${length ?? ""}`);
 
   const submit = async () => {
     await saveVitals();
-    if (weight) {
-      const grams = useKg ? Math.round(weight * 1000) : Math.round(weight);
-      const growth = [...(d.baby.clinical?.growth ?? []), { at: new Date().toISOString(), weight: grams, hc, length }];
-      await patch({
-        currentWeight: grams,
-        clinical: { growth, ...(length ? { birthLength: length } : {}) },
-        logEvent: {
-          kind: "growth",
-          text: `Daily weight ${useKg ? `${weight} kg` : `${grams} g`} recorded${hc ? `, HC ${hc} cm` : ""} during observation round`,
-          author: user,
-        },
-      });
-    }
     reload();
   };
 
@@ -284,25 +270,10 @@ export function VitalsTab({
           <div className="mt-3">
             <VitalsInterpretation baby={d.baby} v={v} painScale={painScale} painRaw={painRaw} />
           </div>
-          <div className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-2">
-            <div className="lbl mb-1.5">
-              Serial anthropometry - {d.baby.unit === "nicu" ? "daily weight - weekly HC & length" : d.baby.unit === "postnatal" ? "daily weight" : "weight on admission & weekly"}
-            </div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-              <WeightInput
-                label={`Weight ${useKg ? "(kg)" : "(g)"}`}
-                valueGrams={weight != null ? (useKg ? Math.round(weight * 1000) : weight) : undefined}
-                onChangeGrams={(g) => setWeight(useKg ? g / 1000 : g)}
-                neonatal={!useKg}
-              />
-              <NumField label="Head circumference (cm)" value={hc} onChange={setHc} min={20} max={60} step={0.5} decimals={1} />
-              <NumField label="Length / height (cm)" value={length} onChange={setLength} min={20} max={200} step={0.5} decimals={1} />
-            </div>
-            <p className="mt-1.5 text-[10px] text-slate-400">
-              Weigh on the same scale, same time, minimal clothing. HC and {useKg ? "length" : "height"} weekly or on
-              admission. Values save with the observation round and feed the growth chart.
-            </p>
-          </div>
+          <p className="mt-3 text-[10px] text-slate-400">
+            Daily weight, head circumference and length are recorded once in the
+            growth section below — no duplicate entry here.
+          </p>
         </Section>
       </div>
       <Section title="Observation log" sub="Most recent entries">
@@ -422,13 +393,16 @@ export function RespTab({
           />
         </div>
       </Section>
-      <Section title="Respiratory reference (NNF / AAP)">
-        <ul className="space-y-2 text-xs text-slate-300">
+      <details className="card p-4">
+        <summary className="cursor-pointer select-none text-sm font-bold tracking-wide text-white">
+          Respiratory reference (NNF / AAP)
+        </summary>
+        <ul className="mt-2 space-y-2 text-xs text-slate-300">
           <li>• CPAP failure: FiO₂ &gt; 0.40 with PEEP 6-7, pH &lt; 7.20 with pCO₂ &gt; 60 → intubate + surfactant.</li>
           <li>• Target SpO₂ 90-95% for preterm on oxygen (AAP/NNF).</li>
           <li>• Caffeine citrate for all &lt; 32 wk / &lt; 1250 g.</li>
         </ul>
-      </Section>
+      </details>
     </div>
   );
 }
@@ -640,7 +614,7 @@ export function ProblemsTab({ d, id, reload, user }: { d: Detail; id: string; re
                     Re-open
                   </button>
                 )}
-                <button className="btn-ghost !px-2.5 !py-1 text-[11px] text-rose-300" onClick={() => remove(p)}>
+                <button className="btn-ghost !px-2.5 !py-1 text-[11px] text-slate-400 hover:text-rose-300" onClick={() => remove(p)}>
                   Remove
                 </button>
               </div>
@@ -706,7 +680,7 @@ export function DrugsTab({ d, patch }: { d: Detail; patch: (b: Record<string, un
               <div className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 text-slate-100">{x.name}{x.dose ? ` - ${x.dose}` : ""}</span>
                 {x.ofDays !== undefined && <span className="shrink-0 text-amber-200">D{currentDrugDay(x)}/{x.ofDays}</span>}
-                <button className="shrink-0 text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
+                <button className="shrink-0 text-slate-400 hover:text-rose-300" onClick={() => setDrugs((p) => p.filter((_, j) => j !== i))}>✕</button>
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <label className="block"><span className="lbl mb-1 block !text-[9px]">First dose</span><input className="inp !min-h-0 !py-1 text-[11px]" type="datetime-local" value={localDateTimeValue(x.startedAt)} onChange={(event) => updateDrug(i, { startedAt: isoFromDateTimeInput(event.target.value), dayOverride: undefined })} /></label>
@@ -1099,7 +1073,7 @@ export function HandoverTab({ d, id, reload, user }: { d: Detail; id: string; re
                   />
                   <button
                     type="button"
-                    className="shrink-0 text-rose-300 hover:text-rose-200"
+                    className="shrink-0 text-slate-400 hover:text-rose-300"
                     title="Remove"
                     onClick={() => setActions((prev) => prev.filter((_, i) => i !== index))}
                   >
@@ -1248,6 +1222,187 @@ export function TimelineTab({ d, id, reload, user }: { d: Detail; id: string; re
             );
           })}
         </ol>
+      </Section>
+    </div>
+  );
+}
+
+/* ------------------------------ QI data tab ------------------------------ */
+/**
+ * Structured quality-improvement capture. These are the fields the Analytics
+ * report needs that free-text charts cannot give: antenatal steroids, the
+ * first-hour temperature and base excess for CRIB-II, IVH grade, ROP stage,
+ * antibiotic/line/ventilator days, KMC, transfusions and readmission.
+ * Everything is optional — an untouched field stays empty and the report says
+ * "not captured" rather than guessing.
+ */
+export function QITab({ d, patch }: { d: Detail; patch: (b: Record<string, unknown>) => Promise<void> }) {
+  const qi = (d.baby.clinical as { qi?: import("@/lib/qi").QiCapture } | undefined)?.qi ?? {};
+  const [state, setState] = useState<import("@/lib/qi").QiCapture>(qi);
+  useAutoSave(() => patch({ clinical: { qi: state } }), state);
+
+  const set = <K extends keyof import("@/lib/qi").QiCapture>(group: K, patchGroup: Partial<NonNullable<import("@/lib/qi").QiCapture[K]>>) =>
+    setState((s) => ({ ...s, [group]: { ...(s[group] as object | undefined), ...patchGroup } }));
+  const get = <K extends keyof import("@/lib/qi").QiCapture>(group: K) => (state[group] ?? {}) as NonNullable<import("@/lib/qi").QiCapture[K]>;
+
+  const num = (label: string, value: number | undefined, onChange: (n: number | undefined) => void, suffix = "") => (
+    <label className="block">
+      <span className="lbl">{label}{suffix ? ` (${suffix})` : ""}</span>
+      <input
+        type="number"
+        className="inp mt-1 w-full"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+      />
+    </label>
+  );
+  const text = (label: string, value: string | undefined, onChange: (s: string) => void) => (
+    <label className="block">
+      <span className="lbl">{label}</span>
+      <input className="inp mt-1 w-full" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+  const pick = (label: string, value: string | undefined, options: string[], onChange: (s: string | undefined) => void) => (
+    <label className="block">
+      <span className="lbl">{label}</span>
+      <select className="inp mt-1 w-full" value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)}>
+        <option value="">— not recorded —</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </label>
+  );
+  const flag = (label: string, value: boolean | undefined, onChange: (b: boolean) => void) => (
+    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-slate-900/50 px-2.5 py-2 text-[11px] text-slate-200">
+      <input type="checkbox" className="accent-cyan-400" checked={value === true} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+
+  const crib = crib2({
+    sex: d.baby.sex,
+    gestWeeks: d.baby.gestWeeks,
+    birthWeightG: d.baby.birthWeight,
+    tempC: get("admission").tempC,
+    baseExcess: get("admission").baseExcess,
+  });
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <Section title="Antenatal & maternal" sub="Recorded at admission — drives steroid coverage and case-mix reporting">
+        <div className="grid grid-cols-2 gap-2">
+          {pick("Antenatal steroids", get("antenatal").steroids, ["none", "partial", "complete"], (v) => set("antenatal", { steroids: v as "none" | "partial" | "complete" | undefined }))}
+          <div />
+          {flag("Magnesium sulfate", get("antenatal").mgso4, (b) => set("antenatal", { mgso4: b }))}
+          {flag("Maternal hypertension", get("antenatal").hypertension, (b) => set("antenatal", { hypertension: b }))}
+          {flag("Maternal diabetes", get("antenatal").diabetes, (b) => set("antenatal", { diabetes: b }))}
+          {flag("PPROM", get("antenatal").pprom, (b) => set("antenatal", { pprom: b }))}
+          {flag("Chorioamnionitis", get("antenatal").chorioamnionitis, (b) => set("antenatal", { chorioamnionitis: b }))}
+          {flag("Fetal growth restriction", get("antenatal").fgr, (b) => set("antenatal", { fgr: b }))}
+          {flag("Congenital anomaly", get("antenatal").congenitalAnomaly, (b) => set("antenatal", { congenitalAnomaly: b }))}
+        </div>
+        <div className="mt-2">{text("Anomaly note", get("antenatal").anomalyNote, (v) => set("antenatal", { anomalyNote: v }))}</div>
+      </Section>
+
+      <Section
+        title="First hour & resuscitation"
+        sub="Feeds the CRIB-II risk score and admission normothermia indicator"
+        right={
+          <span className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-bold text-white">
+            CRIB-II {crib.score}{crib.complete ? "" : " (incomplete)"} · level {crib.level}
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 gap-2">
+          {num("Admission temperature", get("admission").tempC, (v) => set("admission", { tempC: v }), "°C")}
+          {num("Worst base excess", get("admission").baseExcess, (v) => set("admission", { baseExcess: v }), "mmol/L")}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {flag("PPV at birth", get("admission").ppv, (b) => set("admission", { ppv: b }))}
+          {flag("Delivery-room intubation", get("admission").deliveryRoomIntubation, (b) => set("admission", { deliveryRoomIntubation: b }))}
+          {flag("Chest compressions", get("admission").chestCompressions, (b) => set("admission", { chestCompressions: b }))}
+          {flag("Epinephrine", get("admission").epinephrine, (b) => set("admission", { epinephrine: b }))}
+        </div>
+      </Section>
+
+      <Section title="Neurology" sub="Cranial ultrasound / MRI findings">
+        <div className="grid grid-cols-2 gap-2">
+          {pick("IVH grade", get("neuro").ivhGrade === undefined ? undefined : String(get("neuro").ivhGrade), ["0", "1", "2", "3", "4"], (v) => set("neuro", { ivhGrade: v === undefined ? undefined : (Number(v) as 0 | 1 | 2 | 3 | 4) }))}
+          <div />
+          {flag("PVL", get("neuro").pvl, (b) => set("neuro", { pvl: b }))}
+          {flag("Seizures", get("neuro").seizures, (b) => set("neuro", { seizures: b }))}
+          {flag("Therapeutic hypothermia", get("neuro").cooling, (b) => set("neuro", { cooling: b }))}
+        </div>
+      </Section>
+
+      <Section title="Respiratory course" sub="Durations drive ventilation and BPD indicators">
+        <div className="grid grid-cols-3 gap-2">
+          {num("Ventilator days", get("respiratory").ventDays, (v) => set("respiratory", { ventDays: v }))}
+          {num("CPAP days", get("respiratory").cpapDays, (v) => set("respiratory", { cpapDays: v }))}
+          {num("HFNC days", get("respiratory").hfncDays, (v) => set("respiratory", { hfncDays: v }))}
+          {num("Oxygen days", get("respiratory").o2Days, (v) => set("respiratory", { o2Days: v }))}
+          {num("Surfactant doses", get("respiratory").surfactantDoses, (v) => set("respiratory", { surfactantDoses: v }))}
+          {num("Extubation attempts", get("respiratory").extubationAttempts, (v) => set("respiratory", { extubationAttempts: v }))}
+          {num("Reintubations", get("respiratory").reintubations, (v) => set("respiratory", { reintubations: v }))}
+        </div>
+        <div className="mt-2">
+          {pick("Support at 36 wk PMA (BPD)", get("respiratory").o2At36Pma, ["none", "low-flow oxygen", "NIPPV/CPAP", "mechanical ventilation"], (v) => set("respiratory", { o2At36Pma: v as "none" | "low-flow oxygen" | "NIPPV/CPAP" | "mechanical ventilation" | undefined }))}
+        </div>
+      </Section>
+
+      <Section title="Infection & antibiotics" sub="Stewardship and CLABSI reporting">
+        <div className="grid grid-cols-2 gap-2">
+          {flag("Early-onset sepsis", get("infection").eos, (b) => set("infection", { eos: b }))}
+          {flag("Late-onset sepsis", get("infection").los, (b) => set("infection", { los: b }))}
+          {flag("Culture-positive", get("infection").culturePositive, (b) => set("infection", { culturePositive: b }))}
+          {flag("CLABSI", get("infection").clabsi, (b) => set("infection", { clabsi: b }))}
+          {flag("Meningitis", get("infection").meningitis, (b) => set("infection", { meningitis: b }))}
+          {num("Antibiotic days", get("infection").antibioticDays, (v) => set("infection", { antibioticDays: v }))}
+        </div>
+        <div className="mt-2">{text("Organism", get("infection").organism, (v) => set("infection", { organism: v }))}</div>
+      </Section>
+
+      <Section title="Lines · transfusions · KMC">
+        <div className="grid grid-cols-3 gap-2">
+          {num("UVC days", get("lines").uvcDays, (v) => set("lines", { uvcDays: v }))}
+          {num("UAC days", get("lines").uacDays, (v) => set("lines", { uacDays: v }))}
+          {num("PICC days", get("lines").piccDays, (v) => set("lines", { piccDays: v }))}
+          {num("PRBC transfusions", get("transfusions").prbc, (v) => set("transfusions", { prbc: v }))}
+          {num("Platelet transfusions", get("transfusions").platelets, (v) => set("transfusions", { platelets: v }))}
+          {num("FFP transfusions", get("transfusions").ffp, (v) => set("transfusions", { ffp: v }))}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {flag("KMC started", get("kmc").started, (b) => set("kmc", { started: b }))}
+          {num("First KMC day of life", get("kmc").firstKmcDay, (v) => set("kmc", { firstKmcDay: v }))}
+          {num("KMC hours / day", get("kmc").hoursPerDay, (v) => set("kmc", { hoursPerDay: v }))}
+        </div>
+      </Section>
+
+      <Section title="Feeding & ROP">
+        <div className="grid grid-cols-3 gap-2">
+          {num("First feed (DOL)", get("feeding").firstFeedDay, (v) => set("feeding", { firstFeedDay: v }))}
+          {num("Full feeds (DOL)", get("feeding").fullFeedDay, (v) => set("feeding", { fullFeedDay: v }))}
+          {num("PN days", get("feeding").pnDays, (v) => set("feeding", { pnDays: v }))}
+        </div>
+        <div className="mt-2">{flag("Exclusive human milk", get("feeding").exclusiveHumanMilk, (b) => set("feeding", { exclusiveHumanMilk: b }))}</div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {flag("ROP screened", get("rop").screened, (b) => set("rop", { screened: b }))}
+          {flag("Plus disease", get("rop").plus, (b) => set("rop", { plus: b }))}
+          {text("ROP stage", get("rop").stage, (v) => set("rop", { stage: v }))}
+          {text("ROP zone", get("rop").zone, (v) => set("rop", { zone: v }))}
+        </div>
+        <div className="mt-2">{pick("ROP treatment", get("rop").treatment, ["none", "laser", "anti-VEGF"], (v) => set("rop", { treatment: v as "none" | "laser" | "anti-VEGF" | undefined }))}</div>
+      </Section>
+
+      <Section title="Discharge & follow-up">
+        <div className="grid grid-cols-2 gap-2">
+          {num("PMA at discharge", get("discharge").pmaWeeks, (v) => set("discharge", { pmaWeeks: v }), "wk")}
+          {pick("Feeding at discharge", get("discharge").feedingAtDischarge, ["breast", "OG/NG tube", "mixed", "IV"], (v) => set("discharge", { feedingAtDischarge: v as "breast" | "OG/NG tube" | "mixed" | "IV" | undefined }))}
+          {flag("Home oxygen", get("discharge").homeOxygen, (b) => set("discharge", { homeOxygen: b }))}
+          {flag("Readmitted ≤28 days", get("discharge").readmitted28d, (b) => set("discharge", { readmitted28d: b }))}
+        </div>
+        <div className="mt-2">{text("Readmission reason", get("discharge").readmissionReason, (v) => set("discharge", { readmissionReason: v }))}</div>
       </Section>
     </div>
   );

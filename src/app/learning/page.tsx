@@ -348,7 +348,7 @@ export default function LearningPage() {
                         <Pencil size={12} /> Edit
                       </button>
                       <button
-                        className="btn-ghost !px-2 !py-1 text-[11px] text-rose-300"
+                        className="btn-ghost !px-2 !py-1 text-[11px] text-slate-400 hover:text-rose-300"
                         onClick={() => remove(r.id)}
                       >
                         <Trash2 size={12} />

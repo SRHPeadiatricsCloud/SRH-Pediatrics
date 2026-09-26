@@ -107,6 +107,8 @@ export function DailyProgressTab({
   const last3 = rows.slice(-3).map((r) => r.velocity ?? 0).filter((v) => v !== 0);
   const avgVel = last3.length ? Math.round((last3.reduce((a, b) => a + b, 0) / last3.length) * 10) / 10 : null;
   const totalGain = latest ? latest.weight - baby.birthWeight : 0;
+  // Losing up to ~10% of birth weight is expected physiology, not an alarm.
+  const totalLossPct = totalGain < 0 ? Math.round((-totalGain / baby.birthWeight) * 1000) / 10 : 0;
 
   const recordToday = async () => {
     if (!w) return;
@@ -154,7 +156,7 @@ export function DailyProgressTab({
         <Tile
           k="Total change"
           v={`${totalGain > 0 ? "+" : ""}${totalGain} g`}
-          tone={totalGain >= 0 ? "text-emerald-300" : "text-rose-300"}
+          tone={totalGain >= 0 ? "text-emerald-300" : totalLossPct > 10 ? "text-rose-300" : "text-amber-300"}
         />
         <Tile
           k="Cumulative loss (max)"
@@ -183,11 +185,12 @@ export function DailyProgressTab({
 
       <div className="grid gap-3 lg:grid-cols-3">
         {/* ---------------- calorie auto-calculator ---------------- */}
-        <Section
-          title="Energy & protein auto-calculator"
-          sub="Computed live from the prescription"
-        >
-          <div className="space-y-1.5 text-xs">
+        <details open className="card p-4">
+          <summary className="cursor-pointer select-none">
+            <span className="text-sm font-bold tracking-wide text-white">Energy &amp; protein auto-calculator</span>
+            <span className="block text-[11px] text-slate-400">Computed live from the prescription</span>
+          </summary>
+          <div className="mt-3 space-y-1.5 text-xs">
             <Line k="Feed" v={`${n.feedType} @ ${n.density} kcal/ml${n.fortified ? " (incl. fortifier)" : ""}`} />
             {n.fortified && (
               <Line k="Fortifier" v={`${n.fortProduct?.name ?? "Fortifier"} → +${n.fortKcal} kcal, +${n.fortProtein} g protein`} />
@@ -255,7 +258,7 @@ export function DailyProgressTab({
               sub={`${c.fluids?.feedVol ?? 0} ml ${c.fluids?.feedFreq ?? ""}`}
             />
           </div>
-        </Section>
+        </details>
 
         {/* ---------------- daily table ---------------- */}
         <div className="lg:col-span-2">
@@ -278,27 +281,27 @@ export function DailyProgressTab({
               </div>
             }
           >
-            <div className="max-h-[460px] overflow-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead className="sticky top-0 bg-slate-900/95 text-slate-400">
+            <div className="max-h-[460px] overflow-auto rounded-lg border border-white/5">
+              <table className="w-full min-w-[860px] text-left text-[11px]">
+                <thead className="sticky top-0 z-10 bg-slate-900/95 text-slate-400">
                   <tr>
-                    <th className="p-1">DOL</th>
-                    <th>Date</th>
-                    <th>Weight</th>
-                    <th>HC</th>
-                    <th>Length</th>
-                    <th>Δ / day</th>
-                    <th>g/kg/d</th>
-                    <th>Cum. Δ</th>
-                    <th>Cum. loss</th>
-                    <th>kcal/kg/d</th>
-                    <th>Protein</th>
-                    <th>Status</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">DOL</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Date</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Weight</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">HC</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Length</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Δ / day</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">g/kg/d</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Cum. Δ</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Cum. loss</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">kcal/kg/d</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Protein</th>
+                    <th className="whitespace-nowrap px-2 py-1.5">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-t border-white/5 bg-white/5">
-                    <td className="p-1 font-bold text-slate-300">0</td>
+                    <td className="px-2 py-1.5 font-bold text-slate-300">0</td>
                     <td className="whitespace-nowrap text-slate-400">{fmtTime(baby.dob).slice(0, 11)}</td>
                     <td className="font-bold tabular-nums text-white">{baby.birthWeight} g</td>
                     <td className="text-slate-500">—</td>
@@ -311,27 +314,21 @@ export function DailyProgressTab({
                   </tr>
                   {rows.map((r) => (
                     <tr key={r.at} className="border-t border-white/5">
-                      <td className="p-1 font-bold tabular-nums text-slate-300">{r.dol}</td>
+                      <td className="px-2 py-1.5 font-bold tabular-nums text-slate-300">{r.dol}</td>
                       <td className="whitespace-nowrap text-slate-400">{fmtTime(r.at).slice(0, 11)}</td>
                       <td className="font-bold tabular-nums text-white">{r.weight} g</td>
                       <td className="tabular-nums text-slate-300">{r.hc ?? "—"}</td>
                       <td className="tabular-nums text-slate-300">{r.length ?? "—"}</td>
-                      <td className={`tabular-nums ${r.deltaPrev < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+                      <td className={`tabular-nums ${r.deltaPrev < 0 ? "text-amber-300" : "text-emerald-300"}`}>
                         {r.deltaPrev > 0 ? "+" : ""}
                         {r.deltaPrev} g
                       </td>
                       <td
-                        className={`tabular-nums ${
-                          (r.velocity ?? 0) >= 15
-                            ? "text-emerald-300"
-                            : (r.velocity ?? 0) < 0
-                              ? "text-rose-300"
-                              : "text-amber-300"
-                        }`}
+                        className={`tabular-nums ${(r.velocity ?? 0) >= 15 ? "text-emerald-300" : "text-amber-300"}`}
                       >
                         {r.velocity ?? "—"}
                       </td>
-                      <td className={`tabular-nums ${r.cumDelta < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+                      <td className={`whitespace-nowrap tabular-nums ${r.cumDelta < 0 ? (r.cumPct < -10 ? "text-rose-300" : "text-amber-300") : "text-emerald-300"}`}>
                         {r.cumDelta > 0 ? "+" : ""}
                         {r.cumDelta} g ({r.cumPct > 0 ? "+" : ""}
                         {r.cumPct}%)
@@ -356,7 +353,7 @@ export function DailyProgressTab({
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="p-4 text-center text-slate-400">
+                      <td colSpan={12} className="p-4 text-center text-slate-400">
                         No daily weights yet.
                       </td>
                     </tr>

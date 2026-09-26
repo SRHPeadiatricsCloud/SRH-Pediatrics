@@ -221,13 +221,16 @@ async function render(fluids, over = {}) {
   ok(/Fluids 150 ml\/kg\/d · OK \(aim 150–160\)/.test(t), "the fluids pill carries its target band");
   ok(/Energy 109\.5 kcal\/kg\/d · low \(aim 110–135\)/.test(t), "the energy pill says low against its band");
   ok(/Protein 3\.33 g\/kg\/d · low \(aim 3\.5–4\.5\)/.test(t), "the protein pill says low against its band");
-  ok(/1Feeds/.test(t) && /2IV fluids/.test(t) && /3Check the total/.test(t) && /4Tomorrow: advance the feeds/.test(t),
-     "the four numbered steps are all there");
+  ok(/1Total fluids \(TFI\)/.test(t) && /2Feeds/.test(t) && /3IV fluids/.test(t) && /4Check the total/.test(t) && /5Feed advancement/.test(t),
+     "the five numbered steps are all there");
+  ok(!/Tomorrow: advance the feeds/.test(t), "the tomorrow plan is gone — advancing applies today");
   const sideBySide = [...el.querySelectorAll("div")].filter(
-    (d) => d.className?.toString?.().includes("lg:grid-cols-2")
+    (d) => d.className?.toString?.().includes("lg:grid-cols-12")
   );
-  const pair = sideBySide.find((d) => /1Feeds/.test(d.textContent) && /2IV fluids/.test(d.textContent));
-  ok(pair, "Feeds and IV fluids cards are grouped side by side on wide screens");
+  const row = sideBySide.find((d) => /1Total fluids \(TFI\)/.test(d.textContent) && /2Feeds/.test(d.textContent) && /3IV fluids/.test(d.textContent));
+  ok(row, "TFI, Feeds and IV fluids sit in one row on wide screens");
+  ok(row && /lg:col-span-3/.test(row.innerHTML) && /lg:col-span-5/.test(row.innerHTML) && /lg:col-span-4/.test(row.innerHTML),
+     "the row uses 3/5/4 column spans");
   ok(!/Static/.test(t) && !/Increasing/.test(t), "no feed-plan machinery (Static/Increasing) anywhere");
   ok(!/increase applies to/i.test(t), "no 'increase applies to'");
   ok(!/Feed details & tolerance/.test(t), "the old drawer is gone");
@@ -384,13 +387,16 @@ async function render(fluids, over = {}) {
   ok(/no TFI target set yet/.test(text(el)), "no target yet says so");
   click(byText(el, "button", "use the guideline's"), "adopt the guideline's target");
   ok(fieldInput(el, "TFI target ml/kg/day").value === "160", `one tap takes the guideline's target (got ${fieldInput(el, "TFI target ml/kg/day").value})`);
-  ok(/40 short of the TFI target/.test(text(el)), "the split bar verdict names the gap");
-  ok(/To reach 160: add 40 ml\/kg\/day to the IV \(≈ \+2\.5 ml\/h\) or to the feeds/.test(text(el)), "the guidance line says how to close the gap");
+  ok(fieldInput(el, "IV ml/kg/day").value === "40", `the IV follows the new target: 160 − 120 (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  ok(/on the TFI target/.test(text(el)), "so the split bar lands on the target");
+  typeInto(fieldInput(el, "IV ml/kg/day"), "10", "a manual IV");
+  ok(/30 short of the TFI target/.test(text(el)), "a hand-typed IV can leave a gap the verdict names");
+  ok(/To reach 160: add 30 ml\/kg\/day to the IV \(≈ \+1\.9 ml\/h\) or to the feeds/.test(text(el)), "the guidance line says how to close the gap");
 
-  const over = await render({ enteralMlKgDay: 140, ivMlKgDay: 30, tfiMlKgDay: 150 }, { currentWeight: 1500 });
-  ok(/Total today 170 ml\/kg\/day ≈ 255 ml/.test(text(over.el)), "an over target is stated");
-  ok(/20 OVER the TFI target/.test(text(over.el)), "the verdict names the overshoot");
-  ok(/Over target by 20 — bring the IV down by ≈ 1\.3 ml\/h/.test(text(over.el)), "the guidance says how to come back down");
+  const over = await render({ enteralMlKgDay: 140, ivMlKgDay: 40, tfiMlKgDay: 150 }, { currentWeight: 1500 });
+  ok(/Total today 180 ml\/kg\/day ≈ 270 ml/.test(text(over.el)), "an over target is stated");
+  ok(/30 OVER the TFI target/.test(text(over.el)), "the verdict names the overshoot");
+  ok(/Over target by 30 — bring the IV down by ≈ 1\.9 ml\/h/.test(text(over.el)), "the guidance says how to come back down");
 }
 
 /* --- 9. the sentence's edge cases: NPO, no IV, total-only, empty ---------- */
@@ -505,6 +511,7 @@ async function render(fluids, over = {}) {
   click(byExact(el, "button", "Save feeds & fluids"), "save");
   await flush();
   ok(saved[0]?.clinical?.fluids?.protocol === undefined, `a unit save does not write to the chart (got ${JSON.stringify(saved[0]?.clinical?.fluids?.protocol)})`);
+  unitStore.protocol = undefined;
 }
 
 /* --- 15. the Advanced section: manual GIR, energy override, the why -------- */
@@ -562,6 +569,83 @@ async function render(fluids, over = {}) {
   await flush();
   const f = saved[0]?.clinical?.fluids;
   ok(f?.feedType === "Expressed breast milk (EBM)" && f?.feedRoute === "OG tube", `the picks are saved (got ${f?.feedType} / ${f?.feedRoute})`);
+}
+
+/* --- 18. the IV follows the TFI, and the advance is capped by it ---------- */
+{
+  const { el, saved } = await render(
+    { tfiMlKgDay: 150, enteralMlKgDay: 60, ivMlKgDay: 90, feedFreq: "3 hourly" },
+    { currentWeight: 1500 },
+  );
+  ok(!/follow the TFI/.test(text(el)), "an untouched chart shows no follow-the-TFI link");
+  typeInto(fieldInput(el, "Feeds ml/kg/day"), "100", "feeds");
+  ok(fieldInput(el, "IV ml/kg/day").value === "50", `typing feeds re-derives the IV: 150 − 100 (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  ok(/on the TFI target/.test(text(el)), "the total lands on the TFI");
+  typeInto(fieldInput(el, "TFI target ml/kg/day"), "160", "tfi");
+  ok(fieldInput(el, "IV ml/kg/day").value === "60", `typing the TFI re-derives the IV too: 160 − 100 (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  typeInto(fieldInput(el, "IV ml/kg/day"), "20", "iv");
+  typeInto(fieldInput(el, "Feeds ml/kg/day"), "80", "feeds again");
+  ok(fieldInput(el, "IV ml/kg/day").value === "20", `a typed IV stops following the feeds (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  ok(/follow the TFI \(160\)/.test(text(el)), "a manual IV shows the follow-the-TFI link");
+  click(byText(el, "button", "follow the TFI"), "follow the TFI");
+  ok(fieldInput(el, "IV ml/kg/day").value === "80", `following the TFI re-derives the IV: 160 − 80 (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  ok(!/follow the TFI/.test(text(el)), "and the link is gone once the IV follows again");
+  typeInto(fieldInput(el, "Pump rate ml/hour"), "6", "pump rate");
+  ok(fieldInput(el, "IV ml/kg/day").value === "96", `the pump rate is a manual IV entry too: 6 ml/h at 1.5 kg is 96 (got ${fieldInput(el, "IV ml/kg/day").value})`);
+  typeInto(fieldInput(el, "Feeds ml/kg/day"), "90", "feeds once more");
+  ok(fieldInput(el, "IV ml/kg/day").value === "96", "a pump-typed IV does not follow either");
+  click(byExact(el, "button", "Save feeds & fluids"), "save");
+  await flush();
+  ok(saved[0]?.clinical?.fluids?.ivManual === true, "the save carries ivManual: true");
+
+  // The advance is capped by the TFI — feeds fill the target, never pass it.
+  const cap = await render({ tfiMlKgDay: 150, enteralMlKgDay: 80, ivMlKgDay: 70, feedFreq: "3 hourly" }, { currentWeight: 1500 });
+  click(byText(cap.el, "button", "Advance feeds"), "advance under the TFI");
+  ok(fieldInput(cap.el, "Feeds ml/kg/day").value === "110" && fieldInput(cap.el, "IV ml/kg/day").value === "40",
+     `the advance steps feeds 80 → 110 and weans the IV to TFI − feeds (got ${fieldInput(cap.el, "Feeds ml/kg/day").value} + ${fieldInput(cap.el, "IV ml/kg/day").value})`);
+  const fill = await render({ tfiMlKgDay: 150, enteralMlKgDay: 130, ivMlKgDay: 20, feedFreq: "3 hourly" }, { currentWeight: 1500 });
+  ok(/150 → 150 ml\/kg\/day \(TFI 150\)/.test(text(fill.el)), "the preview keeps the total on the TFI");
+  click(byText(fill.el, "button", "Advance feeds"), "advance capped by the TFI");
+  ok(fieldInput(fill.el, "Feeds ml/kg/day").value === "150" && fieldInput(fill.el, "IV ml/kg/day").value === "0",
+     `the advance stops at the TFI: 150 + 0 (got ${fieldInput(fill.el, "Feeds ml/kg/day").value} + ${fieldInput(fill.el, "IV ml/kg/day").value})`);
+  const full = await render({ tfiMlKgDay: 150, enteralMlKgDay: 150, ivMlKgDay: 0, feedFreq: "3 hourly" }, { currentWeight: 1500 });
+  ok(byText(full.el, "button", "Advance feeds")?.matches(":disabled"), "the advance button is disabled once the feeds fill the TFI");
+  ok(/The feeds already fill the TFI \(150\) — raise the TFI in ① to advance further/.test(text(full.el)), "and the tab says to raise the TFI in ①");
+}
+
+/* --- 19. the NPO switch ----------------------------------------------------- */
+{
+  const { el, saved } = await render(
+    { tfiMlKgDay: 150, enteralMlKgDay: 80, ivMlKgDay: 70, feedType: "Expressed breast milk (EBM)", feedFreq: "3 hourly" },
+    { currentWeight: 1500 },
+  );
+  ok(/NPO — nil by mouth/.test(text(el)), "the Feeds card carries the NPO chip");
+  click(byText(el, "button", "NPO — nil by mouth"), "NPO on");
+  ok(/Nil by mouth, IV 9\.4 ml\/h \(150 ml\/kg\/day\) = 150 ml\/kg\/day — exactly the TFI target/.test(text(el)),
+     `the one line reads nil by mouth with the whole TFI running IV (got: ${(text(el).match(/Nil by mouth[^.]*\./) ?? ["none"])[0]})`);
+  ok(fieldInput(el, "Feeds ml/kg/day").value === "0", "feeds go to zero");
+  ok(fieldInput(el, "IV ml/kg/day").value === "150", "the whole TFI runs IV");
+  ok(fieldSelect(el, "What milk").value === "NPO / Nil per oral", "the milk becomes NPO / Nil per oral");
+  ok(fieldInput(el, "Per feed ml").matches(":disabled"), "the per-feed box is disabled while NPO");
+  ok(fieldInput(el, "Feeds ml/kg/day").matches(":disabled"), "the feeds box is disabled while NPO");
+  ok(fieldSelect(el, "How often").matches(":disabled"), "the interval is disabled while NPO");
+  ok(byText(el, "button", "Advance feeds")?.matches(":disabled"), "the advance step is disabled while NPO");
+  ok(fieldInput(el, "IV ml/kg/day").matches(":disabled") === false, "the IV stays editable while NPO");
+  click(byExact(el, "button", "Save feeds & fluids"), "save NPO");
+  await flush();
+  const f = saved[0]?.clinical?.fluids;
+  ok(f?.feedType === "NPO / Nil per oral" && f?.enteralMlKgDay === 0 && f?.ivMlKgDay === 150,
+     `the save carries the NPO state (got ${f?.feedType} / ${f?.enteralMlKgDay} / ${f?.ivMlKgDay})`);
+  click(byText(el, "button", "NPO — nil by mouth"), "NPO off");
+  ok(fieldSelect(el, "What milk").value === "Expressed breast milk (EBM)", "switching off restores the previous milk");
+  ok(fieldInput(el, "Per feed ml").matches(":disabled") === false, "and the feed fields are editable again");
+
+  // "Use the guideline" while NPO keeps NPO: feeds 0, IV = the fluid target.
+  const npo = await render({ feedType: "NPO / Nil per oral", tfiMlKgDay: 150, ivMlKgDay: 150, feedFreq: "3 hourly" }, { currentWeight: 1500 });
+  click(byText(npo.el, "button", "Use the guideline"), "use the guideline while NPO");
+  ok(fieldSelect(npo.el, "What milk").value === "NPO / Nil per oral", "the guideline keeps the baby NPO");
+  ok(fieldInput(npo.el, "Feeds ml/kg/day").value === "0" && fieldInput(npo.el, "IV ml/kg/day").value === "160" && fieldInput(npo.el, "TFI target ml/kg/day").value === "160",
+     `feeds stay 0 and the IV takes the guideline's fluid target (got ${fieldInput(npo.el, "Feeds ml/kg/day").value} / ${fieldInput(npo.el, "IV ml/kg/day").value} / ${fieldInput(npo.el, "TFI target ml/kg/day").value})`);
 }
 
 rmSync(work, { recursive: true, force: true });

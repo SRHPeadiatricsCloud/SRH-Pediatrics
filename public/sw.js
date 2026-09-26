@@ -10,14 +10,14 @@
    - Cache names carry VERSION, so a new worker wipes every old cache on
      activate — including the ones left behind by the previous (buggy) worker. */
 
-const VERSION = "srh-nicu-v3.14.0";
+const VERSION = "srh-nicu-v4.1.0";
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const DOCS = `${VERSION}-docs`;
 
 // Only immutable assets belong here. Never precache HTML documents: a precached
 // document is served even after a new deploy.
-const PRECACHE = ["/icons/icon-512.png?v=3.14.0", "/images/hospital-logo.png?v=3.14.0"];
+const PRECACHE = ["/icons/icon-512.png?v=4.1.0", "/images/hospital-logo.png?v=4.1.0"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

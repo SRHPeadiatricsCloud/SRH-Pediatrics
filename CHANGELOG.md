@@ -19,6 +19,229 @@ Rules:
 
 ---
 
+## 4.1.5 — 2026-09-26
+
+- Removed the slide (range slider) from every numeric input. The shared
+  stepper control rendered a thin slider under each number field; on touch
+  screens a stray swipe nudged the value and the change auto-saved. Numbers
+  are now changed only by typing or the large − / + buttons (press-and-hold
+  still repeats), everywhere: observations, drug & dose calculators,
+  admission and edit forms.
+
+## 4.1.4 — 2026-09-26
+
+- Fixed duplicate entries under the **Vitals & growth** tab: the observation
+  round carried its own weight / HC / length inputs that appended to the
+  growth series twice (once on auto-save, again on "Save observations"), and
+  mirrored the inputs already present in the growth section. The vitals
+  section no longer records anthropometry — weight, HC and length are
+  entered once, in the growth section, which is the single source for the
+  growth chart.
+
+## 4.1.3 — 2026-09-26
+
+- Fixed the "More" dropdown rendering as a clipped scrollable box: it was
+  positioned inside the horizontally scrollable nav strip, which trapped the
+  menu. The dropdown is removed — the navigation now simply **wraps onto
+  rows on the main screen**, so every tab (including Recent updates,
+  Keymaster List and Statistics & QI, set apart by a divider) is always
+  visible on any screen size, with no scrolling needed.
+
+## 4.1.2 — 2026-09-26
+
+- Fixed the top navigation being unreachable on Windows desktops: the tab
+  strip relied on a hidden horizontal scroll, so tabs at the right end could
+  not be reached with a mouse. The main tabs (Unit board, New admission, By
+  consultant, Shift sheet, Discharge archive, Drugs & doses, Calculators,
+  Duty roster, Learning space) now stay visible, and the remaining sections
+  (Recent updates, Keymaster List, Statistics & QI) are grouped under a
+  **More** dropdown menu.
+
+## 4.1.1 — 2026-09-25
+
+- Merged the month-end Statistics report and the Unit QI scorecard under a
+  single **Statistics & QI** tab: the page has a segmented switcher between
+  the two reports; each keeps its own toolbar and Excel export. `/analytics`
+  now redirects to `/statistics` so existing links keep working. No data or
+  engine changes — reorganization only.
+
+## 4.1.0
+
+**Level III-B NICU analytics & quality-improvement system.**
+
+### Added
+
+- **Analytics & QI tab** (`src/app/analytics/page.tsx`, in the top navigation beside
+  Statistics): a unit-wide scorecard over every recorded chart, following the
+  quality-improvement framework end to end — data quality → activity → case mix →
+  mortality → risk adjustment → every morbidity domain → LOS & discharge → monthly
+  trends → the quality-indicator dashboard → Pareto, subgroups and declared data gaps.
+- **Analytics engine** (`src/lib/analytics.ts`): one pure, unit-tested function turns
+  the raw store (charts, observations, problems) into the report. Nothing is invented —
+  a field never recorded shows up as a coverage gap, and every rate carries its
+  numerator and denominator. Covered by **112 hand-counted checks**
+  (`scripts/test-analytics.ts`).
+- **QI domain & calculators** (`src/lib/qi.ts`): CRIB-II (published point table,
+  levels I–IV; scores without a recorded admission temperature or base excess are
+  flagged incomplete, never estimated), the fine gestational-age (<24 … ≥37 wk) and
+  birth-weight (<500 … ≥2500 g) bands, SGA/AGA/LGA against the bundled Fenton 2013
+  reference, ROP screening eligibility (≤34 wk or ≤1750 g), and published reference
+  values for the indicator dashboard.
+- **QI data tab on each baby chart** (`src/components/baby-tabs.tsx`): structured
+  capture for everything the free-text chart never could — antenatal steroids, first-hour
+  temperature and base excess (with a live CRIB-II readout), IVH grade/PVL/seizures,
+  ventilator/CPAP/oxygen days and support at 36 weeks PMA, EOS/LOS/CLABSI with
+  antibiotic days, line days, transfusions, feeding days, KMC, ROP stage/zone/treatment,
+  discharge PMA and 28-day readmission. These fields feed the Analytics report going
+  forward.
+- **Data-quality scorecard**: record & duplicate counts, missing-value percentages for
+  every key variable, and implausible-value flags (gestation outside 22–44 wk, birth
+  weight outside 300–6000 g, Apgar >10, discharge before admission, death without a
+  discharge record, temperatures outside 30–43 °C).
+- **Quality-indicator dashboard**: outcome, process and safety indicators with
+  numerator/denominator, the published reference and an automatic review flag
+  (mortality, admission normothermia, antenatal steroids, severe IVH, BPD, NEC, CLABSI,
+  ROP screening compliance, human milk, KMC, antibiotic exposure).
+- **Exports**: the Analytics report exports to a 14-sheet Excel workbook (lazy-loaded
+  SheetJS) and to PDF through the browser print path with all charts.
+
+### Changed
+
+- **Version 4.1.0** — `APP_VERSION`, the service worker, asset cache-busters and the
+  prod-ui-verify checks all move to `4.1.0`.
+
+---
+
+## 4.0.0
+
+**Deep month-end statistics — every extractable parameter, with Excel & PDF export.**
+
+### Added
+
+- **Deep statistics engine** (`src/lib/stats.ts`, now `computeMonthStats` with a
+  `MonthExtras` feed): alongside the existing census, demographics and outcomes, the
+  month-end report now reads the observations table, the problems list, handovers and
+  tasks, and every event-log milestone — so every parameter the charts capture can be
+  reported.
+- **Observations & monitoring**: observation count and babies monitored, heart rate,
+  respiratory rate, SpO₂ and temperature ranges (avg/min/max), plus safety flags —
+  fever ≥38 °C, hypothermia <36 °C, hypoglycaemia (RBS <47), desaturations (SpO₂ <90)
+  and average urine output.
+- **Problems**: new problems this month (top labels and by system), still-active and
+  resolved counts.
+- **Patient flow chart**: admissions (up) versus departures (down) drawn around a centre
+  line for each day of the month, beside the census curve.
+- **Outcomes by band**: mortality and average length of stay split by gestational-age
+  band (extremely/very/moderate–late preterm/term) and birth-weight band
+  (ELBW/VLBW/LBW/1500–2499/≥2500 g).
+- **Feeding milestones & screening** from the event log: first feed, full feeds, HMF,
+  PO feeds, DBF, adverse events, cranial ultrasound, echocardiogram and ROP screens.
+- **Richer cohort detail**: blood groups, mean birth length & head circumference,
+  Apgar 1′ < 7, respiratory support snapshot, lines in situ, top medications,
+  weight-velocity categories (slow/expected/fast), GIR, kcal and TPN among the active
+  cohort, plus handover/task activity and an admissions register table.
+- **Excel export** (`src/app/statistics/xlsx.ts`, lazy-loaded SheetJS): one workbook with
+  Overview, Daily census & flow, Demographics, Interventions & events, Growth &
+  nutrition, Vitals & problems, Outcomes by band and Admissions register sheets —
+  ready for the hospital's monthly audit trail.
+- **PDF export**: the report's Export PDF button prints the page through the browser,
+  so the census curve, flow chart and every bar export exactly as drawn.
+- **Data endpoint** (`src/app/api/statistics?month=YYYY-MM`): returns the charts plus
+  the observations, problems, handovers and tasks for the month window; the numbers are
+  computed client-side by the unit-tested engine. All dates stay on the local calendar
+  day. The statistics engine is now covered by **106 hand-counted checks**
+  (`scripts/test-stats.ts`).
+
+### Changed
+
+- **Version 4.0.0** — a major release: `APP_VERSION`, the service worker, asset
+  cache-busters and the prod-ui-verify checks all move to `4.0.0`.
+
+---
+
+## 3.16.0
+
+**Month-end statistics — a printable monthly report beside the Keymaster list.**
+
+### Added
+
+- **Statistics tab** (`src/app/statistics/page.tsx`, linked in the top navigation right
+  after the Keymaster list): a month-end report for any month and any unit (or all units),
+  ready to print or save as a PDF for the monthly review.
+- **Census & patient flow**: the daily census curve for the whole month, patient-days,
+  average and peak daily census, end-of-month census, admissions by day and by unit, and the
+  current occupancy per unit.
+- **Every assessable parameter of the cohort admitted that month**: sex, inborn/outborn,
+  gestational-age bands (extremely/very/moderate–late preterm/term), birth-weight bands
+  (ELBW/VLBW/LBW/≥2500 g), delivery mode, admission acuity, Apgar 5′ < 7, insurance,
+  consultant, and the interventions recorded for them — ventilation, CPAP, HFNC, surfactant,
+  caffeine, phototherapy, UVC, PICC, blood cultures, antibiotics, NS boluses, NEC.
+- **Growth & nutrition**: average maximum weight loss, average day to regain birth weight,
+  average weight velocity (g/kg/day), the active cohort's current fluids (ml/kg/day) and
+  human-milk rate.
+- **Overall progress**: where each admitted baby is now (still in / home / transferred /
+  death), mortality and survival-to-discharge rates, average length of stay and discharge
+  weight, all set beside the previous month's figures with up/down trend marks.
+- **Stats engine** (`src/lib/stats.ts`): the pure month math behind the page, covered by
+  65 hand-counted assertions in `scripts/test-stats.ts`. All dates are local calendar days —
+  the same convention as the discharge archive — and deleted charts never count.
+
+---
+
+## 3.15.0
+
+**TFI beside feeds & IV, same-day advancement, NPO switch, calmer palette.**
+
+### Changed
+
+- **Five steps, TFI first** (`src/components/fluids-tab.tsx`): the tab now reads ① Total fluids
+  (TFI), then ② Feeds and ③ IV fluids in one row on wide screens (`lg:grid-cols-12`,
+  col-spans 3/5/4, stacked on phones), then ④ Check the total and ⑤ Feed advancement. The
+  "Tomorrow: advance the feeds" plan is gone — advancing the feeds applies **today**.
+- **The IV follows the TFI**: whenever feeds or the TFI change, the IV re-derives as
+  `max(0, TFI − min(250, feeds))`, unless the clinician typed the IV by hand. Typing the
+  IV ml/kg/day or the pump rate sets `ivManual` (new optional boolean in `Clinical.fluids`,
+  saved alongside the other `*Manual` flags); a "follow the TFI (N)" link hands the IV back.
+- **Advance feeds is capped by the TFI**: the step lands on `min(TFI, 250, feeds + step)` and
+  the IV becomes `TFI − feeds` (or `IV − step applied` when there is no TFI or the IV is
+  manual). When the feeds already fill the TFI the button is disabled and the tab says
+  "The feeds already fill the TFI (N) — raise the TFI in ① to advance further."
+- **NPO — nil by mouth**: an amber chip in the Feeds card header. On, the feed type becomes
+  "NPO / Nil per oral", feeds go to 0, the whole TFI runs IV, and the feed fields and the
+  advancement step are disabled (`<fieldset disabled>`, dimmed). Off restores the previous
+  milk (default EBM). "Use the guideline" while NPO keeps NPO, feeds 0, IV = the guideline's
+  fluid target.
+- **Less red** — red is now reserved for real alarms (total >15% over the TFI, GIR LOW /
+  very high, critical flags, weight loss >10%). Everything that used to shout in red but is
+  really a nudge is now amber or neutral: a slightly-over TFI verdict/bar/guidance, "high"
+  target pills, the late-feed pill, the missing-weight notice, the TargetRow over-band, the
+  board's active-problem chips, normal (≤10%) weight loss in the daily progress table, and
+  every delete/remove button (now quiet slate until hovered). The daily round keeps its
+  original colour coding but wears it as an outline only — no fills, plain text: the
+  board's "Round items due" stat, the per-card round row and due chips, the "N overdue"
+  and "Round complete" pills, and the ward-rounds checklist tiles on the baby chart
+  (red outline when an item is due, amber while pending, emerald when done — no striking
+  yellow fill, no pulsing alarm).
+- **Observation-log duplicates** (`src/components/baby-tabs.tsx`): vitals saves are
+  serialised through a promise chain, and a payload identical to the last one that saved
+  successfully is skipped, so one round of observations stays one row.
+- **Layout polish**: the Feeds and IV steps stack their fields vertically on wide screens
+  so the narrow columns stop feeling cramped; the board's "Open actions", the daily
+  progress "Energy & protein auto-calculator" and the respiratory reference are now
+  collapsible cards; the auto-compiled daily-progress table gets breathing room (roomier
+  cells, no crushed columns); the handover patient summary drops the raw labs dump and
+  keeps only what the receiving team needs; the event log is rebuilt as one simple
+  screen-height stack of compact colour-coded boxes (one per event, one below the other)
+  instead of a 1800px paper replica plus a duplicated card grid.
+
+### Tests
+
+- `scripts/test-fluids-tab.mjs` gains blocks 18 (IV follows the TFI, the advance cap) and
+  19 (the NPO switch); the tab is now covered by 166 checks.
+
+Version markers (backup schema, service worker, layout, manifest, board, handover sheet,
+shell footer, production UI verification) all move to **3.15.0**.
+
 ## 3.14.0
 
 **Novice-first Feeds & fluids redesign** (`src/components/fluids-tab.tsx`): the tab now reads

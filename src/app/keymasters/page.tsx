@@ -262,7 +262,7 @@ export default function KeymastersPage() {
                       </button>
                     )}
                     {canDeleteThis && (
-                      <button className="btn-ghost !px-2 !py-1 text-[11px] text-rose-300" onClick={() => remove(r)}>
+                      <button className="btn-ghost !px-2 !py-1 text-[11px] text-slate-400 hover:text-rose-300" onClick={() => remove(r)}>
                         <Trash2 size={12} /> Remove
                       </button>
                     )}

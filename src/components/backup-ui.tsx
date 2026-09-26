@@ -427,7 +427,7 @@ export function BackupVault({ onRestored }: { onRestored?: () => void }) {
               >
                 JSON
               </button>
-              <button className="text-rose-300" onClick={() => r.id != null && deleteBackup(r.id).then(load)}>
+              <button className="text-slate-400 hover:text-rose-300" onClick={() => r.id != null && deleteBackup(r.id).then(load)}>
                 ✕
               </button>
             </div>

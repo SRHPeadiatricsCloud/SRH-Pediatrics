@@ -56,7 +56,7 @@ function Sheet() {
             <div>
               <div className="flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/icon-512.png?v=3.14.0" alt="" className="h-8 w-8 rounded-md bg-white p-0.5" />
+                <img src="/icons/icon-512.png?v=4.1.5" alt="" className="h-8 w-8 rounded-md bg-white p-0.5" />
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-300">
                     Sri Ramakrishna Hospital · Department of Pediatrics
@@ -136,7 +136,6 @@ function Sheet() {
                       k="Last vitals"
                       v={`HR ${v.hr ?? "—"} · RR ${v.rr ?? "—"} · SpO₂ ${v.spo2 ?? "—"}% · T ${tempOut(v.temp as number | null, tUnit) ?? "—"}°${tUnit} · BP ${fmtBP(v.sbp as number | null, v.dbp as number | null, v.map as number | null)} · RBS ${v.rbs ?? "—"}`}
                     />
-                    <P k="Labs" v={Object.entries(c.labs ?? {}).filter(([, x]) => x).map(([k, x]) => `${k} ${x}`).join(" · ") || "—"} />
                     <P k="Plan" v={c.plan ?? "—"} />
                     <P k="Actions" v={b.openTasks.map((t) => t.text).join("; ") || "—"} />
                     <P k="If–then" v={b.lastHandover?.contingency?.join(" | ") || "—"} />

@@ -47,6 +47,7 @@ import {
   HandoverTab,
   LabsTab,
   ProblemsTab,
+  QITab,
   RespTab,
   TimelineTab,
   VitalsTab,
@@ -138,8 +139,9 @@ type Detail = {
 
 const TABS = [
   "Overview",
-  // Vitals and growth live together: weight is recorded during the observation
-  // round, so splitting them across two tabs meant entering it twice.
+  // Vitals and growth share one tab, but each value is entered exactly once:
+  // observation parameters in the vitals section, weight/HC/length only in the
+  // growth section (they briefly existed in both, producing duplicate entries).
   "Vitals & growth",
   "Respiratory",
   "Fluids & feeds",
@@ -152,6 +154,7 @@ const TABS = [
   "Handover",
   "Timeline",
   "Event Log",
+  "QI data",
 ] as const;
 
 export default function BabyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -339,7 +342,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
           <Link href="/handover" className="btn-ghost ml-auto text-xs">
             Print unit sheet
           </Link>
-          <button className="btn-ghost text-xs text-rose-300" onClick={() => setConfirmDelete(true)}>
+          <button className="btn-ghost text-xs text-slate-400 hover:text-rose-300" onClick={() => setConfirmDelete(true)}>
             🗑 Delete card
           </button>
         </div>
@@ -360,7 +363,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         {tab === "Overview" && <Overview d={data} patch={patch} user={name} onNavigateTab={(targetTab) => setTab(targetTab as (typeof TABS)[number])} />}
         {tab === "Vitals & growth" && (
           <>
-            <VitalsTab d={data} id={id} reload={reload} user={name} patch={patch} />
+            <VitalsTab d={data} id={id} reload={reload} user={name} />
             <div className="mt-6">
               <GrowthTab d={data} patch={patch} user={name} reload={reload} />
             </div>
@@ -379,6 +382,7 @@ export default function BabyPage({ params }: { params: Promise<{ id: string }> }
         {tab === "Handover" && <HandoverTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Timeline" && <TimelineTab d={data} id={id} reload={reload} user={name} />}
         {tab === "Event Log" && <EventLogTab d={data} id={id} reload={reload} user={name} patch={patch} />}
+        {tab === "QI data" && <QITab d={data} patch={patch} />}
       </div>
     </main>
   );

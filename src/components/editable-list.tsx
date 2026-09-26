@@ -86,7 +86,7 @@ export function EditableListField({
               />
               <button
                 type="button"
-                className="shrink-0 text-rose-300 hover:text-rose-200"
+                className="shrink-0 text-slate-400 hover:text-rose-300"
                 title="Remove"
                 onClick={() => onChange(value.filter((_, i) => i !== index))}
               >
